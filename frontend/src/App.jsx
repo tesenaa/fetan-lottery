@@ -1,4 +1,4 @@
- import React, { useState, useEffect } from 'react';
+[8/7import React, { useState, useEffect } from 'react';
 
 export default function App() {
   const [selectedNumbers, setSelectedNumbers] = useState([]);
@@ -7,6 +7,7 @@ export default function App() {
   const [phase, setPhase] = useState('selection'); // 'selection' ወይም 'spinning'
   const [selectionTime, setSelectionTime] = useState(50);
   const [winningNumber, setWinningNumber] = useState('?');
+  const [winnerAnnouncement, setWinnerAnnouncement] = useState(null);
 
   const STAKE = 10;
 
@@ -27,6 +28,7 @@ export default function App() {
           setAllPickedNumbers([]);
           setPlayerCount(0);
           setWinningNumber('?');
+          setWinnerAnnouncement(null); // አዲስ ጨዋታ ሲጀምር የማሸናፊ ሳጥኑን ማጥፋት
         }
       } else {
         // 2. የዕጣ ማውጣት ደረጃ (10 ሰከንድ)
@@ -47,12 +49,15 @@ export default function App() {
         // ከ 9 ሰከንድ በኋላ አሸናፊውን ያወጣል
         const drawTimeout = setTimeout(() => {
           const randomIndex = Math.floor(Math.random() * allPickedNumbers.length);
-          setWinningNumber(allPickedNumbers[randomIndex]);
+          const winner = allPickedNumbers[randomIndex];
+          setWinningNumber(winner);
+          setWinnerAnnouncement(winner); // የአሸናፊ ማስታወቂያ ማሳየት
         }, 9000);
 
         return () => clearTimeout(drawTimeout);
       } else {
         setWinningNumber('አልተመረጠም');
+        setWinnerAnnouncement(null);
       }
     }
   }, [phase, allPickedNumbers]);
@@ -74,6 +79,18 @@ export default function App() {
     }
   };
 
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      alert("ወደ ኋላ የሚመለስበት ገጽ የለም");
+    }
+  };
+
   const totalPool = allPickedNumbers.length * STAKE;
   const derash = Math.floor(totalPool * 0.8);
 
@@ -90,23 +107,74 @@ export default function App() {
       boxSizing: 'border-box',
       overflow: 'hidden'
     }}>
-      {/* የሎተሪ መንኮራኩር ሽክርክሪት CSS Animation */}
+      {/* የኒዮን ቀስት ማሽከርከሪያ CSS Animation */}
       <style>{`
-        @keyframes customSpin {
+        @keyframes arrowSpin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
-        .spin-icon {
-          animation: customSpin 0.7s linear infinite;
+        .spin-arrow-container {
+          animation: arrowSpin 0.6s linear infinite;
         }`
       }</style>
 
-      {/* 1. TOP HEADER */}
+      {/* 0. TOP NAVIGATION BAR (Back & Refresh) */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '6px 12px',
+        backgroundColor: '#0a0a16',
+        borderBottom: '1px solid #1e1b4b',
+        flexShrink: 0
+      }}>
+        <button 
+          onClick={handleBack}
+            style={{
+            backgroundColor: '#1e1b4b',
+            color: '#38bdf8',
+            border: '1px solid #312e81',
+            borderRadius: '6px',
+            padding: '4px 10px',
+            fontSize: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontWeight: 'bold'
+          }}
+        >
+          ← Back
+        </button>
+
+        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#9ca3af' }}>Fetan Lottery</span>
+
+        <button 
+          onClick={handleRefresh}
+          style={{
+            backgroundColor: '#1e1b4b',
+            color: '#22c55e',
+            border: '1px solid #312e81',
+            borderRadius: '6px',
+            padding: '4px 10px',
+            fontSize: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontWeight: 'bold'
+          }}
+        >
+          🔄 Refresh
+        </button>
+      </div>
+
+      {/* 1. TOP HEADER STATS */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
         gap: '4px',
-        padding: '8px 8px 4px 8px',
+        padding: '6px 8px 4px 8px',
         flexShrink: 0
       }}>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
@@ -118,7 +186,7 @@ export default function App() {
           <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount}</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
-         <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
+          <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
           <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>{STAKE} ETB</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
@@ -173,7 +241,7 @@ export default function App() {
             flex: 1
           }}>
             {Array.from({ length: 1000 }, (_, i) => i + 1).map((num) => {
-              const isSelected = selectedNumbers.includes(num);
+             const isSelected = selectedNumbers.includes(num);
               return (
                 <button
                   key={num}
@@ -232,7 +300,8 @@ export default function App() {
               {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
             </div>
           </div>
-                {/* አዲሱ የዕጣ ማውጫ ሳጥን */}
+
+          {/* የዕጣ ማውጫ ሳጥን */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '12px',
@@ -264,19 +333,25 @@ export default function App() {
                 ? '0 0 25px rgba(0, 255, 204, 0.8), inset 0 0 12px rgba(0, 255, 204, 0.5)'
                 : '0 0 12px rgba(255, 0, 85, 0.4)',
               transition: 'all 0.3s ease',
-              transform: phase === 'spinning' && winningNumber === 'SPINNING' ? 'scale(1.05)' : 'scale(1)'
+              transform: phase === 'spinning' && winningNumber === 'SPINNING' ? 'scale(1.05)' : 'scale(1)',
+              position: 'relative'
             }}>
               {winningNumber === 'SPINNING' ? (
-                /* Spin በሚያደርግበት ጊዜ የሚሽከረከር ዘመናዊ SVG Spinner (ቁጥሮች አይታዩም) */
-                <svg className="spin-icon" width="50" height="50" viewBox="0 0 50 50">
-                  <circle cx="25" cy="25" r="20" fill="none" stroke="#222" strokeWidth="4" />
-                  <circle cx="25" cy="25" r="20" fill="none" stroke="#00ffcc" strokeWidth="4" strokeDasharray="31.4 31.4" strokeLinecap="round" />
-                  <circle cx="25" cy="25" r="8" fill="#f59e0b" />
-                </svg>
+                /* 1. የሚሽከረከር የቀስት (Spin Arrow Pointer) አኒሜሽን */
+                <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="60" height="60" viewBox="0 0 100 100">
+                    {/* የውጭ ኒዮን ከለር ክበብ */}
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#00ffcc" strokeWidth="3" strokeDasharray="15 10" />
+                    {/* የመሃል አቅጣጫ ጠቋሚ ቀስት */}
+                    <polygon points="50,15 62,50 50,42 38,50" fill="#00ffcc" />
+                    {/* የመሃል ነጥብ */}
+                    <circle cx="50" cy="50" r="6" fill="#f59e0b" />
+                  </svg>
+                </div>
               ) : winningNumber === 'አልተመረጠም' ? (
                 <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold' }}>አልተመረጠም</span>
               ) : (
-                /* አሸናፊው ቁጥር ወይም ምልክት በሚወጣበት ጊዜ የሚታይ */
+                /* አሸናፊ ቁጥር ሲወጣ */
                 <span style={{
                   fontSize: '32px',
                   fontWeight: 'bold',
@@ -289,6 +364,25 @@ export default function App() {
               )}
             </div>
           </div>
+
+          {/* 3. የአሸናፊ ማስታወቂያ ሳጥን (ዕጣው ሲወጣ ብቻ የሚመጣ) */}
+          {winnerAnnouncement !== null && (
+            <div style={{
+              backgroundColor: '#064e3b',
+              border: '1px solid #10b981',
+              borderRadius: '8px',
+              padding: '8px 6px',
+              textAlign: 'center',
+              boxShadow: '0 0 12px rgba(16, 185, 129, 0.4)',
+              animation: 'pulse 1.5s infinite'
+            }}>
+              <div style={{ fontSize: '10px', color: '#a7f3d0', fontWeight: 'bold' }}>🎉 ዕጣው ወጥቷል!</div>
+              <div style={{ fontSize: '13px', color: '#ffffff', fontWeight: 'bold', marginTop: '2px' }}>
+                አሸናፊ ቁጥር: <span style={{ color: '#facc15' }}>#{winnerAnnouncement}</span>
+              </div>
+            </div>
+          )}
+
         </div>
 
       </div>
