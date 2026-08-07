@@ -4,7 +4,6 @@ export default function App() {
   const [selectedNumbers, setSelectedNumbers] = useState([]);
   const [timeLeft, setTimeLeft] = useState(50);
 
-  // ሰዓቱ ከ 50 ጀምሮ ወደ ታች እንዲቆጥር
   useEffect(() => {
     if (timeLeft <= 0) {
       setTimeLeft(50);
@@ -37,7 +36,7 @@ export default function App() {
       boxSizing: 'border-box',
       overflow: 'hidden'
     }}>
-      {/* 1. TOP HEADER (Game ID, Players, Stake, Derash) */}
+      {/* 1. TOP HEADER */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
@@ -63,24 +62,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 2. የመምረጫ ጊዜ (ከHeader ስር) */}
-      <div style={{
-        padding: '0 8px 6px 8px',
-        flexShrink: 0
-      }}>
-        <div style={{
-          backgroundColor: '#0284c7',
-          padding: '6px',
-          borderRadius: '6px',
-          textAlign: 'center',
-          fontSize: '11px',
-          fontWeight: 'bold'
-        }}>
-          ⏳ የመምረጫ ጊዜ፦ {timeLeft} ሰከንድ
-        </div>
-      </div>
-
-      {/* 3. MAIN BODY (ግራ እና ቀኝ) */}
+      {/* 2. MAIN BODY */}
       <div style={{
         display: 'flex',
         flexDirection: 'row',
@@ -90,39 +72,62 @@ export default function App() {
         overflow: 'hidden'
       }}>
         
-        {/* በግራ በኩል፦ SCROLL የሚሆኑት ቁጥሮች (1-1000) */}
+        {/* በግራ በኩል፦ የመምረጫ ጊዜ + የቁጥሮች ሰንጠረዥ */}
         <div style={{
           flex: 1,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '3px',
-          overflowY: 'auto',
-          alignContent: 'start',
-          paddingRight: '2px'
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          overflow: 'hidden'
         }}>
-          {Array.from({ length: 1000 }, (_, i) => i + 1).map((num) => {
-            const isSelected = selectedNumbers.includes(num);
-            return (
-              <button
-                key={num}
-                onClick={() => toggleNumber(num)}
-                style={{
-                  padding: '7px 0',
-                  backgroundColor: isSelected ? '#22c55e' : '#2a2a40',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '10px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
-              >
-                {num}
-              </button>
-            );
-          })}
+          {/* በግራ በኩል ብቻ የተቀመጠ የመምረጫ ጊዜ */}
+          <div style={{
+            backgroundColor: '#0284c7',
+            padding: '6px',
+            borderRadius: '6px',
+            textAlign: 'center',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            flexShrink: 0
+          }}>
+            ⏳ የመምረጫ ጊዜ፦ {timeLeft} ሰከንድ
+          </div>
+
+          {/* SCROLL የሚሆኑት ቁጥሮች (1-1000) */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '3px',
+            overflowY: 'auto',
+            alignContent: 'start',
+            paddingRight: '2px',
+            flex: 1
+          }}>
+            {Array.from({ length: 1000 }, (_, i) => i + 1).map((num) => {
+              const isSelected = selectedNumbers.includes(num);
+              return (
+                <button
+                  key={num}
+                  onClick={() => toggleNumber(num)}
+                  style={{
+                    padding: '7px 0',
+                    backgroundColor: isSelected ? '#22c55e' : '#2a2a40',
+                color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {num}
+                </button>
+              );
+            })}
+          </div>
         </div>
-         {/* በቀኝ በኩል፦ (ከላይ የተመረጡ ቁጥሮች፣ ከታች የእጣ ማውጫ) */}
+
+        {/* በቀኝ በኩል፦ የተመረጡ ቁጥሮች (ቁመቱ ያጠረ) + የእጣ ማውጫ */}
         <div style={{
           width: '180px',
           display: 'flex',
@@ -130,15 +135,16 @@ export default function App() {
           gap: '8px',
           flexShrink: 0
         }}>
-          {/* 1. የተመረጡ ቁጥሮች ሳጥን (ከላይ) */}
+          {/* የተመረጡ ቁጥሮች ሳጥን (ቁመቱ ያጠረ) */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '8px',
             padding: '8px',
-            flex: 1,
+            height: '140px',
             border: '1px solid #312e81',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            flexShrink: 0
           }}>
             <div style={{ fontSize: '11px', color: '#38bdf8', marginBottom: '4px', fontWeight: 'bold' }}>
               📌 የመረጧቸው ቁጥሮች ({selectedNumbers.length}):
@@ -149,29 +155,30 @@ export default function App() {
               lineHeight: '1.4',
               wordBreak: 'break-word',
               overflowY: 'auto',
-              maxHeight: '220px'
+              flex: 1
             }}>
               {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
             </div>
           </div>
 
-          {/* 2. የእጣ ማውጫ (ከታች) */}
+          {/* የእጣ ማውጫ ሳጥን */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '8px',
-            padding: '10px',
+            padding: '12px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            border: '1px solid #312e81'
+            border: '1px solid #312e81',
+            flex: 1
           }}>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', color: '#f59e0b' }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px', color: '#f59e0b' }}>
               🎰 የዕጣ ማውጫ
             </div>
             <div style={{
-              width: '52px',
-              height: '52px',
+              width: '56px',
+              height: '56px',
               borderRadius: '50%',
               border: '3px dashed #eab308',
               display: 'flex',
