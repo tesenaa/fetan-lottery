@@ -89,15 +89,15 @@ export default function App() {
       boxSizing: 'border-box',
       overflow: 'hidden'
     }}>
-      {/* ለሚሽከረከረው Icon የተዘጋጀ CSS Animation */}
+      {/* ለሽክርክሪቱ የተዘጋጀ CSS Animation */}
       <style>{`
-        @keyframes spinIcon {
+        @keyframes spinWheel {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
-        .spinning-symbol {
-          display: inline-block;
-          animation: spinIcon 0.8s linear infinite;
+        .spinning-wheel {
+          animation: spinWheel 0.6s linear infinite;
+          filter: drop-shadow(0 0 8px #eab308);
         }`
       }</style>
 
@@ -118,7 +118,7 @@ export default function App() {
           <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount}</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
-[8/7/2026 3:34 AM] Mr tes: <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
+         <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
           <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>{STAKE} ETB</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
@@ -145,7 +145,7 @@ export default function App() {
           gap: '6px',
           overflow: 'hidden'
         }}>
-          {/* የጊዜ ማሳያ (ሰከንዱ እጣ በሚወጣበት ጊዜ አይታይም) */}
+          {/* የጊዜ ማሳያ */}
           <div style={{
             backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7',
             padding: '5px',
@@ -246,23 +246,30 @@ export default function App() {
             flexShrink: 0
           }}>
             <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', color: '#f59e0b' }}>
-              🎰 የዕጣ ማውጫ
+               የዕጣ ማውጫ
             </div>
             <div style={{
-              width: '60px',
-              height: '60px',
+              width: '64px',
+              height: '64px',
               borderRadius: '50%',
               border: phase === 'spinning' && allPickedNumbers.length > 0 ? '3px dashed #ef4444' : '3px dashed #eab308',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: winningNumber === 'አልተመረጠም' ? '9px' : '22px',
+              fontSize: winningNumber === 'ቁጥር አልተመረጠም' ? '9px' : '22px',
               fontWeight: 'bold',
-              color: winningNumber === 'አልተመረጠም' ? '#ef4444' : (phase === 'spinning' ? '#22c55e' : '#ef4444'),
+              color: winningNumber === 'ቁጥር አልተመረጠም' ? '#ef4444' : (phase === 'spinning' ? '#22c55e' : '#ef4444'),
               textAlign: 'center'
             }}>
               {winningNumber === 'SPINNING' ? (
-                <span className="spinning-symbol">🎰</span>
+                <svg className="spinning-wheel" viewBox="0 0 100 100" width="44" height="44">
+                  <circle cx="50" cy="50" r="46" fill="#1e1b4b" stroke="#eab308" strokeWidth="4" />
+                  <path d="M50 50 L50 4 A46 46 0 0 1 96 50 Z" fill="#ef4444" />
+                  <path d="M50 50 L96 50 A46 46 0 0 1 50 96 Z" fill="#3b82f6" />
+                  <path d="M50 50 L50 96 A46 46 0 0 1 4 50 Z" fill="#22c55e" />
+                  <path d="M50 50 L4 50 A46 46 0 0 1 50 4 Z" fill="#eab308" />
+                  <circle cx="50" cy="50" r="14" fill="#121225" stroke="#ffffff" strokeWidth="3" />
+                </svg>
               ) : (
                 winningNumber
               )}
