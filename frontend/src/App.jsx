@@ -5,17 +5,21 @@ export default function App() {
   const [allPickedNumbers, setAllPickedNumbers] = useState([]);
   const [playerCount, setPlayerCount] = useState(0);
   const [phase, setPhase] = useState('selection'); // 'selection' ወይም 'spinning'
-  const [selectionTime, setSelectionTime] = useState(50);
+  const [selectionTime, setSelectionTime] = useState(54);
   const [winningNumber, setWinningNumber] = useState('?');
-  const [winnerAnnouncement, setWinnerAnnouncement] = useState(null);
+  const [winnerInfo, setWinnerInfo] = useState(null);
+
+  // ከ Telegram WebApp የተጫዋቹን ስም መውሰጃ logic
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const userName = tgUser ? (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')) : 'ተጫዋች';
 
   const STAKE = 10;
 
-  // የ 60 ሰከንድ ዙር ታይመር
+  // የ 60 ሰከንድ ዙር ታይመር (54 ሰከንድ መምረጫ + 6 ሰከንድ Spin)
   useEffect(() => {
     const timer = setInterval(() => {
       const now = Math.floor(Date.now() / 1000);
-      const cycleSeconds = now % 60; // 60 ሰከንድ ዙር
+      const cycleSeconds = now % 60;
 
       if (cycleSeconds < 50) {
         // 1. የመምረጫ ደረጃ (50 ሰከንድ)
@@ -28,10 +32,10 @@ export default function App() {
           setAllPickedNumbers([]);
           setPlayerCount(0);
           setWinningNumber('?');
-          setWinnerAnnouncement(null); // አዲስ ጨዋታ ሲጀምር የማሸናፊ ሳጥኑን ማጥፋት
+          setWinnerInfo(null);
         }
       } else {
-        // 2. የዕጣ ማውጣት ደረጃ (10 ሰከንድ)
+        // 2. የዕጣ ማውጣት ደረጃ (6 ሰከንድ)
         setPhase('spinning');
         setSelectionTime(0);
       }
@@ -40,27 +44,34 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // የ Spin እጣ ማውጣት Logic
+  // የ Spin እጣ ማውጣት Logic (ለ 6 ሰከንድ Spin አድርጎ አሸናፊውን ያወጣል)
   useEffect(() => {
     if (phase === 'spinning') {
       if (allPickedNumbers.length > 0) {
         setWinningNumber('SPINNING');
 
-        // ከ 9 ሰከንድ በኋላ አሸናፊውን ያወጣል
+        // ከ 6 ሰከንድ በኋላ አሸናፊውን ማስታወቅ
         const drawTimeout = setTimeout(() => {
           const randomIndex = Math.floor(Math.random() * allPickedNumbers.length);
-          const winner = allPickedNumbers[randomIndex];
-          setWinningNumber(winner);
-          setWinnerAnnouncement(winner); // የአሸናፊ ማስታወቂያ ማሳየት
-        }, 9000);
+          const winnerNum = allPickedNumbers[randomIndex];
+          
+          setWinningNumber(winnerNum);
+          setWinnerInfo({ number: winnerNum, name: userName });
+
+          // አሸናፊው ከታወቀ በኋላ ለ 4 ሰከንድ ብቻ አሳይቶ ማጥፋት
+          setTimeout(() => {
+            setWinnerInfo(null);
+          }, 4000);
+
+        }, 6000);
 
         return () => clearTimeout(drawTimeout);
       } else {
         setWinningNumber('አልተመረጠም');
-        setWinnerAnnouncement(null);
+        setWinnerInfo(null);
       }
     }
-  }, [phase, allPickedNumbers]);
+  }, [phase, allPickedNumbers, userName]);
 
   const toggleNumber = (num) => {
     if (phase === 'spinning') return;
@@ -114,11 +125,10 @@ export default function App() {
           100% { transform: rotate(360deg); }
         }
         .spin-arrow-container {
-          animation: arrowSpin 0.6s linear infinite;
+          animation: arrowSpin 0.5s linear infinite;
         }`
       }</style>
-
-      {/* 0. TOP NAVIGATION BAR (Back & Refresh) */}
+        {/* TOP NAVIGATION BAR */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -130,7 +140,7 @@ export default function App() {
       }}>
         <button 
           onClick={handleBack}
-            style={{
+          style={{
             backgroundColor: '#1e1b4b',
             color: '#38bdf8',
             border: '1px solid #312e81',
@@ -147,8 +157,7 @@ export default function App() {
           ← Back
         </button>
 
-        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#9ca3af' }}>Fetan Lottery</span>
-
+    
         <button 
           onClick={handleRefresh}
           style={{
@@ -169,7 +178,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* 1. TOP HEADER STATS */}
+      {/* TOP HEADER STATS */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
@@ -195,7 +204,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 2. MAIN BODY */}
+      {/* MAIN BODY */}
       <div style={{
         display: 'flex',
         flexDirection: 'row',
@@ -229,8 +238,7 @@ export default function App() {
                   : '⚠️ ምንም ቁጥር አልተመረጠም!')
               : '⏳ የመምረጫ ጊዜ፦ ' + selectionTime + ' ሰከንድ'}
           </div>
-
-          {/* ቁጥሮች (1-1000) */}
+                 {/* ቁጥሮች (1-1000) */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
@@ -241,7 +249,7 @@ export default function App() {
             flex: 1
           }}>
             {Array.from({ length: 1000 }, (_, i) => i + 1).map((num) => {
-             const isSelected = selectedNumbers.includes(num);
+              const isSelected = selectedNumbers.includes(num);
               return (
                 <button
                   key={num}
@@ -287,7 +295,7 @@ export default function App() {
             flexShrink: 0
           }}>
             <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}>
-              📌 የተመረጡ ({selectedNumbers.length}):
+              📌 የተመረጡ ቁጥሮች ({selectedNumbers.length}):
             </div>
             <div style={{
               fontSize: '10px',
@@ -315,7 +323,7 @@ export default function App() {
             flexShrink: 0
           }}>
             <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px', color: '#f59e0b' }}>
-              🎰 የዕጣ ማውጫ
+               የዕጣ ማውጫ
             </div>
 
             <div style={{
@@ -337,21 +345,16 @@ export default function App() {
               position: 'relative'
             }}>
               {winningNumber === 'SPINNING' ? (
-                /* 1. የሚሽከረከር የቀስት (Spin Arrow Pointer) አኒሜሽን */
-                <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="60" height="60" viewBox="0 0 100 100">
-                    {/* የውጭ ኒዮን ከለር ክበብ */}
                     <circle cx="50" cy="50" r="42" fill="none" stroke="#00ffcc" strokeWidth="3" strokeDasharray="15 10" />
-                    {/* የመሃል አቅጣጫ ጠቋሚ ቀስት */}
                     <polygon points="50,15 62,50 50,42 38,50" fill="#00ffcc" />
-                    {/* የመሃል ነጥብ */}
                     <circle cx="50" cy="50" r="6" fill="#f59e0b" />
                   </svg>
                 </div>
               ) : winningNumber === 'አልተመረጠም' ? (
                 <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold' }}>አልተመረጠም</span>
               ) : (
-                /* አሸናፊ ቁጥር ሲወጣ */
                 <span style={{
                   fontSize: '32px',
                   fontWeight: 'bold',
@@ -365,8 +368,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* 3. የአሸናፊ ማስታወቂያ ሳጥን (ዕጣው ሲወጣ ብቻ የሚመጣ) */}
-          {winnerAnnouncement !== null && (
+          {/* 4 ሰከንድ ብቻ ታይቶ የሚጠፋ የአሸናፊ ስም እና ቁጥር ሳጥን */}
+          {winnerInfo && (
             <div style={{
               backgroundColor: '#064e3b',
               border: '1px solid #10b981',
@@ -374,11 +377,14 @@ export default function App() {
               padding: '8px 6px',
               textAlign: 'center',
               boxShadow: '0 0 12px rgba(16, 185, 129, 0.4)',
-              animation: 'pulse 1.5s infinite'
+              transition: 'opacity 0.3s ease-in-out'
             }}>
               <div style={{ fontSize: '10px', color: '#a7f3d0', fontWeight: 'bold' }}>🎉 ዕጣው ወጥቷል!</div>
-              <div style={{ fontSize: '13px', color: '#ffffff', fontWeight: 'bold', marginTop: '2px' }}>
-                አሸናፊ ቁጥር: <span style={{ color: '#facc15' }}>#{winnerAnnouncement}</span>
+              <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: 'bold', marginTop: '2px' }}>
+                👤 {winnerInfo.name}
+              </div>
+              <div style={{ fontSize: '11px', color: '#facc15', fontWeight: 'bold', marginTop: '1px' }}>
+                ቁጥር፦ #{winnerInfo.number}
               </div>
             </div>
           )}
