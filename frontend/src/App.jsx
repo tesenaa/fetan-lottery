@@ -149,7 +149,7 @@ export default function App() {
             fontWeight: 'bold',
             flexShrink: 0
           }}>
-            {isSpinning ? '🎰 ዕጣ እየወጣ ነው...' :'⏳ የመምረጫ ጊዜ፦ ${timeLeft} ሰከንድ'}
+            {isSpinning ? '🎰 ዕጣ እየወጣ ነው...' :`⏳ የመምረጫ ጊዜ፦ ` + timeLeft + ` ሰከንድ`}
           </div>
 
           {/* ቁጥሮች (1-1000) */}
