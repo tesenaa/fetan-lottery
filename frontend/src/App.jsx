@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 
 export default function App() {
   // 1. Navigation States
@@ -6,9 +6,9 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState('home'); // 'home' ወይም 'board'
   const [stake, setStake] = useState(10); // 10 ETB ወይም 20 ETB
 
-  // 2. User Stats (በሺህ የሚቆጠሩ - Raw count)
-  const [registeredCount, setRegisteredCount] = useState(3000); 
-  const [activeCount, setActiveCount] = useState(1000);        
+  // 2. User Stats (ከ Telegram/Backend የሚመጡ እውነተኛ ቁጥሮች)
+  const [registeredCount, setRegisteredCount] = useState(0); 
+  const [activeCount, setActiveCount] = useState(0);        
 
   // 3. Game States
   const [selectedNumbers, setSelectedNumbers] = useState([]);
@@ -23,7 +23,7 @@ export default function App() {
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
   const userName = tgUser ? (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')) : 'ተጫዋች';
 
-  // ቁጥርን ወደ 1000+ / 3000+ መቀየሪያ
+  // ቁጥር ከ1000 በታች ከሆነ ቁጥሩን ብቻ፣ 1000 እና ከዚያ በላይ ከሆነ 1000+ / 3000+ የሚያደርግ ፈንክሽን
   const formatStats = (num) => {
     if (num < 1000) return num.toString();
     return Math.floor(num / 1000) * 1000 + "+";
@@ -116,11 +116,10 @@ export default function App() {
 
   const totalPool = allPickedNumbers.length * stake;
   const derash = Math.floor(totalPool * 0.8);
-
-  return (
+return (
     <div style={{
       maxWidth: '500px',
- margin: '0 auto',
+      margin: '0 auto',
       backgroundColor: '#0c0c1e',
       color: '#ffffff',
       height: '100vh',
@@ -230,7 +229,7 @@ export default function App() {
                     ► Play 20 ETB
                   </button>
                 </div>
- {/* Users Stat Box (እንደነበረው በአንድ ሳጥን ውስጥ ተደርድሮ) */}
+              {/* Users Stat Box */}
                 <div style={{
                   width: '100%',
                   backgroundColor: '#1b1b38',
@@ -267,7 +266,7 @@ export default function App() {
             {/* PAGE 2: LOTTERY BOARD SCREEN */}
             {currentScreen === 'board' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                {/* TOP NAV BAR */}
+                {/* TOP NAV BAR (Fetan Lottery የሚለው ጽሑፍ ተወግዷል) */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -284,7 +283,7 @@ export default function App() {
                       color: '#38bdf8',
                       border: '1px solid #312e81',
                       borderRadius: '6px',
-                      padding: '4px 10px',
+                      padding: '6px 12px',
                       fontSize: '12px',
                       cursor: 'pointer',
                       display: 'flex',
@@ -296,8 +295,6 @@ export default function App() {
                     ← Back
                   </button>
 
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#9ca3af' }}>Fetan Lottery</span>
-
                   <button 
                     onClick={() => window.location.reload()}
                     style={{
@@ -305,7 +302,7 @@ export default function App() {
                       color: '#22c55e',
                       border: '1px solid #312e81',
                       borderRadius: '6px',
-                      padding: '4px 10px',
+                      padding: '6px 12px',
                       fontSize: '12px',
                       cursor: 'pointer',
                       display: 'flex',
@@ -327,8 +324,8 @@ export default function App() {
                   flexShrink: 0
                 }}>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
- <div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div>
-                    <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Fetan-001</div>
+                    <div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div>
+              <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Fetan-001</div>
                   </div>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div>
@@ -403,7 +400,7 @@ export default function App() {
                               fontWeight: 'bold',
                               cursor: phase === 'spinning' ? 'not-allowed' : 'pointer',
                               opacity: phase === 'spinning' ? 0.6 : 1
-                           }}
+                            }}
                           >
                             {num}
                           </button>
@@ -411,8 +408,7 @@ export default function App() {
                       })}
                     </div>
                   </div>
-
-                  {/* RIGHT PANEL */}
+                   {/* RIGHT PANEL */}
                   <div style={{
                     width: '170px',
                     display: 'flex',
@@ -484,11 +480,11 @@ export default function App() {
                           <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="60" height="60" viewBox="0 0 100 100">
                               <circle cx="50" cy="50" r="42" fill="none" stroke="#00ffcc" strokeWidth="3" strokeDasharray="15 10" />
-                             <polygon points="50,15 62,50 50,42 38,50" fill="#00ffcc" />
+                              <polygon points="50,15 62,50 50,42 38,50" fill="#00ffcc" />
                               <circle cx="50" cy="50" r="6" fill="#f59e0b" />
                             </svg>
                           </div>
-                        ) : winningNumber === 'አልተመረጠም' ? (
+                         ) : winningNumber === 'አልተመረጠም' ? (
                           <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold' }}>አልተመረጠም</span>
                         ) : (
                           <span style={{
@@ -555,92 +551,94 @@ export default function App() {
         )}
       </div>
 
-      {/* ----------------- BOTTOM NAVIGATION BAR ----------------- */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        backgroundColor: '#0a0a16',
-        borderTop: '1px solid #1e1b4b',
-        padding: '8px 0',
-               flexShrink: 0
-      }}>
-        <button
-          onClick={() => setCurrentTab('game')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: currentTab === 'game' ? '#22c55e' : '#6b7280',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '3px',
-            fontSize: '11px',
-            fontWeight: 'bold'
-          }}
-        >
-          <span style={{ fontSize: '16px' }}>🎮</span>
-          Game
-        </button>
+      {/* ----------------- BOTTOM NAVIGATION BAR (በቦርድ ገጽ ላይ ይደበቃል) ----------------- */}
+      {currentScreen !== 'board' && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          backgroundColor: '#0a0a16',
+          borderTop: '1px solid #1e1b4b',
+          padding: '8px 0',
+          flexShrink: 0
+        }}>
+          <button
+            onClick={() => setCurrentTab('game')}
+            style={{
+              background: 'none',
+               border: 'none',
+              color: currentTab === 'game' ? '#22c55e' : '#6b7280',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '3px',
+              fontSize: '11px',
+              fontWeight: 'bold'
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>🎮</span>
+            Game
+          </button>
 
-        <button
-          onClick={() => setCurrentTab('history')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: currentTab === 'history' ? '#22c55e' : '#6b7280',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '3px',
-            fontSize: '11px',
-            fontWeight: 'bold'
-          }}
-        >
-          <span style={{ fontSize: '16px' }}>📜</span>
-          History
-        </button>
+          <button
+            onClick={() => setCurrentTab('history')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: currentTab === 'history' ? '#22c55e' : '#6b7280',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '3px',
+              fontSize: '11px',
+              fontWeight: 'bold'
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>📜</span>
+            History
+          </button>
 
-        <button
-          onClick={() => setCurrentTab('wallet')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: currentTab === 'wallet' ? '#22c55e' : '#6b7280',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '3px',
-            fontSize: '11px',
-            fontWeight: 'bold'
-          }}
-        >
-          <span style={{ fontSize: '16px' }}>👛</span>
-          Wallet
-        </button>
+          <button
+            onClick={() => setCurrentTab('wallet')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: currentTab === 'wallet' ? '#22c55e' : '#6b7280',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '3px',
+              fontSize: '11px',
+              fontWeight: 'bold'
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>👛</span>
+            Wallet
+          </button>
 
-        <button
-          onClick={() => setCurrentTab('profile')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: currentTab === 'profile' ? '#22c55e' : '#6b7280',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '3px',
-            fontSize: '11px',
-            fontWeight: 'bold'
-          }}
-        >
-          <span style={{ fontSize: '16px' }}>👤</span>
-          Profile
-        </button>
-      </div>
+          <button
+            onClick={() => setCurrentTab('profile')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: currentTab === 'profile' ? '#22c55e' : '#6b7280',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '3px',
+              fontSize: '11px',
+              fontWeight: 'bold'
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>👤</span>
+            Profile
+          </button>
+        </div>
+      )}
 
     </div>
   );
