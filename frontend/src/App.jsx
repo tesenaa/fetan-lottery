@@ -677,7 +677,7 @@ export default function App() {
           alignItems: 'center',
           backgroundColor: '#0a0a16',
           borderTop: '1px solid #1e1b4b',
-          padding: '8px 0',
+          padding: '16px 0',
           flexShrink: 0
         }}>
           <button onClick={() => setCurrentTab('game')} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#38bdf8' : '#6b7280', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 'bold' }}>
