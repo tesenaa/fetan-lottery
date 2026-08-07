@@ -352,7 +352,7 @@ export default function App() {
                     <circle cx="50" cy="50" r="6" fill="#f59e0b" />
                   </svg>
                 </div>
-              ) : winningNumber === 'ቁጥር አልተመረጠም' ? (
+              ) : winningNumber === 'አልተመረጠም' ? (
                 <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold' }}>አልተመረጠም</span>
               ) : (
                 <span style={{
