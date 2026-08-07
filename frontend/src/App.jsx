@@ -157,24 +157,40 @@ export default function App() {
   return (
     <div style={{ backgroundColor: '#0d0b1e', color: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Segoe UI, sans-serif', width: '100%', overflowX: 'hidden' }}>
       
-      <style>{`@keyframes spinAnimation {0% { transform: rotate(0deg); }100% { transform: rotate(360deg); }}.spinning-wheel {
+      <style>{`
+        @keyframes spinAnimation {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .spinning-wheel {
           animation: spinAnimation 0.6s linear infinite;
+        }
+        html, body {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          overflow-x: hidden;
         }
         .main-container {
           display: flex;
-          flex-direction: column-reverse;
+          flex-direction: column !important;
           gap: 16px;
           width: 100%;
+          box-sizing: border-box;
+        }
+        .wheel-section {
+          width: 100% !important;
         }
         @media (min-width: 768px) {
           .main-container {
-            flex-direction: row;
+            flex-direction: row !important;
           }
           .wheel-section {
             width: 320px !important;
           }
-        }`
-      }</style>
+        }
+      `}</style>
+
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
