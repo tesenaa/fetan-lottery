@@ -1,4 +1,4 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export default function App() {
   // 1. Navigation States
@@ -6,7 +6,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState('home'); // 'home' ወይም 'board'
   const [stake, setStake] = useState(10); // 10 ETB ወይም 20 ETB
 
-  // 2. User Stats (ከ Telegram/Backend የሚመጡ እውነተኛ ቁጥሮች)
+  // 2. User Stats
   const [registeredCount, setRegisteredCount] = useState(0); 
   const [activeCount, setActiveCount] = useState(0);        
 
@@ -19,11 +19,15 @@ export default function App() {
   const [winningNumber, setWinningNumber] = useState('?');
   const [winnerInfo, setWinnerInfo] = useState(null);
 
+  // useRef to hold array value for timeouts without re-render glitches
+  const allPickedRef = useRef(allPickedNumbers);
+  allPickedRef.current = allPickedNumbers;
+
   // Telegram User Data
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
   const userName = tgUser ? (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')) : 'ተጫዋች';
 
-  // ቁጥር ከ1000 በታች ከሆነ ቁጥሩን ብቻ፣ 1000 እና ከዚያ በላይ ከሆነ 1000+ / 3000+ የሚያደርግ ፈንክሽን
+  // formatting function for 1000+
   const formatStats = (num) => {
     if (num < 1000) return num.toString();
     return Math.floor(num / 1000) * 1000 + "+";
@@ -41,6 +45,7 @@ export default function App() {
         setPhase('selection');
         setSelectionTime(54 - cycleSeconds);
 
+        // አዲስ ዙር ሲጀምር (በ 0 ሰከንድ)
         if (cycleSeconds === 0) {
           setSelectedNumbers([]);
           setAllPickedNumbers([]);
@@ -57,24 +62,35 @@ export default function App() {
     return () => clearInterval(timer);
   }, [currentScreen]);
 
-  // Spin Logic (6 Seconds Spin)
+  // Spin Logic (6 Seconds Spin & Display Result)
   useEffect(() => {
     if (currentScreen === 'board' && phase === 'spinning') {
-      if (allPickedNumbers.length > 0) {
+      const picked = allPickedRef.current;
+      if (picked.length > 0) {
         setWinningNumber('SPINNING');
 
-        const drawTimeout = setTimeout(() => {
-          const randomIndex = Math.floor(Math.random() * allPickedNumbers.length);
-          const winnerNum = allPickedNumbers[randomIndex];
-          
-          setWinningNumber(winnerNum);
-          setWinnerInfo({ number: winnerNum, name: userName });
+        const currentDerash = Math.floor(picked.length * stake * 0.8);
 
+        const drawTimeout = setTimeout(() => {
+          const randomIndex = Math.floor(Math.random() * picked.length);
+          const winnerNum = picked[randomIndex];
+          
+          // ቁጥሩን በስፒነሩ መሃል ያሳያል
+          setWinningNumber(winnerNum);
+          
+          // ከስር የአሸናፊው መረጃ (ስም፣ ቁጥር፣ ደራሽ)
+          setWinnerInfo({ 
+            number: winnerNum, 
+            name: userName,
+            derash: currentDerash 
+          });
+
+          // ፖፕ አፑ ለ 4 ሰከንድ ብቻ ይታያል
           setTimeout(() => {
             setWinnerInfo(null);
           }, 4000);
 
-        }, 6000);
+        }, 3000); // ከ3 ሰከንድ ስፒን በኋላ ዕጣ ይወጣል
 
         return () => clearTimeout(drawTimeout);
       } else {
@@ -82,7 +98,7 @@ export default function App() {
         setWinnerInfo(null);
       }
     }
-  }, [phase, allPickedNumbers, userName, currentScreen]);
+  }, [phase, userName, currentScreen, stake]);
 
   const handleStartGame = (selectedStake) => {
     setStake(selectedStake);
@@ -108,15 +124,15 @@ export default function App() {
       setSelectedNumbers([...selectedNumbers, num]);
       setAllPickedNumbers([...allPickedNumbers, num]);
     }
-
-    if (selectedNumbers.length === 0) {
+ if (selectedNumbers.length === 0) {
       setPlayerCount((prev) => prev + 1);
     }
   };
 
   const totalPool = allPickedNumbers.length * stake;
   const derash = Math.floor(totalPool * 0.8);
-return (
+
+  return (
     <div style={{
       maxWidth: '500px',
       margin: '0 auto',
@@ -135,7 +151,7 @@ return (
           100% { transform: rotate(360deg); }
         }
         .spin-arrow-container {
-          animation: arrowSpin 0.5s linear infinite;
+          animation: arrowSpin 0.4s linear infinite;
         }`
       }</style>
 
@@ -229,7 +245,7 @@ return (
                     ► Play 20 ETB
                   </button>
                 </div>
-              {/* Users Stat Box */}
+ {/* Users Stat Box */}
                 <div style={{
                   width: '100%',
                   backgroundColor: '#1b1b38',
@@ -266,7 +282,7 @@ return (
             {/* PAGE 2: LOTTERY BOARD SCREEN */}
             {currentScreen === 'board' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                {/* TOP NAV BAR (Fetan Lottery የሚለው ጽሑፍ ተወግዷል) */}
+                {/* TOP NAV BAR */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -325,8 +341,8 @@ return (
                 }}>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div>
-              <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Fetan-001</div>
-                  </div>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Fetan-001</div>
+            </div>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div>
                     <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount}</div>
@@ -408,7 +424,7 @@ return (
                       })}
                     </div>
                   </div>
-                   {/* RIGHT PANEL */}
+                           {/* RIGHT PANEL */}
                   <div style={{
                     width: '170px',
                     display: 'flex',
@@ -417,6 +433,7 @@ return (
                     flexShrink: 0,
                     justifyContent: 'flex-start'
                   }}>
+                    {/* Selected numbers box */}
                     <div style={{
                       backgroundColor: '#1b1b32',
                       borderRadius: '8px',
@@ -442,6 +459,7 @@ return (
                       </div>
                     </div>
 
+                    {/* Wheel/Spinner Circle */}
                     <div style={{
                       backgroundColor: '#1b1b32',
                       borderRadius: '12px',
@@ -463,17 +481,16 @@ return (
                         height: '90px',
                         borderRadius: '50%',
                         background: 'radial-gradient(circle, #1a1a36 0%, #0d0d1a 100%)',
-                        border: phase === 'spinning' && winningNumber === 'SPINNING' 
+                        border: winningNumber === 'SPINNING' 
                           ? '3px solid #00ffcc' 
                           : '3px solid #ff0055',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        boxShadow: phase === 'spinning' && winningNumber === 'SPINNING'
+                        boxShadow: winningNumber === 'SPINNING'
                           ? '0 0 25px rgba(0, 255, 204, 0.8), inset 0 0 12px rgba(0, 255, 204, 0.5)'
                           : '0 0 12px rgba(255, 0, 85, 0.4)',
                         transition: 'all 0.3s ease',
-                        transform: phase === 'spinning' && winningNumber === 'SPINNING' ? 'scale(1.05)' : 'scale(1)',
                         position: 'relative'
                       }}>
                         {winningNumber === 'SPINNING' ? (
@@ -484,15 +501,15 @@ return (
                               <circle cx="50" cy="50" r="6" fill="#f59e0b" />
                             </svg>
                           </div>
-                         ) : winningNumber === 'አልተመረጠም' ? (
-                          <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold' }}>አልተመረጠም</span>
+                        ) : winningNumber === 'አልተመረጠም' ? (
+                       <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold' }}>አልተመረጠም</span>
                         ) : (
                           <span style={{
-                            fontSize: '32px',
+                            fontSize: winningNumber === '?' ? '36px' : '28px',
                             fontWeight: 'bold',
-                            color: '#ffffff',
+                            color: winningNumber === '?' ? '#9ca3af' : '#22c55e',
                             fontFamily: 'monospace',
-                            textShadow: '0 0 10px #00ffcc, 0 0 20px #00ffcc'
+                            textShadow: winningNumber === '?' ? 'none' : '0 0 10px #22c55e'
                           }}>
                             {winningNumber}
                           </span>
@@ -500,6 +517,7 @@ return (
                       </div>
                     </div>
 
+                    {/* Winner Info Box (አሸናፊውን፣ ቁጥሩን እና ደራሹን ለ 4 ሰከንድ አጉልቶ ያሳያል) */}
                     {winnerInfo && (
                       <div style={{
                         backgroundColor: '#064e3b',
@@ -507,14 +525,17 @@ return (
                         borderRadius: '8px',
                         padding: '8px 6px',
                         textAlign: 'center',
-                        boxShadow: '0 0 12px rgba(16, 185, 129, 0.4)'
+                        boxShadow: '0 0 16px rgba(16, 185, 129, 0.6)'
                       }}>
-                        <div style={{ fontSize: '10px', color: '#a7f3d0', fontWeight: 'bold' }}>🎉 ዕጣው ወጥቷል!</div>
-                        <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: 'bold', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11px', color: '#a7f3d0', fontWeight: 'bold' }}>🎉 ዕጣው ወጥቷል!</div>
+                        <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: 'bold', marginTop: '3px' }}>
                           👤 {winnerInfo.name}
                         </div>
-                        <div style={{ fontSize: '11px', color: '#facc15', fontWeight: 'bold', marginTop: '1px' }}>
+                        <div style={{ fontSize: '11px', color: '#facc15', fontWeight: 'bold', marginTop: '2px' }}>
                           ቁጥር፦ #{winnerInfo.number}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', marginTop: '2px' }}>
+                          ደራሽ፦ {winnerInfo.derash} ETB
                         </div>
                       </div>
                     )}
@@ -551,13 +572,13 @@ return (
         )}
       </div>
 
-      {/* ----------------- BOTTOM NAVIGATION BAR (በቦርድ ገጽ ላይ ይደበቃል) ----------------- */}
+      {/* ----------------- BOTTOM NAVIGATION BAR ----------------- */}
       {currentScreen !== 'board' && (
         <div style={{
           display: 'flex',
           justifyContent: 'space-around',
           alignItems: 'center',
-          backgroundColor: '#0a0a16',
+ backgroundColor: '#0a0a16',
           borderTop: '1px solid #1e1b4b',
           padding: '8px 0',
           flexShrink: 0
@@ -566,7 +587,7 @@ return (
             onClick={() => setCurrentTab('game')}
             style={{
               background: 'none',
-               border: 'none',
+              border: 'none',
               color: currentTab === 'game' ? '#22c55e' : '#6b7280',
               cursor: 'pointer',
               display: 'flex',
