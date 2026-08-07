@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 
 export default function App() {
   const [selectedNumbers, setSelectedNumbers] = useState([]);
@@ -118,7 +118,7 @@ export default function App() {
           <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount}</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
-         <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
+      <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
           <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>{STAKE} ETB</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
@@ -232,7 +232,7 @@ export default function App() {
               {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
             </div>
           </div>
- {/* የዕጣ ማውጫ ሳጥን */}
+                {/* የዕጣ ማውጫ ሳጥን */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '8px',
@@ -246,7 +246,7 @@ export default function App() {
             flexShrink: 0
           }}>
             <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', color: '#f59e0b' }}>
-               የዕጣ ማውጫ
+              🎰 የዕጣ ማውጫ
             </div>
             <div style={{
               width: '64px',
@@ -256,9 +256,9 @@ export default function App() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: winningNumber === 'ቁጥር አልተመረጠም' ? '9px' : '22px',
+              fontSize: winningNumber === 'አልተመረጠም' ? '9px' : '22px',
               fontWeight: 'bold',
-              color: winningNumber === 'ቁጥር አልተመረጠም' ? '#ef4444' : (phase === 'spinning' ? '#22c55e' : '#ef4444'),
+              color: winningNumber === 'አልተመረጠም' ? '#ef4444' : (phase === 'spinning' ? '#22c55e' : '#ef4444'),
               textAlign: 'center'
             }}>
               {winningNumber === 'SPINNING' ? (
