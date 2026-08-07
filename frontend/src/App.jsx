@@ -352,7 +352,7 @@ export default function App() {
                     <circle cx="50" cy="50" r="6" fill="#f59e0b" />
                   </svg>
                 </div>
-              ) : winningNumber === 'አልተመረጠም' ? (
+              ) : winningNumber === 'ቁጥር አልተመረጠም' ? (
                 <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold' }}>አልተመረጠም</span>
               ) : (
                 <span style={{
@@ -379,7 +379,7 @@ export default function App() {
               boxShadow: '0 0 12px rgba(16, 185, 129, 0.4)',
               transition: 'opacity 0.3s ease-in-out'
             }}>
-              <div style={{ fontSize: '10px', color: '#a7f3d0', fontWeight: 'bold' }}>🎉 ዕጣው ወጥቷል!</div>
+              <div style={{ fontSize: '10px', color: '#a7f3d0', fontWeight: 'bold' }}>🎉 ዕጣው የደረሰው!</div>
               <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: 'bold', marginTop: '2px' }}>
                 👤 {winnerInfo.name}
               </div>
