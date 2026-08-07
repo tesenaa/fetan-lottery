@@ -7,7 +7,6 @@ export default function App() {
   const [phase, setPhase] = useState('selection'); // 'selection' ወይም 'spinning'
   const [selectionTime, setSelectionTime] = useState(50);
   const [winningNumber, setWinningNumber] = useState('?');
-  const [displayNumber, setDisplayNumber] = useState('00');
 
   const STAKE = 10;
 
@@ -58,23 +57,6 @@ export default function App() {
     }
   }, [phase, allPickedNumbers]);
 
-  // የሚሽከረከረው ዲጂታል ስሎት አኒሜሽን
-  useEffect(() => {
-    let interval;
-    if (phase === 'spinning' && winningNumber === 'SPINNING') {
-      interval = setInterval(() => {
-        const randomNum = Math.floor(Math.random() * 1000) + 1;
-        setDisplayNumber(randomNum < 10 ? `0${randomNum}` : `${randomNum}`);
-      }, 50);
-    } else if (winningNumber !== '?' && winningNumber !== 'SPINNING') {
-      setDisplayNumber(winningNumber);
-    } else {
-      setDisplayNumber('00');
-    }
-
-    return () => clearInterval(interval);
-  }, [phase, winningNumber]);
-
   const toggleNumber = (num) => {
     if (phase === 'spinning') return;
 
@@ -108,6 +90,17 @@ export default function App() {
       boxSizing: 'border-box',
       overflow: 'hidden'
     }}>
+      {/* የሎተሪ መንኮራኩር ሽክርክሪት CSS Animation */}
+      <style>{`
+        @keyframes customSpin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .spin-icon {
+          animation: customSpin 0.7s linear infinite;
+        }`
+      }</style>
+
       {/* 1. TOP HEADER */}
       <div style={{
         display: 'grid',
@@ -121,11 +114,11 @@ export default function App() {
           <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Fetan-001</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
-    <div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div>
+          <div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div>
           <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount}</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
-          <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
+         <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
           <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>{STAKE} ETB</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
@@ -228,7 +221,7 @@ export default function App() {
             <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}>
               📌 የተመረጡ ({selectedNumbers.length}):
             </div>
-             <div style={{
+            <div style={{
               fontSize: '10px',
               color: '#9ca3af',
               lineHeight: '1.2',
@@ -239,8 +232,7 @@ export default function App() {
               {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
             </div>
           </div>
-
-          {/* አዲሱ ሳቢ የኒዮን ዕጣ ማውጫ ሳጥን */}
+                {/* አዲሱ የዕጣ ማውጫ ሳጥን */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '12px',
@@ -258,36 +250,41 @@ export default function App() {
             </div>
 
             <div style={{
-              width: '84px',
-              height: '84px',
+              width: '90px',
+              height: '90px',
               borderRadius: '50%',
               background: 'radial-gradient(circle, #1a1a36 0%, #0d0d1a 100%)',
-              border: phase === 'spinning' && allPickedNumbers.length > 0 
+              border: phase === 'spinning' && winningNumber === 'SPINNING' 
                 ? '3px solid #00ffcc' 
                 : '3px solid #ff0055',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: winningNumber === 'አልተመረጠም' ? '11px' : '22px',
-              fontWeight: 'bold',
-              color: winningNumber === 'አልተመረጠም' ? '#ef4444' : '#ffffff',
-              textAlign: 'center',
-              boxShadow: phase === 'spinning' && allPickedNumbers.length > 0
-                ? '0 0 20px rgba(0, 255, 204, 0.8), inset 0 0 10px rgba(0, 255, 204, 0.5)'
+              boxShadow: phase === 'spinning' && winningNumber === 'SPINNING'
+                ? '0 0 25px rgba(0, 255, 204, 0.8), inset 0 0 12px rgba(0, 255, 204, 0.5)'
                 : '0 0 12px rgba(255, 0, 85, 0.4)',
               transition: 'all 0.3s ease',
-              transform: phase === 'spinning' && allPickedNumbers.length > 0 ? 'scale(1.05)' : 'scale(1)'
+              transform: phase === 'spinning' && winningNumber === 'SPINNING' ? 'scale(1.05)' : 'scale(1)'
             }}>
-              {winningNumber === 'አልተመረጠም' ? (
-                'አልተመረጠም'
+              {winningNumber === 'SPINNING' ? (
+                /* Spin በሚያደርግበት ጊዜ የሚሽከረከር ዘመናዊ SVG Spinner (ቁጥሮች አይታዩም) */
+                <svg className="spin-icon" width="50" height="50" viewBox="0 0 50 50">
+                  <circle cx="25" cy="25" r="20" fill="none" stroke="#222" strokeWidth="4" />
+                  <circle cx="25" cy="25" r="20" fill="none" stroke="#00ffcc" strokeWidth="4" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+                  <circle cx="25" cy="25" r="8" fill="#f59e0b" />
+                </svg>
+              ) : winningNumber === 'አልተመረጠም' ? (
+                <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold' }}>አልተመረጠም</span>
               ) : (
+                /* አሸናፊው ቁጥር ወይም ምልክት በሚወጣበት ጊዜ የሚታይ */
                 <span style={{
+                  fontSize: '32px',
+                  fontWeight: 'bold',
+                  color: '#ffffff',
                   fontFamily: 'monospace',
-                  textShadow: phase === 'spinning' && allPickedNumbers.length > 0 
-                    ? '0 0 10px #00ffcc, 0 0 20px #00ffcc' 
-                    : '0 0 8px #ff0055'
+                  textShadow: '0 0 10px #00ffcc, 0 0 20px #00ffcc'
                 }}>
-                  {displayNumber}
+                  {winningNumber}
                 </span>
               )}
             </div>
