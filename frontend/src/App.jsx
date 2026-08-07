@@ -40,24 +40,25 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // የ Spin እጣ ማውጣት Logic (ቁጥር ከተመረጠ ብቻ)
+  // የ Spin እጣ ማውጣት Logic
   useEffect(() => {
-    let spinInterval;
-
     if (phase === 'spinning') {
       if (allPickedNumbers.length > 0) {
-        // ቁጥር ከተመረጠ በየ 100ms Spin ያደርጋል
-        spinInterval = setInterval(() => {
+        // ዕጣ በሚወጣበት ጊዜ የሚሽከረከር Icon ያሳያል
+        setWinningNumber('🔄');
+
+        // የ 10 ሰከንዱ መጨረሻ ላይ አሸናፊውን ቁጥር ያወጣል
+        const drawTimeout = setTimeout(() => {
           const randomIndex = Math.floor(Math.random() * allPickedNumbers.length);
           setWinningNumber(allPickedNumbers[randomIndex]);
-        }, 100);
+        }, 9000);
+
+        return () => clearTimeout(drawTimeout);
       } else {
-        // ምንም ቁጥር ካልተመረጠ Spin አያደርግም
-        setWinningNumber('-');
+        // ምንም ቁጥር ካልተመረጠ
+        setWinningNumber('አልተመረጠም');
       }
     }
-
-    return () => clearInterval(spinInterval);
   }, [phase, allPickedNumbers]);
 
   const toggleNumber = (num) => {
@@ -111,7 +112,7 @@ export default function App() {
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
           <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
-[8/7/2026 3:10 AM] Mr tes: <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>{STAKE} ETB</div>
+              <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>{STAKE} ETB</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
           <div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div>
@@ -150,7 +151,7 @@ export default function App() {
             {phase === 'spinning' 
               ? (allPickedNumbers.length > 0 
                   ? '🎰 ዕጣ እየወጣ ነው... (' + spinTime + ' ሰከንድ)' 
-                  : '⚠️ ምንም ቁጥር አልተመረጠም! (' + spinTime + ' ሰከንድ)')
+                  : '⚠️ ምንም ቁጥር አልተመረጠም!')
               : '⏳ የመምረጫ ጊዜ፦ ' + selectionTime + ' ሰከንድ'}
           </div>
 
@@ -224,7 +225,7 @@ export default function App() {
               {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
             </div>
           </div>
-            {/* የዕጣ ማውጫ ሳጥን */}
+           {/* የዕጣ ማውጫ ሳጥን */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '8px',
@@ -241,16 +242,17 @@ export default function App() {
               🎰 የዕጣ ማውጫ
             </div>
             <div style={{
-              width: '48px',
-              height: '48px',
+              width: '60px',
+              height: '60px',
               borderRadius: '50%',
               border: phase === 'spinning' && allPickedNumbers.length > 0 ? '3px dashed #ef4444' : '3px dashed #eab308',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '18px',
+              fontSize: winningNumber === 'አልተመረጠም' ? '9px' : '18px',
               fontWeight: 'bold',
-              color: phase === 'spinning' && allPickedNumbers.length > 0 ? '#22c55e' : '#ef4444',
+              color: winningNumber === 'አልተመረጠም' ? '#ef4444' : (phase === 'spinning' ? '#22c55e' : '#ef4444'),
+              textAlign: 'center',
               transition: 'all 0.2s ease'
             }}>
               {winningNumber}
