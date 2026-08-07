@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 
 export default function App() {
   const [selectedNumbers, setSelectedNumbers] = useState([]);
@@ -80,10 +80,10 @@ export default function App() {
           gap: '6px',
           overflow: 'hidden'
         }}>
-          {/* በግራ በኩል ብቻ የተቀመጠ የመምረጫ ጊዜ */}
+          {/* የመምረጫ ጊዜ */}
           <div style={{
             backgroundColor: '#0284c7',
-            padding: '6px',
+            padding: '5px',
             borderRadius: '6px',
             textAlign: 'center',
             fontSize: '11px',
@@ -93,7 +93,7 @@ export default function App() {
             ⏳ የመምረጫ ጊዜ፦ {timeLeft} ሰከንድ
           </div>
 
-          {/* SCROLL የሚሆኑት ቁጥሮች (1-1000) */}
+          {/* SCROLL የሚሆኑት ቁጥሮች */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
@@ -112,7 +112,7 @@ export default function App() {
                   style={{
                     padding: '7px 0',
                     backgroundColor: isSelected ? '#22c55e' : '#2a2a40',
-                color: '#ffffff',
+                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '4px',
                     fontSize: '10px',
@@ -127,32 +127,33 @@ export default function App() {
           </div>
         </div>
 
-        {/* በቀኝ በኩል፦ የተመረጡ ቁጥሮች (ቁመቱ ያጠረ) + የእጣ ማውጫ */}
+        {/* በቀኝ በኩል፦ ቁመታቸው የተስተካከለ ሳጥኖች */}
         <div style={{
-          width: '180px',
+          width: '170px',
           display: 'flex',
           flexDirection: 'column',
           gap: '8px',
-          flexShrink: 0
+          flexShrink: 0,
+          justifyContent: 'flex-start'
         }}>
-          {/* የተመረጡ ቁጥሮች ሳጥን (ቁመቱ ያጠረ) */}
+          {/* 1. የተመረጡ ቁጥሮች ሳጥን (ቁመቱ ተቀንሷል) */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '8px',
             padding: '8px',
-            height: '100px',
+            height: '110px',
             border: '1px solid #312e81',
             display: 'flex',
             flexDirection: 'column',
             flexShrink: 0
           }}>
             <div style={{ fontSize: '11px', color: '#38bdf8', marginBottom: '4px', fontWeight: 'bold' }}>
-              📌 የመረጧቸው ቁጥሮች ({selectedNumbers.length}):
+              📌 የተመረጡ ({selectedNumbers.length}):
             </div>
             <div style={{
               fontSize: '10px',
               color: '#9ca3af',
-              lineHeight: '1.4',
+              lineHeight: '1.3',
               wordBreak: 'break-word',
               overflowY: 'auto',
               flex: 1
@@ -161,31 +162,31 @@ export default function App() {
             </div>
           </div>
 
-          {/* የእጣ ማውጫ ሳጥን */}
+          {/* 2. የእጣ ማውጫ ሳጥን (ቁመቱ አጥሮ የተስተካከለ) */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '8px',
-            padding: '12px',
-            height: '100px',
+            padding: '10px',
+            height: '120px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             border: '1px solid #312e81',
-            flex: 1
+            flexShrink: 0
           }}>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px', color: '#f59e0b' }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', color: '#f59e0b' }}>
               🎰 የዕጣ ማውጫ
             </div>
             <div style={{
-              width: '56px',
-              height: '56px',
+              width: '48px',
+              height: '48px',
               borderRadius: '50%',
               border: '3px dashed #eab308',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '20px',
+              fontSize: '18px',
               fontWeight: 'bold',
               color: '#ef4444'
             }}>
