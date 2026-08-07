@@ -7,9 +7,11 @@ export default function App() {
   const [phase, setPhase] = useState('selection'); // 'selection' ወይም 'spinning'
   const [selectionTime, setSelectionTime] = useState(50);
   const [winningNumber, setWinningNumber] = useState('?');
+  const [displayNumber, setDisplayNumber] = useState('00');
 
   const STAKE = 10;
 
+  // የ 60 ሰከንድ ዙር ታይመር
   useEffect(() => {
     const timer = setInterval(() => {
       const now = Math.floor(Date.now() / 1000);
@@ -56,6 +58,23 @@ export default function App() {
     }
   }, [phase, allPickedNumbers]);
 
+  // የሚሽከረከረው ዲጂታል ስሎት አኒሜሽን
+  useEffect(() => {
+    let interval;
+    if (phase === 'spinning' && winningNumber === 'SPINNING') {
+      interval = setInterval(() => {
+        const randomNum = Math.floor(Math.random() * 1000) + 1;
+        setDisplayNumber(randomNum < 10 ? `0${randomNum}` : `${randomNum}`);
+      }, 50);
+    } else if (winningNumber !== '?' && winningNumber !== 'SPINNING') {
+      setDisplayNumber(winningNumber);
+    } else {
+      setDisplayNumber('00');
+    }
+
+    return () => clearInterval(interval);
+  }, [phase, winningNumber]);
+
   const toggleNumber = (num) => {
     if (phase === 'spinning') return;
 
@@ -89,18 +108,6 @@ export default function App() {
       boxSizing: 'border-box',
       overflow: 'hidden'
     }}>
-      {/* ለሽክርክሪቱ የተዘጋጀ CSS Animation */}
-      <style>{`
-        @keyframes spinWheel {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .spinning-wheel {
-          animation: spinWheel 0.6s linear infinite;
-          filter: drop-shadow(0 0 8px #eab308);
-        }`
-      }</style>
-
       {/* 1. TOP HEADER */}
       <div style={{
         display: 'grid',
@@ -114,11 +121,11 @@ export default function App() {
           <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Fetan-001</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
-          <div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div>
+    <div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div>
           <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount}</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
-      <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
+          <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
           <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>{STAKE} ETB</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
@@ -221,7 +228,7 @@ export default function App() {
             <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}>
               📌 የተመረጡ ({selectedNumbers.length}):
             </div>
-            <div style={{
+             <div style={{
               fontSize: '10px',
               color: '#9ca3af',
               lineHeight: '1.2',
@@ -232,12 +239,13 @@ export default function App() {
               {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
             </div>
           </div>
-                {/* የዕጣ ማውጫ ሳጥን */}
+
+          {/* አዲሱ ሳቢ የኒዮን ዕጣ ማውጫ ሳጥን */}
           <div style={{
             backgroundColor: '#1b1b32',
-            borderRadius: '8px',
+            borderRadius: '12px',
             padding: '10px',
-            height: '120px',
+            height: '140px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -245,33 +253,42 @@ export default function App() {
             border: '1px solid #312e81',
             flexShrink: 0
           }}>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', color: '#f59e0b' }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px', color: '#f59e0b' }}>
               🎰 የዕጣ ማውጫ
             </div>
+
             <div style={{
-              width: '64px',
-              height: '64px',
+              width: '84px',
+              height: '84px',
               borderRadius: '50%',
-              border: phase === 'spinning' && allPickedNumbers.length > 0 ? '3px dashed #ef4444' : '3px dashed #eab308',
+              background: 'radial-gradient(circle, #1a1a36 0%, #0d0d1a 100%)',
+              border: phase === 'spinning' && allPickedNumbers.length > 0 
+                ? '3px solid #00ffcc' 
+                : '3px solid #ff0055',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: winningNumber === 'አልተመረጠም' ? '9px' : '22px',
+              fontSize: winningNumber === 'አልተመረጠም' ? '11px' : '22px',
               fontWeight: 'bold',
-              color: winningNumber === 'አልተመረጠም' ? '#ef4444' : (phase === 'spinning' ? '#22c55e' : '#ef4444'),
-              textAlign: 'center'
+              color: winningNumber === 'አልተመረጠም' ? '#ef4444' : '#ffffff',
+              textAlign: 'center',
+              boxShadow: phase === 'spinning' && allPickedNumbers.length > 0
+                ? '0 0 20px rgba(0, 255, 204, 0.8), inset 0 0 10px rgba(0, 255, 204, 0.5)'
+                : '0 0 12px rgba(255, 0, 85, 0.4)',
+              transition: 'all 0.3s ease',
+              transform: phase === 'spinning' && allPickedNumbers.length > 0 ? 'scale(1.05)' : 'scale(1)'
             }}>
-              {winningNumber === 'SPINNING' ? (
-                <svg className="spinning-wheel" viewBox="0 0 100 100" width="44" height="44">
-                  <circle cx="50" cy="50" r="46" fill="#1e1b4b" stroke="#eab308" strokeWidth="4" />
-                  <path d="M50 50 L50 4 A46 46 0 0 1 96 50 Z" fill="#ef4444" />
-                  <path d="M50 50 L96 50 A46 46 0 0 1 50 96 Z" fill="#3b82f6" />
-                  <path d="M50 50 L50 96 A46 46 0 0 1 4 50 Z" fill="#22c55e" />
-                  <path d="M50 50 L4 50 A46 46 0 0 1 50 4 Z" fill="#eab308" />
-                  <circle cx="50" cy="50" r="14" fill="#121225" stroke="#ffffff" strokeWidth="3" />
-                </svg>
+              {winningNumber === 'አልተመረጠም' ? (
+                'አልተመረጠም'
               ) : (
-                winningNumber
+                <span style={{
+                  fontFamily: 'monospace',
+                  textShadow: phase === 'spinning' && allPickedNumbers.length > 0 
+                    ? '0 0 10px #00ffcc, 0 0 20px #00ffcc' 
+                    : '0 0 8px #ff0055'
+                }}>
+                  {displayNumber}
+                </span>
               )}
             </div>
           </div>
