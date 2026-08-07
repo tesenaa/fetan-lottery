@@ -1,27 +1,86 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function App() {
-  const [selectedNumbers, setSelectedNumbers] = useState([]);
-  const [timeLeft, setTimeLeft] = useState(50);
+  const [selectedNumbers, setSelectedNumbers] = useState([]); // የተጠቃሚው ምርጫ
+  const [allPickedNumbers, setAllPickedNumbers] = useState([]); // የሁሉም ተጫዋቾች ቁጥሮች
+  const [playerCount, setPlayerCount] = useState(0); // የነኩት ሰዎች ብዛት
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [winningNumber, setWinningNumber] = useState('?');
 
+  const STAKE = 10; // የአንድ ቁጥር ዋጋ በ ETB
+
+  // 1. በሁሉም ስልክ የተመሳሰለ ሰዓት (Global UTC Timer - 60s rounds)
   useEffect(() => {
-    if (timeLeft <= 0) {
-      setTimeLeft(50);
-      return;
-    }
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft]);
+    const updateSyncTimer = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const secondsLeft = 60 - (now % 60);
 
+      setTimeLeft(secondsLeft);
+
+      // ሰዓቱ 0 ሲደርስ የ 10 ሰከንድ ዕጣ ማውጣት ይጀምራል
+      if (secondsLeft === 60 && !isSpinning) {
+        startDraw();
+      }
+    };
+
+    updateSyncTimer();
+    const timer = setInterval(updateSyncTimer, 1000);
+    return () => clearInterval(timer);
+  }, [allPickedNumbers, isSpinning]);
+
+  // 2. ቁጥር ሲነካ ተጫዋች እና ደራሽ ይጨምራል
   const toggleNumber = (num) => {
+    if (isSpinning) return; // ዕጣ ሲወጣ መምረጥ አይቻልም
+
     if (selectedNumbers.includes(num)) {
-      setSelectedNumbers(selectedNumbers.filter((n) => n !== num));
+      const updated = selectedNumbers.filter((n) => n !== num);
+      setSelectedNumbers(updated);
+      setAllPickedNumbers(allPickedNumbers.filter((n) => n !== num));
     } else {
       setSelectedNumbers([...selectedNumbers, num]);
+      setAllPickedNumbers([...allPickedNumbers, num]);
+    }
+
+    // የነኩት ተጫዋቾች ብዛት (ደግመው ቢነኩም በአንድ ተጫዋች ይያዛል)
+    if (selectedNumbers.length === 0) {
+      setPlayerCount((prev) => prev + 1);
     }
   };
+
+  // 3. የ 10 ሰከንድ Spin አድርጎ ከተነኩት ቁጥሮች ዕጣ ማውጣት
+  const startDraw = () => {
+    if (allPickedNumbers.length === 0) return;
+
+    setIsSpinning(true);
+    let duration = 10000; // 10 ሰከንድ
+    let intervalTime = 100;
+
+    const spinInterval = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * allPickedNumbers.length);
+      setWinningNumber(allPickedNumbers[randomIndex]);
+    }, intervalTime);
+
+    setTimeout(() => {
+      clearInterval(spinInterval);
+      // ከተነኩት ቁጥሮች አሸናፊውን ይመርጣል
+      const finalWinner = allPickedNumbers[Math.floor(Math.random() * allPickedNumbers.length)];
+      setWinningNumber(finalWinner);
+      setIsSpinning(false);
+      
+      // ከዕጣው በኋላ ለቀጣይ ዙር ዳታውን ያጸዳል
+      setTimeout(() => {
+        setSelectedNumbers([]);
+        setAllPickedNumbers([]);
+        setPlayerCount(0);
+        setWinningNumber('?');
+      }, 5000);
+    }, duration);
+  };
+
+  // ደራሽ calculation (80% ብቻ)
+  const totalPool = allPickedNumbers.length * STAKE;
+  const derash = Math.floor(totalPool * 0.8);
 
   return (
     <div style={{
@@ -50,15 +109,15 @@ export default function App() {
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
           <div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div>
-          <div style={{ fontSize: '10px', fontWeight: 'bold' }}>12</div>
+          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount}</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
-          <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
-          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>10 ETB</div>
+   <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
+          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>{STAKE} ETB</div>
         </div>
         <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
           <div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div>
-          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>120 ETB</div>
+          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash} ETB</div>
         </div>
       </div>
 
@@ -80,9 +139,9 @@ export default function App() {
           gap: '6px',
           overflow: 'hidden'
         }}>
-          {/* የመምረጫ ጊዜ */}
+          {/* የተመሳሰለ የመምረጫ ጊዜ */}
           <div style={{
-            backgroundColor: '#0284c7',
+            backgroundColor: isSpinning ? '#dc2626' : '#0284c7',
             padding: '5px',
             borderRadius: '6px',
             textAlign: 'center',
@@ -90,10 +149,10 @@ export default function App() {
             fontWeight: 'bold',
             flexShrink: 0
           }}>
-            ⏳ የመምረጫ ጊዜ፦ {timeLeft} ሰከንድ
+            {isSpinning ? '🎰 ዕጣ እየወጣ ነው...' :'⏳ የመምረጫ ጊዜ፦ ${timeLeft} ሰከንድ'}
           </div>
 
-          {/* SCROLL የሚሆኑት ቁጥሮች */}
+          {/* ቁጥሮች (1-1000) */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
@@ -109,15 +168,17 @@ export default function App() {
                 <button
                   key={num}
                   onClick={() => toggleNumber(num)}
+                  disabled={isSpinning}
                   style={{
                     padding: '7px 0',
                     backgroundColor: isSelected ? '#22c55e' : '#2a2a40',
-                color: '#ffffff',
+                    color: '#ffffff',
                     border: 'none',
                     borderRadius: '4px',
                     fontSize: '10px',
                     fontWeight: 'bold',
-                    cursor: 'pointer'
+                    cursor: isSpinning ? 'not-allowed' : 'pointer',
+                    opacity: isSpinning ? 0.6 : 1
                   }}
                 >
                   {num}
@@ -127,7 +188,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* በቀኝ በኩል፦ ቁመታቸው የተስተካከለ ሳጥኖች */}
+        {/* በቀኝ በኩል፦ የተመረጡ + የዕጣ ማውጫ ሳጥን */}
         <div style={{
           width: '170px',
           display: 'flex',
@@ -136,7 +197,7 @@ export default function App() {
           flexShrink: 0,
           justifyContent: 'flex-start'
         }}>
-          {/* 1. የተመረጡ ቁጥሮች ሳጥን (ቁመቱ ወደ 70px ተቀንሷል) */}
+          {/* የተመረጡ ቁጥሮች ሳጥን */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '8px',
@@ -162,11 +223,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* 2. የእጣ ማውጫ ሳጥን (ቁመቱ 120px) */}
+          {/* የዕጣ ማውጫ ሳጥን */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '8px',
-            padding: '10px',
+ padding: '10px',
             height: '120px',
             display: 'flex',
             flexDirection: 'column',
@@ -182,15 +243,16 @@ export default function App() {
               width: '48px',
               height: '48px',
               borderRadius: '50%',
-              border: '3px dashed #eab308',
+              border: isSpinning ? '3px dashed #ef4444' : '3px dashed #eab308',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '18px',
               fontWeight: 'bold',
-              color: '#ef4444'
+              color: isSpinning ? '#22c55e' : '#ef4444',
+              transition: 'all 0.2s ease'
             }}>
-              ?
+              {winningNumber}
             </div>
           </div>
         </div>
