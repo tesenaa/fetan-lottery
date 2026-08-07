@@ -112,7 +112,7 @@ export default function App() {
                   style={{
                     padding: '7px 0',
                     backgroundColor: isSelected ? '#22c55e' : '#2a2a40',
-                     color: '#ffffff',
+                color: '#ffffff',
                     border: 'none',
                     borderRadius: '4px',
                     fontSize: '10px',
@@ -136,24 +136,24 @@ export default function App() {
           flexShrink: 0,
           justifyContent: 'flex-start'
         }}>
-          {/* 1. የተመረጡ ቁጥሮች ሳጥን (ቁመቱ ተቀንሷል) */}
+          {/* 1. የተመረጡ ቁጥሮች ሳጥን (ቁመቱ ወደ 70px ተቀንሷል) */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '8px',
-            padding: '8px',
-            height: '110px',
+            padding: '6px 8px',
+            height: '70px',
             border: '1px solid #312e81',
             display: 'flex',
             flexDirection: 'column',
             flexShrink: 0
           }}>
-            <div style={{ fontSize: '11px', color: '#38bdf8', marginBottom: '4px', fontWeight: 'bold' }}>
+            <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}>
               📌 የተመረጡ ({selectedNumbers.length}):
             </div>
             <div style={{
               fontSize: '10px',
               color: '#9ca3af',
-              lineHeight: '1.3',
+              lineHeight: '1.2',
               wordBreak: 'break-word',
               overflowY: 'auto',
               flex: 1
@@ -162,7 +162,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* 2. የእጣ ማውጫ ሳጥን (ቁመቱ አጥሮ የተስተካከለ) */}
+          {/* 2. የእጣ ማውጫ ሳጥን (ቁመቱ 120px) */}
           <div style={{
             backgroundColor: '#1b1b32',
             borderRadius: '8px',
