@@ -150,14 +150,23 @@ export default function App() {
     .map((n) => n.number);
 
   const totalNumbers = Array.from({ length: 100 }, (_, i) => i + 1);
-       const calculatedDerash = selectedStake 
+        const calculatedDerash = selectedStake 
     ? (gameData.selectedNumbers.length * selectedStake * 0.8) 
     : gameData.derash;
 
   return (
-    <div style={{ backgroundColor: '#0d0b1e', color: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Segoe UI, sans-serif', width: '100%', overflowX: 'hidden' }}>
+    <div style={{ backgroundColor: '#0d0b1e', color: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Segoe UI, sans-serif', width: '100%', maxWidth: '100vw', overflowX: 'hidden', boxSizing: 'border-box' }}>
       
       <style>{`
+        * {
+          box-sizing: border-box !important;
+        }
+        body, html {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          overflow-x: hidden;
+        }
         @keyframes spinAnimation {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
@@ -165,35 +174,10 @@ export default function App() {
         .spinning-wheel {
           animation: spinAnimation 0.6s linear infinite;
         }
-        html, body {
-          margin: 0;
-          padding: 0;
-          width: 100%;
-          overflow-x: hidden;
-        }
-        .main-container {
-          display: flex;
-          flex-direction: column !important;
-          gap: 16px;
-          width: 100%;
-          box-sizing: border-box;
-        }
-        .wheel-section {
-          width: 100% !important;
-        }
-        @media (min-width: 768px) {
-          .main-container {
-            flex-direction: row !important;
-          }
-          .wheel-section {
-            width: 320px !important;
-          }
-        }
       `}</style>
 
-
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#facc15', color: '#0d0b1e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '18px' }}>
             F
@@ -209,17 +193,17 @@ export default function App() {
       </div>
 
       {/* Main Container */}
-      <div style={{ flex: 1, padding: '12px', paddingBottom: selectedStake ? '20px' : '80px', maxWidth: '1000px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ flex: 1, padding: '12px', paddingBottom: selectedStake ? '20px' : '80px', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
         
         {activeTab === 'game' && (
           <>
             {!selectedStake ? (
-              <div style={{ textAlign: 'center', marginTop: '10px' }}>
+              <div style={{ textAlign: 'center', marginTop: '10px', width: '100%' }}>
                 <h1 style={{ fontSize: '26px', fontWeight: 'bold', marginBottom: '20px', lineHeight: '1.3' }}>
                   Welcome to <span style={{ color: '#facc15' }}>Fetan<br />Lottery</span>
                 </h1>
 
-                <div style={{ backgroundColor: '#181534', borderRadius: '16px', padding: '20px 16px', border: '1px solid #d97706', marginBottom: '20px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                <div style={{ backgroundColor: '#181534', borderRadius: '16px', padding: '20px 16px', border: '1px solid #d97706', marginBottom: '20px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', width: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#f2b94b', fontSize: '15px', fontWeight: 'bold', marginBottom: '16px' }}>
                      Choose Your Stake
                   </div>
@@ -238,8 +222,9 @@ export default function App() {
                     ▶️ Play 20 ETB
                   </button>
                 </div>
-              <div style={{ backgroundColor: '#181534', borderRadius: '16px', padding: '16px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                  <div style={{ marginBottom: '12px' }}>
+
+                <div style={{ backgroundColor: '#181534', borderRadius: '16px', padding: '16px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center', width: '100%' }}>
+                 <div style={{ marginBottom: '12px' }}>
                     <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#fff' }}>
                       {formatToK(stats.activePlayers)}
                     </div>
@@ -255,107 +240,17 @@ export default function App() {
 
               </div>
             ) : (
-              <div className="main-container">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', boxSizing: 'border-box' }}>
                 
-                {/* ግራ ክፍል / የመምረጫ ቦርድ */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, width: '100%' }}>
-                  
-                  {/* Stats Bar */}
-                  <div style={{ backgroundColor: '#181534', padding: '10px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', textAlign: 'center', fontSize: '10px' }}>
-                      <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '6px 2px', borderRadius: '6px' }}>
-                        <span style={{ color: '#94a3b8', display: 'block' }}>Game ID</span>
-                        <strong>{gameData.gameId}</strong>
-                      </div>
-                      <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '6px 2px', borderRadius: '6px' }}>
-                        <span style={{ color: '#94a3b8', display: 'block' }}>Players</span>
-                        <strong>{gameData.totalPlayers}</strong>
-                      </div>
-                      <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '6px 2px', borderRadius: '6px' }}>
-                        <span style={{ color: '#94a3b8', display: 'block' }}>Stake</span>
-                        <strong style={{ color: '#facc15' }}>{selectedStake} ETB</strong>
-                      </div>
-                      <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '6px 2px', borderRadius: '6px' }}>
-                        <span style={{ color: '#94a3b8', display: 'block' }}>Derash</span>
-                        <strong style={{ color: '#4ade80' }}>{calculatedDerash} ETB</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Selected Numbers */}
-                  <div style={{ backgroundColor: '#181534', padding: '8px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <span style={{ color: '#94a3b8', fontSize: '11px', display: 'block', marginBottom: '4px' }}>
-                      📌 የመረጥካቸው ቁጥሮች ({mySelectedNumbers.length})፦
-                    </span>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', minHeight: '20px', alignItems: 'center' }}>
-                      {mySelectedNumbers.length === 0 ? (
-                        <span style={{ color: '#64748b', fontSize: '11px', fontStyle: 'italic' }}>እስካሁን ምንም ቁጥር አልመረጥክም</span>
-                      ) : (
-                        mySelectedNumbers.map((num) => (
-                          <span key={num} style={{ backgroundColor: '#16a34a', color: '#fff', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold', fontSize: '11px' }}>
-                            #{num}
-                          </span>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                {/* Timer Bar */}
-                  <div style={{ backgroundColor: gamePhase === 'selecting' ? '#0284c7' : '#eab308', padding: '8px', borderRadius: '8px', color: '#fff', fontWeight: 'bold', textAlign: 'center', fontSize: '12px' }}>
-                    {gamePhase === 'selecting' 
-                      ? '⏳ የመምረጫ ጊዜ፦ ' + timeLeft + ' ሰከንድ' 
-                      : '🎰 ዕጣ እየወጣ ነው...'}
-                  </div>
-
-                  {/* Grid */}
-                  <div style={{ backgroundColor: '#181534', padding: '8px', borderRadius: '12px', maxHeight: '300px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px' }}>
-                      {totalNumbers.map((num) => {
-                        const selectedItem = gameData.selectedNumbers.find((n) => n.number === num);
-                        const isTaken = !!selectedItem;
-                        const isMine = selectedItem?.userId === currentUserId;
-
-                        let bgColor = 'rgba(255,255,255,0.08)';
-                        if (isTaken) {
-                          bgColor = isMine ? '#16a34a' : '#dc2626';
-                        }
-
-                        const canClick = gamePhase === 'selecting' && (!isTaken || isMine);
-
-                        return (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => canClick && handleSelectNumber(num)}
-                            style={{
-                              backgroundColor: bgColor,
-                              color: '#ffffff',
-                              border: isMine ? '2px solid #86efac' : 'none',
-                              padding: '8px 0',
-                              borderRadius: '6px',
-                              fontWeight: 'bold',
-                              fontSize: '12px',
-                              cursor: canClick ? 'pointer' : 'not-allowed',
-                              opacity: gamePhase === 'selecting' ? (canClick ? 1 : 0.6) : 0.7
-                            }}
-                          >
-                            {num}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* የዕጣ ማውጫ (በሞባይል ላይ ሁልጊዜ ከላይ/ከስር ሙሉ ለሙሉ ይሸፍናል) */}
-                <div className="wheel-section" style={{ backgroundColor: '#181534', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', justifyContent: 'center', width: '100%', boxSizing: 'border-box' }}>
+                {/* 1. የዕጣ ማውጫ (በሞባይል ከላይ እንዲሆን) */}
+                <div style={{ backgroundColor: '#181534', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', justifyContent: 'center', width: '100%', boxSizing: 'border-box' }}>
                   <h3 style={{ color: '#facc15', margin: '0 0 12px 0', fontSize: '16px' }}>🎰 የዕጣ ማውጫ</h3>
                   
                   <div 
                     className={gamePhase === 'spinning' && !gameData.winningNumber ? "spinning-wheel" : ""}
                     style={{
-                      width: '100px',
-                      height: '100px',
+                      width: '90px',
+                      height: '90px',
                       borderRadius: '50%',
                       border: '4px dashed #facc15',
                       display: 'flex',
@@ -383,6 +278,97 @@ export default function App() {
                       </strong>
                     </div>
                   )}
+                </div>
+
+                {/* 2. የመምረጫ ክፍል (ከስር የሚሆን) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', boxSizing: 'border-box' }}>
+                  
+                  {/* Stats Bar */}
+                  <div style={{ backgroundColor: '#181534', padding: '10px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', width: '100%' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', textAlign: 'center', fontSize: '10px' }}>
+                    <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '6px 2px', borderRadius: '6px' }}>
+                        <span style={{ color: '#94a3b8', display: 'block' }}>Game ID</span>
+                        <strong>{gameData.gameId}</strong>
+                      </div>
+                      <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '6px 2px', borderRadius: '6px' }}>
+                        <span style={{ color: '#94a3b8', display: 'block' }}>Players</span>
+                        <strong>{gameData.totalPlayers}</strong>
+                      </div>
+                      <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '6px 2px', borderRadius: '6px' }}>
+                        <span style={{ color: '#94a3b8', display: 'block' }}>Stake</span>
+                        <strong style={{ color: '#facc15' }}>{selectedStake} ETB</strong>
+                      </div>
+                      <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '6px 2px', borderRadius: '6px' }}>
+                        <span style={{ color: '#94a3b8', display: 'block' }}>Derash</span>
+                        <strong style={{ color: '#4ade80' }}>{calculatedDerash} ETB</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Selected Numbers */}
+                  <div style={{ backgroundColor: '#181534', padding: '8px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', width: '100%' }}>
+                    <span style={{ color: '#94a3b8', fontSize: '11px', display: 'block', marginBottom: '4px' }}>
+                      📌 የመረጥካቸው ቁጥሮች ({mySelectedNumbers.length})፦
+                    </span>
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', minHeight: '20px', alignItems: 'center' }}>
+                      {mySelectedNumbers.length === 0 ? (
+                        <span style={{ color: '#64748b', fontSize: '11px', fontStyle: 'italic' }}>እስካሁን ምንም ቁጥር አልመረጥክም</span>
+                      ) : (
+                        mySelectedNumbers.map((num) => (
+                          <span key={num} style={{ backgroundColor: '#16a34a', color: '#fff', padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold', fontSize: '11px' }}>
+                            #{num}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Timer Bar */}
+                  <div style={{ backgroundColor: gamePhase === 'selecting' ? '#0284c7' : '#eab308', padding: '8px', borderRadius: '8px', color: '#fff', fontWeight: 'bold', textAlign: 'center', fontSize: '12px', width: '100%' }}>
+                    {gamePhase === 'selecting' 
+                      ? '⏳ የመምረጫ ጊዜ፦ ' + timeLeft + ' ሰከንድ' 
+                      : '🎰 ዕጣ እየወጣ ነው...'}
+                  </div>
+
+                  {/* Grid (ቁጥሮች በ 5 column የተቀመጡ) */}
+                  <div style={{ backgroundColor: '#181534', padding: '8px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', width: '100%' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', width: '100%' }}>
+                      {totalNumbers.map((num) => {
+                        const selectedItem = gameData.selectedNumbers.find((n) => n.number === num);
+                        const isTaken = !!selectedItem;
+                        const isMine = selectedItem?.userId === currentUserId;
+
+                        let bgColor = 'rgba(255,255,255,0.08)';
+                        if (isTaken) {
+                          bgColor = isMine ? '#16a34a' : '#dc2626';
+                        }
+
+                        const canClick = gamePhase === 'selecting' && (!isTaken || isMine);
+                       return (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => canClick && handleSelectNumber(num)}
+                            style={{
+                              backgroundColor: bgColor,
+                              color: '#ffffff',
+                              border: isMine ? '2px solid #86efac' : 'none',
+                              padding: '10px 0',
+                              borderRadius: '6px',
+                              fontWeight: 'bold',
+                              fontSize: '12px',
+                              cursor: canClick ? 'pointer' : 'not-allowed',
+                              opacity: gamePhase === 'selecting' ? (canClick ? 1 : 0.6) : 0.7,
+                              width: '100%'
+                            }}
+                          >
+                            {num}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                 </div>
 
               </div>
