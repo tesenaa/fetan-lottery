@@ -1,12 +1,16 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function App() {
-  // 1. Navigation & Screen States
-  const [currentTab, setCurrentTab] = useState('game'); // 'game', 'history', 'wallet'
+  // 1. Navigation States
+  const [currentTab, setCurrentTab] = useState('game'); // 'game', 'history', 'wallet', 'profile'
   const [currentScreen, setCurrentScreen] = useState('home'); // 'home' ወይም 'board'
   const [stake, setStake] = useState(10); // 10 ETB ወይም 20 ETB
 
-  // 2. Game States
+  // 2. User Stats (በሺህ የሚቆጠሩ - Raw count)
+  const [registeredCount, setRegisteredCount] = useState(3000); 
+  const [activeCount, setActiveCount] = useState(1000);        
+
+  // 3. Game States
   const [selectedNumbers, setSelectedNumbers] = useState([]);
   const [allPickedNumbers, setAllPickedNumbers] = useState([]);
   const [playerCount, setPlayerCount] = useState(0);
@@ -18,6 +22,12 @@ export default function App() {
   // Telegram User Data
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
   const userName = tgUser ? (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')) : 'ተጫዋች';
+
+  // ቁጥርን ወደ 1000+ / 3000+ መቀየሪያ
+  const formatStats = (num) => {
+    if (num < 1000) return num.toString();
+    return Math.floor(num / 1000) * 1000 + "+";
+  };
 
   // 60-second Cycle Timer (54s Selection + 6s Spin)
   useEffect(() => {
@@ -110,7 +120,7 @@ export default function App() {
   return (
     <div style={{
       maxWidth: '500px',
-      margin: '0 auto',
+ margin: '0 auto',
       backgroundColor: '#0c0c1e',
       color: '#ffffff',
       height: '100vh',
@@ -129,7 +139,8 @@ export default function App() {
           animation: arrowSpin 0.5s linear infinite;
         }`
       }</style>
-       {/* ----------------- TAB CONTENTS ----------------- */}
+
+      {/* ----------------- TAB CONTENTS ----------------- */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {currentTab === 'game' && (
           <>
@@ -164,7 +175,8 @@ export default function App() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)',
-                  marginBottom: '24px'
+                  marginBottom: '20px',
+                  boxSizing: 'border-box'
                 }}>
                   <div style={{
                     fontSize: '14px',
@@ -218,8 +230,7 @@ export default function App() {
                     ► Play 20 ETB
                   </button>
                 </div>
-
-                {/* Stats box */}
+ {/* Users Stat Box (እንደነበረው በአንድ ሳጥን ውስጥ ተደርድሮ) */}
                 <div style={{
                   width: '100%',
                   backgroundColor: '#1b1b38',
@@ -228,17 +239,28 @@ export default function App() {
                   textAlign: 'center',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '16px'
+                  gap: '16px',
+                  boxSizing: 'border-box',
+                  border: '1px solid #2d2d50'
                 }}>
                   <div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold' }}>0</div>
-                    <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>Active Users</div>
-             </div>
-                  <div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold' }}>0</div>
-                    <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>Registered Users</div>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold' }}>
+                      {formatStats(activeCount)}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                      Active Users
+                    </div>
+                  </div>
+                  <div style={{ borderTop: '1px solid #2d2d50', paddingTop: '12px' }}>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold' }}>
+                      {formatStats(registeredCount)}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                      Registered Users
+                    </div>
                   </div>
                 </div>
+
               </div>
             )}
 
@@ -305,7 +327,7 @@ export default function App() {
                   flexShrink: 0
                 }}>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div>
+ <div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div>
                     <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Fetan-001</div>
                   </div>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
@@ -321,7 +343,8 @@ export default function App() {
                     <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash} ETB</div>
                   </div>
                 </div>
-             {/* BOARD BODY */}
+
+                {/* BOARD BODY */}
                 <div style={{
                   display: 'flex',
                   flexDirection: 'row',
@@ -380,7 +403,7 @@ export default function App() {
                               fontWeight: 'bold',
                               cursor: phase === 'spinning' ? 'not-allowed' : 'pointer',
                               opacity: phase === 'spinning' ? 0.6 : 1
-                            }}
+                           }}
                           >
                             {num}
                           </button>
@@ -412,7 +435,7 @@ export default function App() {
                         📌 የተመረጡ ({selectedNumbers.length}):
                       </div>
                       <div style={{
-                       fontSize: '10px',
+                        fontSize: '10px',
                         color: '#9ca3af',
                         lineHeight: '1.2',
                         wordBreak: 'break-word',
@@ -461,7 +484,7 @@ export default function App() {
                           <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="60" height="60" viewBox="0 0 100 100">
                               <circle cx="50" cy="50" r="42" fill="none" stroke="#00ffcc" strokeWidth="3" strokeDasharray="15 10" />
-                              <polygon points="50,15 62,50 50,42 38,50" fill="#00ffcc" />
+                             <polygon points="50,15 62,50 50,42 38,50" fill="#00ffcc" />
                               <circle cx="50" cy="50" r="6" fill="#f59e0b" />
                             </svg>
                           </div>
@@ -487,7 +510,7 @@ export default function App() {
                         border: '1px solid #10b981',
                         borderRadius: '8px',
                         padding: '8px 6px',
-                         textAlign: 'center',
+                        textAlign: 'center',
                         boxShadow: '0 0 12px rgba(16, 185, 129, 0.4)'
                       }}>
                         <div style={{ fontSize: '10px', color: '#a7f3d0', fontWeight: 'bold' }}>🎉 ዕጣው ወጥቷል!</div>
@@ -521,6 +544,15 @@ export default function App() {
             <p style={{ color: '#9ca3af', fontSize: '13px', marginTop: '8px' }}>የሂሳብ መጠን እና የገንዘብ ገቢ/ወጪ እዚህ ይታያል።</p>
           </div>
         )}
+
+        {/* TAB 4: PROFILE */}
+        {currentTab === 'profile' && (
+          <div style={{ flex: 1, padding: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <h2 style={{ fontSize: '18px', color: '#38bdf8' }}>👤 Profile</h2>
+            <p style={{ color: '#ffffff', fontSize: '15px', fontWeight: 'bold', marginTop: '12px' }}>{userName}</p>
+            <p style={{ color: '#9ca3af', fontSize: '13px', marginTop: '4px' }}>የተጫዋቹ መረጃ እና ሴቲንግ እዚህ ይታያል።</p>
+          </div>
+        )}
       </div>
 
       {/* ----------------- BOTTOM NAVIGATION BAR ----------------- */}
@@ -531,7 +563,7 @@ export default function App() {
         backgroundColor: '#0a0a16',
         borderTop: '1px solid #1e1b4b',
         padding: '8px 0',
-        flexShrink: 0
+               flexShrink: 0
       }}>
         <button
           onClick={() => setCurrentTab('game')}
@@ -586,8 +618,27 @@ export default function App() {
             fontWeight: 'bold'
           }}
         >
-          <span style={{ fontSize: '16px' }}>🛡️</span>
+          <span style={{ fontSize: '16px' }}>👛</span>
           Wallet
+        </button>
+
+        <button
+          onClick={() => setCurrentTab('profile')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: currentTab === 'profile' ? '#22c55e' : '#6b7280',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '3px',
+            fontSize: '11px',
+            fontWeight: 'bold'
+          }}
+        >
+          <span style={{ fontSize: '16px' }}>👤</span>
+          Profile
         </button>
       </div>
 
