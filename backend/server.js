@@ -5,7 +5,7 @@ import cors from 'cors';
 
 const app = express();
 app.use(cors());
-app.use(express.json()); // 👈 ይህንን መጨመር የግድ ነው!
+app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -13,20 +13,19 @@ const io = new Server(server, {
 });
 
 // --- STATE VARIABLES ---
-let selectedNumbers = []; 
+let selectedNumbers = []; // [{ number: 12, userId: '123', userName: 'John' }]
 let timeLeft = 50;
-let gamePhase = 'selecting';
+let gamePhase = 'selecting'; // 'selecting' | 'spinning' | 'result'
 let winningNumber = null;
 const STAKE_PER_NUMBER = 10;
 let totalRegisteredUsers = 12500;
-// የተጠቃሚ ሂሳብ መያዣ (ለሙከራ በ Memory)
-let userBalances = {}; 
+let userBalances = {};
 
 // --- HELPER FUNCTIONS ---
 const getGameStats = () => {
-  const uniquePlayers = new Set(selectedNumbers.map(n => n.userId)).size;
+  const uniquePlayers = new Set(selectedNumbers.map(n => String(n.userId))).size;
   const totalCollected = selectedNumbers.length * STAKE_PER_NUMBER;
-  const derash = totalCollected * 0.8;
+  const derash = Math.floor(totalCollected * 0.8);
   return { totalPlayers: uniquePlayers, derash };
 };
 
@@ -51,18 +50,31 @@ app.post('/api/withdraw', (req, res) => {
   res.json({ success: true, balance: userBalances[userId], message: "ተሳክቷል!" });
 });
 
-// --- SOCKET LOGIC (የተጣመረ) ---
+app.get('/api/user', (req, res) => {
+  const { id } = req.query;
+  res.json({
+    mainWallet: userBalances[id] || 0,
+    playWallet: 0,
+    gamesWon: 0,
+    totalInvite: 0,
+    totalGames: 0
+  });
+});
+
+// --- SOCKET LOGIC ---
 io.on('connection', (socket) => {
   console.log('ተጫዋች ተገናኝቷል:', socket.id);
 
-  // 1. Initial State
   const stats = getGameStats();
   socket.emit('init_state', {
-    selectedNumbers, timeLeft, gamePhase, winningNumber,
-    totalPlayers: stats.totalPlayers, derash: stats.derash
+    selectedNumbers,
+    timeLeft,
+    gamePhase,
+    winningNumber,
+    totalPlayers: stats.totalPlayers,
+    derash: stats.derash
   });
 
-  // 2. Active User Stats
   const activeCount = io.engine.clientsCount;
   io.emit('stats_updated', {
     activePlayers: activeCount,
@@ -71,11 +83,15 @@ io.on('connection', (socket) => {
     totalRegisteredFormatted: formatK(totalRegisteredUsers)
   });
 
-  // 3. Game Events
   socket.on('select_number', (data) => {
     if (gamePhase !== 'selecting') return;
-    if (!selectedNumbers.some(n => n.number === data.numberChosen)) {
-      selectedNumbers.push({ number: data.numberChosen, userId: data.userId });
+    const exists = selectedNumbers.some(n => Number(n.number) === Number(data.numberChosen));
+    if (!exists) {
+      selectedNumbers.push({
+        number: Number(data.numberChosen),
+        userId: String(data.userId),
+        userName: data.userName || `ተጫዋች_${data.userId}`
+      });
       const s = getGameStats();
       io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
     }
@@ -83,12 +99,13 @@ io.on('connection', (socket) => {
 
   socket.on('deselect_number', (data) => {
     if (gamePhase !== 'selecting') return;
-    selectedNumbers = selectedNumbers.filter(n => !(n.number === data.numberChosen && n.userId === data.userId));
+    selectedNumbers = selectedNumbers.filter(
+      n => !(Number(n.number) === Number(data.numberChosen) && String(n.userId) === String(data.userId))
+    );
     const s = getGameStats();
     io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
   });
 
-  // 4. Disconnect
   socket.on('disconnect', () => {
     const currentActive = io.engine.clientsCount;
     io.emit('stats_updated', {
@@ -100,19 +117,42 @@ io.on('connection', (socket) => {
   });
 });
 
-// --- TIMER LOGIC (የቀድሞው) ---
+// --- TIMER LOGIC (10 ሰከንድ ዑደት፦ 6s Spin + 4s Result) ---
 setInterval(() => {
   if (gamePhase === 'selecting') {
-    if (timeLeft > 0) timeLeft--;
-    else {
+    if (timeLeft > 0) {
+ timeLeft--;
+    } else {
       gamePhase = 'spinning';
-      winningNumber = selectedNumbers.length > 0 ? selectedNumbers[Math.floor(Math.random() * selectedNumbers.length)].number : 'NONE';
+      if (selectedNumbers.length > 0) {
+        const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
+        winningNumber = selectedNumbers[randomIndex].number;
+      } else {
+        winningNumber = 'NONE';
+      }
+
       const stats = getGameStats();
-      io.emit('game_result', { winningNumber, gamePhase: 'spinning', selectedNumbers, ...stats });
-      
+      io.emit('game_result', {
+        winningNumber,
+        gamePhase: 'spinning',
+        selectedNumbers,
+        ...stats
+      });
+
+      // ከ10 ሰከንድ በኋላ Reset ማድረግ
       setTimeout(() => {
-        selectedNumbers = []; winningNumber = null; gamePhase = 'selecting'; timeLeft = 50;
-     io.emit('reset_game', { selectedNumbers: [], totalPlayers: 0, derash: 0, timeLeft: 50, gamePhase: 'selecting', winningNumber: null });
+        selectedNumbers = [];
+        winningNumber = null;
+        gamePhase = 'selecting';
+        timeLeft = 50;
+        io.emit('reset_game', {
+          selectedNumbers: [],
+          totalPlayers: 0,
+          derash: 0,
+          timeLeft: 50,
+          gamePhase: 'selecting',
+          winningNumber: null
+        });
       }, 10000);
     }
   }
