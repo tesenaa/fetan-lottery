@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://your-backend-api.com";
@@ -86,7 +86,7 @@ export default function App() {
       if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
         const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
         setAllPickedNumbers(allPicked);
-        
+
         const myPicked = data.selectedNumbers
           .filter(n => typeof n === 'object' && String(n.userId) === String(userId))
           .map(n => n.number);
@@ -101,7 +101,7 @@ export default function App() {
       setSelectionTime(data.timeLeft);
       if (data.gamePhase) setPhase(data.gamePhase);
     });
- socket.on('board_updated', (data) => {
+socket.on('board_updated', (data) => {
       if (!data) return;
       if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
         const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
@@ -142,7 +142,7 @@ export default function App() {
 
         setWinnerInfo({
           number: winNum,
-          userName: winItem?.userName || winItem?.username || (winItem ? `@user_${winItem.userId}` : 'ያልታወቀ ተጫዋች'),
+          userName: winItem?.userName || winItem?.username  (winItem ? `@user_${winItem.userId}` : 'ያልታወቀ ተጫዋች'),
           derash: data.derash !== undefined ? data.derash : derash
         });
 
@@ -259,7 +259,7 @@ export default function App() {
           100% { transform: rotate(360deg); }
         }
         .spin-arrow-container {
-          animation: arrowSpin 0.4s linear infinite;
+          animation: arrowSpin 0.5s linear infinite;
         }
         ::-webkit-scrollbar {
           width: 4px;
@@ -340,7 +340,7 @@ export default function App() {
                     ► Play 20 ETB
                   </button>
                 </div>
-              <div style={{
+ <div style={{
                   width: '100%',
                   backgroundColor: '#1b1b38',
                   borderRadius: '16px',
@@ -392,6 +392,8 @@ export default function App() {
                     ← Back
                   </button>
 
+                  <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Fetan Lottery</div>
+
                   <button 
                     onClick={() => fetchUserData()}
                     style={{
@@ -425,8 +427,8 @@ export default function App() {
                     <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount}</div>
                   </div>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
-<div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>{stake} ETB</div>
+<div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>{stake} ETB</div>
                   </div>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div>
@@ -501,17 +503,17 @@ export default function App() {
                   </div>
 
                   <div style={{
-                    width: '150px',
+                    width: '160px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '8px',
                     flexShrink: 0,
                     justifyContent: 'flex-start',
                     overflowY: 'auto'
-                  }}>
+}}>
                     <div style={{
                       backgroundColor: '#1b1b32',
- borderRadius: '8px',
+                      borderRadius: '8px',
                       padding: '6px 8px',
                       minHeight: '65px',
                       maxHeight: '90px',
@@ -535,80 +537,82 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* 🎰 የዕጣ ማውጫ ክብ (በ 3ቱ ፎቶዎች መሠረት የተሠራ) */}
                     <div style={{
-                      backgroundColor: '#1b1b32',
+                      backgroundColor: '#13132b',
                       borderRadius: '12px',
-                      padding: '10px 6px',
+                      padding: '12px 6px',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      border: '1px solid #312e81',
+                      border: '1px solid #23234d',
                       flexShrink: 0
                     }}>
-                      <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px', color: '#f59e0b' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}>
                         🎰 የዕጣ ማውጫ
                       </div>
 
                       <div style={{
-                        width: '80px',
-                        height: '80px',
+                        width: '110px',
+                        height: '110px',
                         borderRadius: '50%',
-                        background: 'radial-gradient(circle, #1a1a36 0%, #0d0d1a 100%)',
+                        background: '#0d0d1a',
                         border: winningNumber === 'SPINNING' 
-                          ? '3px solid #00ffcc' 
-                          : '3px solid #ff0055',
+                          ? '3px solid #00f2fe' 
+                          : (winningNumber !== '?' && winningNumber !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'),
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         boxShadow: winningNumber === 'SPINNING'
-                          ? '0 0 25px rgba(0, 255, 204, 0.8), inset 0 0 12px rgba(0, 255, 204, 0.5)'
-                          : '0 0 12px rgba(255, 0, 85, 0.4)',
+                          ? '0 0 20px rgba(0, 242, 254, 0.6), inset 0 0 10px rgba(0, 242, 254, 0.4)'
+                          : (winningNumber !== '?' && winningNumber !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'),
                         transition: 'all 0.3s ease',
                         position: 'relative'
                       }}>
+                        {/* 2ኛ ፎቶ፦ ዕጣው ሲዞር የሚታየው የኮምፓስ ቀስት */}
                         {winningNumber === 'SPINNING' ? (
                           <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <svg width="50" height="50" viewBox="0 0 100 100">
-                              <circle cx="50" cy="50" r="42" fill="none" stroke="#00ffcc" strokeWidth="4" strokeDasharray="15 10" />
-                              <polygon points="50,12 62,48 50,40 38,48" fill="#00ffcc" />
-                              <circle cx="50" cy="50" r="6" fill="#f59e0b" />
+                            <svg width="80" height="80" viewBox="0 0 100 100">
+                              <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="2" strokeDasharray="6 6" />
+                              <polygon points="50,15 58,45 50,40 42,45" fill="#00f2fe" />
+                              <polygon points="50,85 58,55 50,60 42,55" fill="#f59e0b" />
+                              <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
                             </svg>
                           </div>
                         ) : winningNumber === 'NONE' ? (
-                          <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>አልተመረጠም</span>
+<span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>አልተመረጠም</span>
                         ) : (
+                          /* 1ኛ እና 3ኛ ፎቶ፦ ቁጥር ወይም ? */
                           <span style={{
-                            fontSize: winningNumber === '?' ? '32px' : '22px',
+                            fontSize: winningNumber === '?' ? '42px' : '38px',
                             fontWeight: 'bold',
-                            color: winningNumber === '?' ? '#9ca3af' : '#22c55e',
-                            fontFamily: 'monospace',
-                            textShadow: winningNumber === '?' ? 'none' : '0 0 10px #22c55e'
+                            color: winningNumber === '?' ? '#ffffff' : '#00ffcc',
+                            textShadow: winningNumber === '?' ? 'none' : '0 0 12px #00ffcc'
                           }}>
                             {winningNumber}
                           </span>
                         )}
                       </div>
                     </div>
-{winnerInfo && (
+
+                    {/* 3ኛ ፎቶ፦ ዕጣው ሲወጣ ከስሩ የሚመጣው አረንጓዴ ሳጥን */}
+                    {winnerInfo && (
                       <div style={{
                         backgroundColor: '#064e3b',
                         border: '1px solid #10b981',
-                        borderRadius: '8px',
-                        padding: '8px 6px',
+                        borderRadius: '10px',
+                        padding: '10px 8px',
                         textAlign: 'center',
-                        boxShadow: '0 0 16px rgba(16, 185, 129, 0.6)',
+                        boxShadow: '0 0 16px rgba(16, 185, 129, 0.5)',
                         flexShrink: 0
                       }}>
                         <div style={{ fontSize: '11px', color: '#a7f3d0', fontWeight: 'bold' }}>🎉 ዕጣው ወጥቷል!</div>
-                        <div style={{ fontSize: '11px', color: '#ffffff', fontWeight: 'bold', marginTop: '3px', wordBreak: 'break-all' }}>
+                        <div style={{ fontSize: '13px', color: '#facc15', fontWeight: 'bold', marginTop: '4px' }}>
+                          አሸናፊ ቁጥር: #{winnerInfo.number}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#ffffff', marginTop: '4px' }}>
                           👤 {winnerInfo.userName}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#facc15', fontWeight: 'bold', marginTop: '2px' }}>
-                          ቁጥር፦ #{winnerInfo.number}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', marginTop: '2px' }}>
-                          ደራሽ፦ {winnerInfo.derash} ETB
                         </div>
                       </div>
                     )}
@@ -646,10 +650,9 @@ export default function App() {
                 ✓ Verified
               </div>
             </div>
-
-            <div style={{ backgroundColor: '#181830', borderRadius: '10px', padding: '4px', display: 'flex', marginBottom: '16px', border: '1px solid #2a2a4a' }}>
+ <div style={{ backgroundColor: '#181830', borderRadius: '10px', padding: '4px', display: 'flex', marginBottom: '16px', border: '1px solid #2a2a4a' }}>
               <button onClick={() => setWalletTab('balance')} style={{ flex: 1, padding: '10px 0', borderRadius: '8px', border: 'none', backgroundColor: walletTab === 'balance' ? '#2a2a4a' : 'transparent', color: walletTab === 'balance' ? '#ffffff' : '#9ca3af', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}>Balance</button>
- <button onClick={() => setWalletTab('history')} style={{ flex: 1, padding: '10px 0', borderRadius: '8px', border: 'none', backgroundColor: walletTab === 'history' ? '#2a2a4a' : 'transparent', color: walletTab === 'history' ? '#ffffff' : '#9ca3af', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}>History</button>
+              <button onClick={() => setWalletTab('history')} style={{ flex: 1, padding: '10px 0', borderRadius: '8px', border: 'none', backgroundColor: walletTab === 'history' ? '#2a2a4a' : 'transparent', color: walletTab === 'history' ? '#ffffff' : '#9ca3af', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}>History</button>
             </div>
 
             {walletTab === 'balance' && (
@@ -702,12 +705,11 @@ export default function App() {
             )}
           </div>
         )}
-
-        {currentTab === 'profile' && (
+ {currentTab === 'profile' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10px', marginBottom: '24px' }}>
               <div style={{ width: '70px', height: '70px', borderRadius: '50%', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 'bold', color: '#ffffff', marginBottom: '12px' }}>
- {userInitial}
+                {userInitial}
               </div>
               <h2 style={{ fontSize: '22px', fontWeight: 'bold', margin: 0 }}>{userName}</h2>
             </div>
@@ -772,8 +774,8 @@ export default function App() {
           <button
             onClick={() => setCurrentTab('wallet')}
             style={{
-              background: 'none', border: 'none', color: currentTab === 'wallet' ? '#38bdf8' : '#8e8ea8',
-              cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center',
+              background: 'none', border: 'none', color:currentTab === 'wallet' ? '#38bdf8' : '#8e8ea8',
+ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center',
               gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px'
             }}
           >
@@ -785,7 +787,7 @@ export default function App() {
             onClick={() => setCurrentTab('profile')}
             style={{
               background: 'none', border: 'none', color: currentTab === 'profile' ? '#38bdf8' : '#8e8ea8',
- cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center',
+              cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center',
               gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px'
             }}
           >
