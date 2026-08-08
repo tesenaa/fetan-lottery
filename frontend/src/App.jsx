@@ -850,6 +850,7 @@ export default function App() {
               gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px'
             }}
           >
+            
             <span style={{ fontSize: '18px' }}>👤</span>
             Profile
           </button>
