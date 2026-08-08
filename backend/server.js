@@ -1,141 +1,69 @@
-import express from 'express';
+ import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 
 const app = express();
 app.use(cors());
+app.use(express.json()); // 👈 ይህንን መጨመር የግድ ነው!
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
+  cors: { origin: '*', methods: ['GET', 'POST'] }
 });
 
-let selectedNumbers = []; // [{ number: 1, userId: 'USER_123' }]
+// --- STATE VARIABLES ---
+let selectedNumbers = []; 
 let timeLeft = 50;
 let gamePhase = 'selecting';
 let winningNumber = null;
 const STAKE_PER_NUMBER = 10;
+let totalRegisteredUsers = 12500;
+// የተጠቃሚ ሂሳብ መያዣ (ለሙከራ በ Memory)
+let userBalances = {}; 
 
-// የደራሽ (80%) እና የተጫዋቾች ስሌት
+// --- HELPER FUNCTIONS ---
 const getGameStats = () => {
   const uniquePlayers = new Set(selectedNumbers.map(n => n.userId)).size;
   const totalCollected = selectedNumbers.length * STAKE_PER_NUMBER;
-  const derash = totalCollected * 0.8; // 80% ደራሽ
+  const derash = totalCollected * 0.8;
   return { totalPlayers: uniquePlayers, derash };
 };
 
-// በየ 1 ሰከንዱ ሰዓት ማስቆጠር
-setInterval(() => {
-  if (gamePhase === 'selecting') {
-    if (timeLeft > 0) {
-      timeLeft--;
-    } else {
-      gamePhase = 'spinning';
-      
-      if (selectedNumbers.length > 0) {
-        const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
-        winningNumber = selectedNumbers[randomIndex].number;
-      } else {
-        winningNumber = 'NONE';
-      }
-
-      const stats = getGameStats();
-      io.emit('game_result', { 
-        winningNumber, 
-        gamePhase: 'spinning',
-        selectedNumbers,
-        totalPlayers: stats.totalPlayers,
-        derash: stats.derash
-      });
-
-      // ከ 10 ሰከንድ በኋላ አዲስ ጨዋታ ማስጀመር
-      setTimeout(() => {
-        selectedNumbers = [];
-        winningNumber = null;
-        gamePhase = 'selecting';
-        timeLeft = 50;
-
-        io.emit('reset_game', {
-          selectedNumbers: [],
-          totalPlayers: 0,
-          derash: 0,
-          timeLeft: 50,
-          gamePhase: 'selecting',
-          winningNumber: null
-        });
-      }, 10000);
-    }
-  }
-  io.emit('timer_tick', { timeLeft, gamePhase });
-}, 1000);
-
-io.on('connection', (socket) => {
-  const stats = getGameStats();
-  
-  // አዲስ ተጠቃሚ ሲገናኝ መረጃ መላክ
-  socket.emit('init_state', {
-    selectedNumbers,
-    timeLeft,
-    gamePhase,
-    winningNumber,
-    totalPlayers: stats.totalPlayers,
-    derash: stats.derash
-  });
-
-  // ቁጥር ሲመረጥ
-  socket.on('select_number', (data) => {
-    if (gamePhase !== 'selecting') return;
-
-    const exists = selectedNumbers.some(n => n.number === data.numberChosen);
-    if (!exists) {
-      selectedNumbers.push({
-        number: data.numberChosen,
-        userId: data.userId
-      });
-
-      const updatedStats = getGameStats();
-      io.emit('board_updated', {
-        selectedNumbers,
-        totalPlayers: updatedStats.totalPlayers,
-        derash: updatedStats.derash
-      });
-    }
-  });
-
-  // ቁጥር ሲሰረዝ (Deselect)
-  socket.on('deselect_number', (data) => {
-    if (gamePhase !== 'selecting') return;
-
-    selectedNumbers = selectedNumbers.filter(
-      (n) => !(n.number === data.numberChosen && n.userId === data.userId)
-    );
-
-    const updatedStats = getGameStats();
-    io.emit('board_updated', {
-      selectedNumbers,
-      totalPlayers: updatedStats.totalPlayers,
-      derash: updatedStats.derash
-    });
-  });
-});
-let totalRegisteredUsers = 12500; // ለሙከራ 12,500 ተመዝጋቢ ብንል
-
-// ቁጥሮችን ወደ "K" (Thousands) የሚቀይር helper function
 function formatK(num) {
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  }
-  return num.toString();
+  return num >= 1000 ? (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : num.toString();
 }
 
+// --- API ENDPOINTS ---
+app.post('/api/deposit', (req, res) => {
+  const { userId, amount } = req.body;
+  if (!userBalances[userId]) userBalances[userId] = 0;
+  userBalances[userId] += Number(amount);
+  res.json({ success: true, balance: userBalances[userId] });
+});
+
+app.post('/api/withdraw', (req, res) => {
+  const { userId, amount } = req.body;
+  if (!userBalances[userId] || userBalances[userId] < amount) {
+    return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም!" });
+  }
+  userBalances[userId] -= Number(amount);
+  res.json({ success: true, balance: userBalances[userId], message: "ተሳክቷል!" });
+});
+
+// --- SOCKET LOGIC (የተጣመረ) ---
 io.on('connection', (socket) => {
-  // 1. ተጠቃሚ ሲገባ Active ቁጥሩን በ Real-time ማሻሻል
+  console.log('ተጫዋች ተገናኝቷል:', socket.id);
+
+  // 1. Initial State
+  const stats = getGameStats();
+  socket.emit('init_state', {
+    selectedNumbers, timeLeft, gamePhase, winningNumber,
+    totalPlayers: stats.totalPlayers, derash: stats.derash
+  });
+
+  // 2. Active User Stats
   const activeCount = io.engine.clientsCount;
-  
   io.emit('stats_updated', {
     activePlayers: activeCount,
     activePlayersFormatted: formatK(activeCount),
@@ -143,7 +71,24 @@ io.on('connection', (socket) => {
     totalRegisteredFormatted: formatK(totalRegisteredUsers)
   });
 
-  // 2. ተጠቃሚ ሲወጣ Active ቁጥሩን ወዲያውኑ ቀንሶ ማሰራጨት
+  // 3. Game Events
+  socket.on('select_number', (data) => {
+    if (gamePhase !== 'selecting') return;
+    if (!selectedNumbers.some(n => n.number === data.numberChosen)) {
+      selectedNumbers.push({ number: data.numberChosen, userId: data.userId });
+      const s = getGameStats();
+      io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
+    }
+  });
+
+  socket.on('deselect_number', (data) => {
+    if (gamePhase !== 'selecting') return;
+    selectedNumbers = selectedNumbers.filter(n => !(n.number === data.numberChosen && n.userId === data.userId));
+    const s = getGameStats();
+    io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
+  });
+
+  // 4. Disconnect
   socket.on('disconnect', () => {
     const currentActive = io.engine.clientsCount;
     io.emit('stats_updated', {
@@ -154,6 +99,24 @@ io.on('connection', (socket) => {
     });
   });
 });
-server.listen(5000, () => {
-  console.log('Server is running on port 5000');
-});
+
+// --- TIMER LOGIC (የቀድሞው) ---
+setInterval(() => {
+  if (gamePhase === 'selecting') {
+    if (timeLeft > 0) timeLeft--;
+    else {
+      gamePhase = 'spinning';
+      winningNumber = selectedNumbers.length > 0 ? selectedNumbers[Math.floor(Math.random() * selectedNumbers.length)].number : 'NONE';
+      const stats = getGameStats();
+      io.emit('game_result', { winningNumber, gamePhase: 'spinning', selectedNumbers, ...stats });
+      
+      setTimeout(() => {
+        selectedNumbers = []; winningNumber = null; gamePhase = 'selecting'; timeLeft = 50;
+     io.emit('reset_game', { selectedNumbers: [], totalPlayers: 0, derash: 0, timeLeft: 50, gamePhase: 'selecting', winningNumber: null });
+      }, 10000);
+    }
+  }
+  io.emit('timer_tick', { timeLeft, gamePhase });
+}, 1000);
+
+server.listen(5000, () => console.log('Server is running on port 5000'));
