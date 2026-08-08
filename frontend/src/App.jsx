@@ -1,4 +1,4 @@
- import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://your-backend-api.com";
@@ -581,7 +581,7 @@ socket.on('board_updated', (data) => {
                             </svg>
                           </div>
                         ) : winningNumber === 'NONE' ? (
-<span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>አልተመረጠም</span>
+ <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>አልተመረጠም</span>
                         ) : (
                           /* 1ኛ እና 3ኛ ፎቶ፦ ቁጥር ወይም ? */
                           <span style={{
@@ -774,7 +774,7 @@ socket.on('board_updated', (data) => {
           <button
             onClick={() => setCurrentTab('wallet')}
             style={{
-              background: 'none', border: 'none', color:currentTab === 'wallet' ? '#38bdf8' : '#8e8ea8',
+              background: 'none', border: 'none', color: currentTab === 'wallet' ? '#38bdf8' : '#8e8ea8',
  cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center',
               gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px'
             }}
