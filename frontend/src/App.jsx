@@ -1,15 +1,12 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-// ⚠️ Environment variable ወይም Backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://your-backend-api.com";
 
-// Socket Instance
-const socket = io(API_BASE_URL, {
-  autoConnect: true
-});
-
 export default function App() {
+  // 📡 Socket instance ን በአንድ ጊዜ ብቻ እንዲፈጠር useMemo መጠቀም Memory leak እንዳይኖር ይረዳል
+  const socket = useMemo(() => io(API_BASE_URL, { autoConnect: true }), []);
+
   // 1. Navigation States
   const [currentTab, setCurrentTab] = useState('game'); 
   const [currentScreen, setCurrentScreen] = useState('home'); 
@@ -48,18 +45,16 @@ export default function App() {
   const userInitial = userName ? userName.charAt(0).toUpperCase() : 'T';
 
   // ⏱️ 1. የደራሽ (80%) እና የቤት (20%) ስሌት እንዲሁም የ Players ብዛት ማዘመኛ
-  const updateBoardStats = (allSelectedList) => {
-    // የተጫዋቾችን ብዛት ይቆጥራል
+  const updateBoardStats = useCallback((allSelectedList) => {
     if (allSelectedList && Array.isArray(allSelectedList)) {
       const uniquePlayers = new Set(allSelectedList.map(item => item.userId)).size;
       setPlayerCount(uniquePlayers);
 
-      // አጠቃላይ የተመረጡ ቁጥሮች * stake * 0.8 (80%)
       const totalSelectedCount = allSelectedList.length;
       const calculatedDerash = Math.floor(totalSelectedCount * stake * 0.8);
       setDerash(calculatedDerash);
     }
-  };
+  }, [stake]);
 
   // ⏱️ FRONTEND COUNTDOWN TIMER FALLBACK
   useEffect(() => {
@@ -79,7 +74,7 @@ export default function App() {
   }, [phase, selectionTime]);
 
   // 🔄 ዳታ የመሳቢያ API FUNCTION
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
       if (res.ok) {
@@ -93,14 +88,17 @@ export default function App() {
     } catch (err) {
       console.error("Data Fetch Error:", err);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
     fetchUserData();
-  }, [userId]);
+  }, [fetchUserData]);
 
-  // 📡 REAL-TIME SOCKET.IO INTEGRATION
+  // 📡 REAL-TIME SOCKET.IO INTEGRATION (With Proper Cleanup Timers)
   useEffect(() => {
+    let spinTimeout;
+    let resultTimeout;
+
     socket.on('init_state', (data) => {
       setPhase(data.gamePhase || 'selecting');
       setSelectionTime(data.timeLeft !== undefined ? data.timeLeft : 50);
@@ -145,13 +143,12 @@ export default function App() {
       setRegisteredCount(data.totalRegisteredFormatted || data.totalRegistered);
     });
 
-    // 🎰 2. ዕጣ ማውጣት፦ 6 ሰከንድ Spin + 4 ሰከንድ Result Display = 10 ሰከንድ
+    // 🎰 ዕጣ ማውጣት እና በጊዜ ሰሌዳ ማፅዳት
     socket.on('game_result', (data) => {
       setPhase('spinning');
       setWinningNumber('SPINNING');
 
-      // 6 ሰከንድ እስፒን ያደርጋል
-      setTimeout(() => {
+      spinTimeout = setTimeout(() => {
         setWinningNumber(data.winningNumber);
         const winItem = data.selectedNumbers?.find(n => n.number === data.winningNumber);
         
@@ -163,8 +160,7 @@ export default function App() {
 
         fetchUserData();
 
-        // ከእስፒኑ በኋላ ውጤቱን ለ 4 ሰከንድ አሳይቶ ጨዋታውን እንዳዲስ ይጀምራል
-        setTimeout(() => {
+        resultTimeout = setTimeout(() => {
           setSelectedNumbers([]);
           setAllPickedNumbers([]);
           setWinningNumber('?');
@@ -196,8 +192,10 @@ export default function App() {
       socket.off('stats_updated');
       socket.off('game_result');
       socket.off('reset_game');
+      clearTimeout(spinTimeout);
+      clearTimeout(resultTimeout);
     };
-  }, [userId, stake, derash]);
+  }, [socket, userId, updateBoardStats, fetchUserData, derash]);
 
   // 🎯 REAL-TIME TOGGLE NUMBER
   const toggleNumber = (num) => {
@@ -216,7 +214,6 @@ export default function App() {
       socket.emit('select_number', { numberChosen: num, userId });
     }
 
-    // የ 80% ደራሽ ስሌት ማስተካከያ
     const totalCount = updatedAll.length;
     setDerash(Math.floor(totalCount * stake * 0.8));
   };
@@ -229,7 +226,7 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, amount: depAmount })
-            });
+      });
       const data = await res.json();
       if (data.success) {
         setMainWallet(data.balance);
@@ -240,8 +237,7 @@ export default function App() {
       alert("የገንዘብ ማስገባት ስህተት አጋጥሟል!");
     }
   };
-
-  // 📤 WITHDRAW HANDLER
+ // 📤 WITHDRAW HANDLER
   const handleWithdraw = async () => {
     if (!withAmount || Number(withAmount) <= 0) return alert("እባክዎ ትክክለኛ መጠን ያስገቡ!");
     try {
@@ -366,8 +362,7 @@ export default function App() {
                   >
                     ► Play 10 ETB
                   </button>
-
-                  <button
+[8/8/2026 7:48 AM] Mr tes: <button
                     onClick={() => handleStartGame(20)}
                     style={{
                       width: '100%',
@@ -466,11 +461,12 @@ export default function App() {
                     🔄 Refresh
                   </button>
                 </div>
-               {/* 📌 HEADER STATS BOXES (የተስተካከለ የተጠቃሚ እና የ 80% ደራሽ ማሳያ) */}
+
+                {/* 📌 HEADER STATS BOXES */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: '4px',
+           gap: '4px',
                   padding: '6px 8px 4px 8px',
                   flexShrink: 0
                 }}>
@@ -543,10 +539,10 @@ export default function App() {
 
                         return (
                           <button
-                       key={num}
+                            key={num}
                             onClick={() => toggleNumber(num)}
                             disabled={phase === 'spinning' || isOthers}
-                            style={{
+             style={{
                               padding: '8px 0',
                               backgroundColor: bgColor,
                               color: '#ffffff',
@@ -629,10 +625,10 @@ export default function App() {
                         boxShadow: winningNumber === 'SPINNING'
                           ? '0 0 25px rgba(0, 255, 204, 0.8), inset 0 0 12px rgba(0, 255, 204, 0.5)'
                           : '0 0 12px rgba(255, 0, 85, 0.4)',
-                      transition: 'all 0.3s ease',
+                        transition: 'all 0.3s ease',
                         position: 'relative'
                       }}>
-                        {winningNumber === 'SPINNING' ? (
+ {winningNumber === 'SPINNING' ? (
                           <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="50" height="50" viewBox="0 0 100 100">
                               <circle cx="50" cy="50" r="42" fill="none" stroke="#00ffcc" strokeWidth="4" strokeDasharray="15 10" />
@@ -698,12 +694,11 @@ export default function App() {
 
         {currentTab === 'wallet' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>👛 Wallet & Transactions</h1>
               <span onClick={fetchUserData} style={{ fontSize: '18px', cursor: 'pointer', color: '#9ca3af' }}>🔄</span>
             </div>
-
-            <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', border: '1px solid #2a2a4a' }}>
+<div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', border: '1px solid #2a2a4a' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '18px' }}>👤</span>
                 <span style={{ fontSize: '15px', fontWeight: 'bold' }}>{userPhone}</span>
@@ -747,9 +742,10 @@ export default function App() {
                     ገንዘብ አስገባ (Deposit)
                   </button>
                 </div>
-           <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
+
+                <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '15px' }}>📤 Withdraw (ገንዘብ ማውጫ)</h4>
-                  <input 
+<input 
                     type="number" 
                     placeholder="መጠን (ETB)" 
                     value={withAmount}
@@ -813,7 +809,7 @@ export default function App() {
         }}>
           <button
             onClick={() => setCurrentTab('game')}
-             style={{
+            style={{
               background: 'none', border: 'none', color: currentTab === 'game' ? '#38bdf8' : '#8e8ea8',
               cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center',
               gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px'
@@ -822,8 +818,7 @@ export default function App() {
             <span style={{ fontSize: '18px' }}>🎮</span>
             Game
           </button>
-
-          <button
+<button
             onClick={() => setCurrentTab('history')}
             style={{
               background: 'none', border: 'none', color: currentTab === 'history' ? '#38bdf8' : '#8e8ea8',
