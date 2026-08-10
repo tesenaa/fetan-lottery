@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-const API_BASE_URL = "https://your-backend-link.com";
+const API_BASE_URL = "https://dirty-beers-carry.loca.lt";
 
 export default function App() {
   const socket = useMemo(() => io(API_BASE_URL, { autoConnect: true }), []);
@@ -70,6 +70,16 @@ export default function App() {
       console.error("Data Fetch Error:", err);
     }
   }, [userId]);
+
+  useEffect(() => {
+  socket.on("connect", () => {
+    console.log("✅ Socket በተሳካ ሁኔታ ተገናኝቷል! ID:", socket.id);
+  });
+
+  socket.on("connect_error", (err) => {
+    console.log("❌ የ Socket ግንኙነት አልተካሄደም! ስህተት:", err.message);
+  });
+}, [socket]);
 
   useEffect(() => {
     fetchUserData();
