@@ -64,6 +64,15 @@ app.get('/api/user', (req, res) => {
   });
 });
 
+// Render ሰርቨር እንዳይተኛ እራሱን በየ14 ደቂቃው Ping ያደርጋል
+setInterval(() => {
+  https.get('https://fetan-lottery-backend.onrender.com', (res) => {
+    console.log('Keep-alive ping sent');
+  }).on('error', (err) => {
+    console.log('Ping error:', err.message);
+  });
+}, 14 * 60 * 1000); // በየ 14 ደቂቃው
+
 // --- SOCKET LOGIC ---
 io.on('connection', (socket) => {
   console.log('ተጫዋች ተገናኝቷል:', socket.id);
