@@ -358,7 +358,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    // App.jsx ውስጥ winnerInfo የሚታይበት ክፍል (Conditional Rendering)
+                    
 
 {winnerInfo && winnerInfo.number && winnerInfo.number !== 'NONE' && winnerInfo.number !== '?' && (
   <div style={{ backgroundColor: '#064e3b', border: '1px solid #10b981', borderRadius: '10px', padding: '10px 8px', textAlign: 'center', boxShadow: '0 0 16px rgba(16, 185, 129, 0.5)', flexShrink: 0 }}>
