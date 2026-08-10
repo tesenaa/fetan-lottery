@@ -129,36 +129,42 @@ export default function App() {
     });
 
     socket.on('game_result', (data) => {
-      if (!data) return;
-      setPhase('spinning');
-      setWinningNumber('SPINNING');
+  if (!data || data.winningNumber === 'NONE') return; // ቁጥር ካልተመረጠ 采用 አያደርግም
 
-      spinTimeout = setTimeout(() => {
-        setPhase('result');
-        const winNum = data.winningNumber;
-        setWinningNumber(winNum);
-        const winItem = data.selectedNumbers?.find(
-          n => typeof n === 'object' && String(n.number) === String(winNum)
-        );
-        setWinnerInfo({
-          number: winNum,
-          userName: winItem?.userName || (winItem ? `@user_${winItem.userId}` : 'ያልታወቀ ተጫዋች'),
-          derash: data.derash !== undefined ? data.derash : derash
-        });
-        fetchUserData();
+  setPhase('spinning');
+  setWinningNumber('SPINNING');
 
-        resultTimeout = setTimeout(() => {
-          setSelectedNumbers([]);
-          setAllPickedNumbers([]);
-          setWinningNumber('?');
-          setWinnerInfo(null);
-          setPhase('selecting');
-          setSelectionTime(50);
-          setPlayerCount(0);
-          setDerash(0);
-        }, 4000);
-      }, 6000);
-    });
+  spinTimeout = setTimeout(() => {
+    setPhase('result');
+    const winNum = data.winningNumber;
+    setWinningNumber(winNum);
+
+    const winItem = data.selectedNumbers?.find(
+      n => typeof n === 'object' && String(n.number) === String(winNum)
+    );
+
+    if (winItem) {
+      setWinnerInfo({
+        number: winNum,
+        userName: winItem.userName || `@user_${winItem.userId}`,
+        derash: data.derash !== undefined ? data.derash : derash
+      });
+    }
+
+    fetchUserData();
+
+    resultTimeout = setTimeout(() => {
+      setSelectedNumbers([]);
+      setAllPickedNumbers([]);
+      setWinningNumber('?');
+      setWinnerInfo(null);
+      setPhase('selecting');
+      setSelectionTime(50);
+      setPlayerCount(0);
+      setDerash(0);
+    }, 4000);
+  }, 6000);
+});
 
     socket.on('reset_game', (data) => {
       clearTimeout(spinTimeout);
@@ -282,7 +288,7 @@ export default function App() {
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', backgroundColor: '#0a0a16', borderBottom: '1px solid #1e1b4b', flexShrink: 0 }}>
                   <button onClick={() => setCurrentScreen('home')} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}> ← Back </button>
-                  <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Fetan Lottery</div>
+                  
                   <button onClick={() => fetchUserData()} style={{ backgroundColor: '#1e1b4b', color: '#22c55e', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}> 🔄 Refresh </button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0 }}>
@@ -325,7 +331,7 @@ export default function App() {
                   </div>
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
                     <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                      <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}> 📌 የተመረጡ ({selectedNumbers.length}): </div>
+                      <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}> 📌 የተመረጡ ቁጥሮች ({selectedNumbers.length}): </div>
                       <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.2', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
                         {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
                       </div>
@@ -351,13 +357,16 @@ export default function App() {
  )}
                       </div>
                     </div>
-                    {winnerInfo && (
-                      <div style={{ backgroundColor: '#064e3b', border: '1px solid #10b981', borderRadius: '10px', padding: '10px 8px', textAlign: 'center', boxShadow: '0 0 16px rgba(16, 185, 129, 0.5)', flexShrink: 0 }}>
-                        <div style={{ fontSize: '11px', color: '#a7f3d0', fontWeight: 'bold' }}>🎉 ዕጣው ወጥቷል!</div>
-                        <div style={{ fontSize: '13px', color: '#facc15', fontWeight: 'bold', marginTop: '4px' }}> አሸናፊ ቁጥር: #{winnerInfo.number} </div>
-                        <div style={{ fontSize: '10px', color: '#ffffff', marginTop: '4px' }}> 👤 {winnerInfo.userName} </div>
-                      </div>
-                    )}
+
+                    // App.jsx ውስጥ winnerInfo የሚታይበት ክፍል (Conditional Rendering)
+
+{winnerInfo && winnerInfo.number && winnerInfo.number !== 'NONE' && winnerInfo.number !== '?' && (
+  <div style={{ backgroundColor: '#064e3b', border: '1px solid #10b981', borderRadius: '10px', padding: '10px 8px', textAlign: 'center', boxShadow: '0 0 16px rgba(16, 185, 129, 0.5)', flexShrink: 0 }}>
+    <div style={{ fontSize: '11px', color: '#a7f3d0', fontWeight: 'bold' }}>🎉 ዕጣው ወጥቷል!</div>
+    <div style={{ fontSize: '13px', color: '#facc15', fontWeight: 'bold', marginTop: '4px' }}> አሸናፊ ቁጥር: #{winnerInfo.number} </div>
+    <div style={{ fontSize: '10px', color: '#ffffff', marginTop: '4px' }}> 👤 {winnerInfo.userName} </div>
+  </div>
+)}
                   </div>
                 </div>
               </div>

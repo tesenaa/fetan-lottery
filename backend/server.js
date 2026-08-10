@@ -126,26 +126,39 @@ setInterval(() => {
     if (timeLeft > 0) {
       timeLeft--;
     } else {
-      gamePhase = 'spinning';
       if (selectedNumbers.length > 0) {
+        // ቁጥር ተመርጦ ከሆነ ብቻ ዕጣ ይወጣል
+        gamePhase = 'spinning';
         const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
         winningNumber = selectedNumbers[randomIndex].number;
-      } else {
-        winningNumber = 'NONE';
-      }
-const stats = getGameStats();
-      io.emit('game_result', {
-        winningNumber,
-        gamePhase: 'spinning',
-        selectedNumbers,
-        ...stats
-      });
 
-      setTimeout(() => {
-        selectedNumbers = [];
-        winningNumber = null;
-        gamePhase = 'selecting';
+        const stats = getGameStats();
+        io.emit('game_result', {
+          winningNumber,
+          gamePhase: 'spinning',
+          selectedNumbers,
+          ...stats
+        });
+
+        setTimeout(() => {
+          selectedNumbers = [];
+          winningNumber = null;
+          gamePhase = 'selecting';
+          timeLeft = 50;
+          io.emit('reset_game', {
+            selectedNumbers: [],
+            totalPlayers: 0,
+            derash: 0,
+            timeLeft: 50,
+            gamePhase: 'selecting',
+            winningNumber: null
+          });
+        }, 10000);
+
+      } else {
+        // ቁጥር ካልተመረጠ ዕጣ አይወጣም፤ ሰዓቱ እንደገና 50 ብሎ ይጀምራል
         timeLeft = 50;
+        winningNumber = 'NONE';
         io.emit('reset_game', {
           selectedNumbers: [],
           totalPlayers: 0,
@@ -154,7 +167,7 @@ const stats = getGameStats();
           gamePhase: 'selecting',
           winningNumber: null
         });
-      }, 10000);
+      }
     }
   }
   io.emit('timer_tick', { timeLeft, gamePhase });
