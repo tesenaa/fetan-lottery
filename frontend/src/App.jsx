@@ -6,9 +6,10 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://your-backend-
 export default function App() {
   const socket = useMemo(() => io(API_BASE_URL, { autoConnect: true }), []);
 
-  const [currentTab, setCurrentTab] = useState('game'); 
-  const [currentScreen, setCurrentScreen] = useState('home'); 
-  const [stake, setStake] = useState(10); 
+  // 1. Navigation States
+  const [currentTab, setCurrentTab] = useState('game'); // 'game', 'history', 'wallet', 'profile'
+  const [currentScreen, setCurrentScreen] = useState('home'); // 'home' ወይም 'board'
+  const [stake, setStake] = useState(10); // 10 ETB ወይም 20 ETB
 
   const [registeredCount, setRegisteredCount] = useState(0); 
   const [activeCount, setActiveCount] = useState(0);        
