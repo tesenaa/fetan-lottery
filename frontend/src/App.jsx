@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://your-backend-api.com";
+const API_BASE_URL = "https://your-backend-link.com";
 
 export default function App() {
   const socket = useMemo(() => io(API_BASE_URL, { autoConnect: true }), []);
@@ -11,10 +11,12 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState('home'); // 'home' ወይም 'board'
   const [stake, setStake] = useState(10); // 10 ETB ወይም 20 ETB
 
+// 2. User Stats (በሺህ የሚቆጠሩ - Raw count)
   const [registeredCount, setRegisteredCount] = useState(0); 
   const [activeCount, setActiveCount] = useState(0);        
   const [walletTab, setWalletTab] = useState('balance'); 
 
+  
   const [mainWallet, setMainWallet] = useState(0);
   const [playWallet, setPlayWallet] = useState(0);
   const [gamesWon, setGamesWon] = useState(0);
