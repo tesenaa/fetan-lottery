@@ -117,11 +117,11 @@ io.on('connection', (socket) => {
   });
 });
 
-// --- TIMER LOGIC (10 ሰከንድ ዑደት፦ 6s Spin + 4s Result) ---
+// --- TIMER LOGIC ---
 setInterval(() => {
   if (gamePhase === 'selecting') {
     if (timeLeft > 0) {
- timeLeft--;
+      timeLeft--;
     } else {
       gamePhase = 'spinning';
       if (selectedNumbers.length > 0) {
@@ -130,8 +130,7 @@ setInterval(() => {
       } else {
         winningNumber = 'NONE';
       }
-
-      const stats = getGameStats();
+const stats = getGameStats();
       io.emit('game_result', {
         winningNumber,
         gamePhase: 'spinning',
@@ -139,7 +138,6 @@ setInterval(() => {
         ...stats
       });
 
-      // ከ10 ሰከንድ በኋላ Reset ማድረግ
       setTimeout(() => {
         selectedNumbers = [];
         winningNumber = null;
