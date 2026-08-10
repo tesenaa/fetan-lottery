@@ -376,26 +376,46 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '0 8px 8px 8px', overflow: 'hidden' }}>
                   
                   {/* የ90 ቁጥሮች ሰንጠረዥ (90 NUMBERS GRID) */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
-                      {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
-                    </div>
+                  {/* ከ 1 እስከ 1000 በ SCROLL የሚታዩ ቁጥሮች */}
+<div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
+  
+  {/* የጊዜ እና የምዕራፍ ማሳያ */}
+  <div style={{ backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
+    {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
+  </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '2px', flex: 1 }}>
-                      {Array.from({ length: 90 }, (_, i) => i + 1).map((num) => {
-                        const isMine = selectedNumbers.includes(num);
-                        const isOthers = allPickedNumbers.includes(num) && !isMine;
-                        let bgColor = '#2a2a40';
-                        if (isMine) bgColor = '#22c55e';
-                        else if (isOthers) bgColor = '#ef4444';
-                          return (
-                          <button key={num} onClick={() => toggleNumber(num)} disabled={phase !== 'selecting'  || isOthers} style={{ padding: '8px 0', backgroundColor: bgColor, color: '#ffffff', border: '1px solid #3d3d5c', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: (phase !== 'selecting' || isOthers) ? 'not-allowed' : 'pointer', opacity: (phase !== 'selecting' || isOthers) ? 0.6 : 1 }}>
-                            {num}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+  {/* የ 1000 ቁጥሮች ሰንጠረዥ (SCROLLABLE GRID 1 - 1000) */}
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
+    {Array.from({ length: 1000 }, (_, i) => i + 1).map((num) => {
+      const isMine = selectedNumbers.includes(num);
+      const isOthers = allPickedNumbers.includes(num) && !isMine;
+      let bgColor = '#2a2a40';
+      if (isMine) bgColor = '#22c55e';
+      else if (isOthers) bgColor = '#ef4444';
+
+      return (
+        <button 
+          key={num} 
+          onClick={() => toggleNumber(num)} 
+          disabled={phase !== 'selecting' || isOthers} 
+          style={{ 
+            padding: '8px 0', 
+            backgroundColor: bgColor, 
+            color: '#ffffff', 
+            border: '1px solid #3d3d5c', 
+            borderRadius: '4px', 
+            fontSize: '11px', 
+            fontWeight: 'bold', 
+            cursor: (phase !== 'selecting' || isOthers) ? 'not-allowed' : 'pointer', 
+            opacity: (phase !== 'selecting' || isOthers) ? 0.6 : 1 
+          }}
+        >
+          {num}
+        </button>
+      );
+    })}
+  </div>
+</div>
 
                   {/* የቀኝ ጎን ፓነል - የተመረጡ ቁጥሮች እና የዕጣ መንኮራኩር */}
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
