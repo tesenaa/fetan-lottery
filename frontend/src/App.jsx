@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-const API_BASE_URL = "https://dirty-beers-carry.loca.lt";
+const API_BASE_URL = "https://fetan-lottery-backend.onrender.com";
 
 export default function App() {
   const socket = useMemo(() => io(API_BASE_URL, { 
     autoConnect: true,
-    transports: ['websocket', 'polling']
+    transports: ['polling', 'websocket']
   }), []);
 
   const [currentTab, setCurrentTab] = useState('game');
