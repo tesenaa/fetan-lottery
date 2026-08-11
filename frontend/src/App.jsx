@@ -6,6 +6,33 @@ import { io } from 'socket.io-client';
 // -------------------------------------------------------------
 const API_BASE_URL = "https://fetan-lottery-backend.onrender.com";
 
+// 1000 ቁጥሮች እንዳይዘገዩ በ React.memo የተሰራ የቁጥር በተን
+const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) => {
+  let bgColor = '#2a2a40';
+  if (isMine) bgColor = '#22c55e';
+  else if (isOthers) bgColor = '#ef4444';
+
+  return (
+    <button 
+      onClick={() => onClick(num)} 
+      disabled={disabled} 
+      style={{ 
+        padding: '8px 0', 
+        backgroundColor: bgColor, 
+        color: '#ffffff', 
+        border: '1px solid #3d3d5c', 
+        borderRadius: '4px', 
+        fontSize: '11px', 
+        fontWeight: 'bold', 
+        cursor: disabled ? 'not-allowed' : 'pointer', 
+        opacity: disabled ? 0.6 : 1 
+      }}
+    >
+      {num}
+    </button>
+  );
+});
+
 export default function App() {
   
   // -------------------------------------------------------------
@@ -267,6 +294,10 @@ export default function App() {
     }
   };
 
+  const handleNumberClick = useCallback((num) => {
+  toggleNumber(num);
+}, [phase, selectedNumbers, allPickedNumbers]);
+
   // -------------------------------------------------------------
   // 12. ገንዘብ የማውጣት ተግባር (WITHDRAW HANDLER)
   // -------------------------------------------------------------
@@ -375,10 +406,33 @@ export default function App() {
                 {/* የቦርድ ይዘት - የቁጥሮች ሰንጠረዥ እና የእጣ ማውጫ ሳጥን */}
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '0 8px 8px 8px', overflow: 'hidden' }}>
                   
-                  {/* የ90 ቁጥሮች ሰንጠረዥ (90 NUMBERS GRID) */}
-                  {/* ከ 1 እስከ 1000 በ SCROLL የሚታዩ ቁጥሮች */}
+                  
+                  {/* ከ 1 እስከ 1000 በ SCROLL የሚታዩ ቁጥሮች (OPTIMIZED) */}
 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
   
+  <div style={{ backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
+    {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
+  </div>
+
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1, contain: 'strict' }}>
+    {Array.from({ length: 1000 }, (_, i) => i + 1).map((num) => {
+      const isMine = selectedNumbers.includes(num);
+      const isOthers = allPickedNumbers.includes(num) && !isMine;
+
+      return (
+        <NumberButton 
+          key={num}
+          num={num}
+          isMine={isMine}
+          isOthers={isOthers}
+          disabled={phase !== 'selecting' || isOthers}
+          onClick={handleNumberClick}
+        />
+      );
+    })}
+  </div>
+</div>
+
   {/* የጊዜ እና የምዕራፍ ማሳያ */}
   <div style={{ backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
     {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
