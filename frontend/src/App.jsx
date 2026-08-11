@@ -407,7 +407,7 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '0 8px 8px 8px', overflow: 'hidden' }}>
                   
                   
-                  {/* ከ 1 እስከ 1000 በ SCROLL የሚታዩ ቁጥሮች (OPTIMIZED) */}
+     {/* ከ 1 እስከ 1000 በ SCROLL የሚታዩ ቁጥሮች (OPTIMIZED) */}
 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
   
   <div style={{ backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
@@ -506,17 +506,32 @@ export default function App() {
                     </div>
 
                     {/* የአሸናፊው መረጃ ማሳያ ካርድ (WINNER INFO CARD) */}
-                    {winnerInfo && winnerInfo.number && winnerInfo.number !== 'NONE' && winnerInfo.number !== '?' && (
-                      <div style={{ backgroundColor: '#064e3b', border: '1px solid #10b981', borderRadius: '10px', padding: '10px 8px', textAlign: 'center', boxShadow: '0 0 16px rgba(16, 185, 129, 0.5)', flexShrink: 0 }}>
-                        <div style={{ fontSize: '11px', color: '#a7f3d0', fontWeight: 'bold' }}>🎉 ዕጣው ወጥቷል!</div>
-                        <div style={{ fontSize: '13px', color: '#facc15', fontWeight: 'bold', marginTop: '4px' }}> አሸናፊ ቁጥር: #{winnerInfo.number} </div>
-                        <div style={{ fontSize: '10px', color: '#ffffff', marginTop: '4px' }}> 👤 {winnerInfo.userName} </div>
-                      </div>
-                    )}
+               {/* ዕጣው ሲወጣ አሸናፊውን እና ዩዘርኔሙን የሚያሳይ ሳጥን */}
+{winnerNumber && (
+  <div style={{
+    marginTop: '12px',
+    padding: '12px',
+    backgroundColor: '#064e3b',
+    border: '2px solid #10b981',
+    borderRadius: '10px',
+    textAlign: 'center',
+    boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)'
+  }}>
+    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#34d399', marginBottom: '4px' }}>
+      🎉 ዕጣው ወጥቷል!
+    </div>
+    
+    <div style={{ fontSize: '18px', fontWeight: '900', color: '#facc15', margin: '4px 0' }}>
+      አሸናፊ ቁጥር: #{winnerNumber}
+    </div>
 
+    <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: '600', marginTop: '6px' }}>
+      👤 አሸናፊ፡ {winnerUser ? (winnerUser.username ? `@${winnerUser.username}` : winnerUser.first_name) : 'ተጫዋች'}
+    </div>
+  </div>
+)}
                   </div>
                 </div>
-              </div>
             )}
           </>
         )}

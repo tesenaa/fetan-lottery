@@ -129,6 +129,17 @@ io.on('connection', (socket) => {
   });
 });
 
+// Backend ላይ ዕጣ ሲወጣ
+const winningTicket = tickets.find(t => t.number === winningNumber);
+
+io.emit('gameResult', {
+  winnerNumber: winningNumber,
+  winnerUser: winningTicket ? {
+    username: winningTicket.user.username, // የቴሌግራም @username
+    first_name: winningTicket.user.first_name // Username ከሌለው ስሙን ለመጠቀም
+  } : null
+});
+
 // --- TIMER LOGIC ---
 setInterval(() => {
   if (gamePhase === 'selecting') {
