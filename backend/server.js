@@ -1,4 +1,4 @@
- import express from 'express';
+import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -18,15 +18,15 @@ const io = new Server(server, {
 });
 
 // --- STATE VARIABLES ---
-let selectedNumbers = []; 
+let selectedNumbers = [];
 let timeLeft = 50;
-let gamePhase = 'selecting'; 
+let gamePhase = 'selecting';
 let winningNumber = null;
 const STAKE_PER_NUMBER = 10;
 let userBalances = {};
 
 // ሁሉንም የተመዘገቡ ተጠቃሚዎች መያዣ (Unique User IDs)
-const registeredUsersSet = new Set(); 
+const registeredUsersSet = new Set();
 
 // አሁን አክቲቭ የሆኑ ተጠቃሚዎች መያዣ (socket.id -> userId)
 const activeUsersMap = new Map();
@@ -68,7 +68,6 @@ app.post('/api/withdraw', (req, res) => {
 app.get('/api/user', (req, res) => {
   const { id } = req.query;
   
-  // ተጠቃሚው API ጥሪ ሲያደርግም ወደ Registered Users መዝገብ ይገባል
   if (id && id !== 'GUEST_USER') {
     registeredUsersSet.add(String(id));
   }
@@ -94,41 +93,58 @@ setInterval(() => {
 // --- SOCKET LOGIC ---
 io.on('connection', (socket) => {
   console.log('ተጫዋች ተገናኝቷል:', socket.id);
-// --- SOCKET LOGIC ---
+
+  const userId = socket.handshake.query.userId;
+
+  if (userId && userId !== 'GUEST_USER') {
+    registeredUsersSet.add(String(userId));
+    activeUsersMap.set(socket.id, String(userId));
+  }
+
+  const activeCount = new Set(activeUsersMap.values()).size;
+  const registeredCount = registeredUsersSet.size;
+
+  const stats = getGameStats();
+  socket.emit('init_state', {
+    selectedNumbers,
+    timeLeft,
+    gamePhase,
+    winningNumber,
+    totalPlayers: stats.totalPlayers,
+    derash: stats.derash
+  });
+
+  io.emit('stats_updated', {
+    activePlayers: activeCount,
+    activePlayersFormatted: formatUserCount(activeCount),
+    totalRegistered: registeredCount,
+    totalRegisteredFormatted: formatUserCount(registeredCount)
+  });
+
   socket.on('select_number', (data) => {
     if (gamePhase !== 'selecting') return;
 
     const { numberChosen, userId, userName } = data;
     const uid = String(userId);
 
-    // ቁጥሩ ቀደም ብሎ መመረጡን ማረጋገጥ
     const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
     if (exists) return;
 
-    // 1. የተጫዋቹን የኪስ ሂሳብ ማረጋገጥ
     const currentBalance = userBalances[uid] || 0;
     if (currentBalance < STAKE_PER_NUMBER) {
-      // ሂሳብ ካልበቃ ለተጫዋቹ ብቻ የማስጠንቀቂያ መልእክት መላክ
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን አስቀድመው ሂሳብዎን ይሙሉ::' });
       return;
     }
 
-    // 2. ሂሳብ መቀነስ (10 ETB)
     userBalances[uid] -= STAKE_PER_NUMBER;
 
-    // 3. ቁጥሩን መመዝገብ
     selectedNumbers.push({
       number: Number(numberChosen),
       userId: uid,
       userName: userName || `ተጫዋች_${uid}`
     });
-
-    const s = getGameStats();
-    
-    // ለሁሉም ተጫዋቾች የቦርዱን ሁኔታ ማሳወቅ
+ const s = getGameStats();
     io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
-    
-    // ለተጫዋቹ አዲሱን የተቀነሰ የኪስ ሂሳቡን መላክ
     socket.emit('balance_updated', { balance: userBalances[uid] });
   });
 
@@ -143,75 +159,17 @@ io.on('connection', (socket) => {
     );
 
     if (isSelected) {
-      // 1. ቁጥሩን ከዝርዝር ማስወጣት
       selectedNumbers = selectedNumbers.filter(
         n => !(Number(n.number) === Number(numberChosen) && String(n.userId) === uid)
       );
 
-      // 2. የተቀነሰውን 10 ETB ለተጫዋቹ መልሶ መመለስ (Refund)
       if (!userBalances[uid]) userBalances[uid] = 0;
       userBalances[uid] += STAKE_PER_NUMBER;
 
       const s = getGameStats();
       io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
-      
-      // የተመለሰውን አዲስ ሂሳብ ለተጫዋቹ መላክ
       socket.emit('balance_updated', { balance: userBalances[uid] });
     }
-  });
-
-  // ከ Frontend የመጣውን userId መቀበል
-  const userId = socket.handshake.query.userId;
-
-  if (userId && userId !== 'GUEST_USER') {
-    // 1. አዲስ ሰው ሲገባ በራስ-ሰር Register ይሆናል
-    registeredUsersSet.add(String(userId));
-    // 2. አሁን በሲስተሙ ውስጥ Active መሆኑን ይመዘግባል
-    activeUsersMap.set(socket.id, String(userId));
-  }
-
-  const activeCount = new Set(activeUsersMap.values()).size;
-  const registeredCount = registeredUsersSet.size;
-
-  // የመጀመሪያ ሁኔታን ለተጠቃሚው መላክ
-  const stats = getGameStats();
-  socket.emit('init_state', {
-    selectedNumbers,
-    timeLeft,
-    gamePhase,
-    winningNumber,
-    totalPlayers: stats.totalPlayers,
-    derash: stats.derash
-  });
-
-  // ለሁሉም ተጠቃሚዎች የነባር/አዲስ ቁጥር መረጃ ማሰራጨት
-  io.emit('stats_updated', {
-    activePlayers: activeCount,
-    activePlayersFormatted: formatUserCount(activeCount),
-    totalRegistered: registeredCount,
-    totalRegisteredFormatted: formatUserCount(registeredCount)
-  });
-
-  socket.on('select_number', (data) => {
-    if (gamePhase !== 'selecting') return;
-    const exists = selectedNumbers.some(n => Number(n.number) === Number(data.numberChosen));
-    if (!exists) {
-      selectedNumbers.push({
-        number: Number(data.numberChosen),
-        userId: String(data.userId),
-        userName: data.userName || `ተጫዋች_${data.userId}`
-      });
-      const s = getGameStats();
-      io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
-    }
-  });
- socket.on('deselect_number', (data) => {
-    if (gamePhase !== 'selecting') return;
-    selectedNumbers = selectedNumbers.filter(
-      n => !(Number(n.number) === Number(data.numberChosen) && String(n.userId) === String(data.userId))
-    );
-    const s = getGameStats();
-    io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
   });
 
   socket.on('disconnect', () => {
@@ -235,7 +193,6 @@ setInterval(() => {
       timeLeft--;
     } else {
       if (selectedNumbers.length > 0) {
-        // ቁጥር ተመርጦ ከሆነ ዕጣ ይወጣል
         gamePhase = 'spinning';
         const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
         winningNumber = selectedNumbers[randomIndex].number;
@@ -264,7 +221,6 @@ setInterval(() => {
         }, 10000);
 
       } else {
-        // ምንም ቁጥር ካልተመረጠ ሰዓቱ በራስ-ሰር 50 ብሎ እንደገና ይጀምራል
         timeLeft = 50;
         winningNumber = 'NONE';
         io.emit('reset_game', {
