@@ -2,7 +2,7 @@
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-
+import https from 'https';
 
 const app = express();
 app.use(cors());
@@ -10,32 +10,43 @@ app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { 
+  cors: {
     origin: '*',
-     methods: ['GET', 'POST'] },
-     transports:['polling','websocket']
+    methods: ['GET', 'POST']
+  },
+  transports: ['polling', 'websocket']
 });
 
 // --- STATE VARIABLES ---
-let selectedNumbers = []; // [{ number: 12, userId: '123', userName: 'John' }]
+let selectedNumbers = []; 
 let timeLeft = 50;
-let gamePhase = 'selecting'; // 'selecting' | 'spinning' | 'result'
+let gamePhase = 'selecting'; 
 let winningNumber = null;
 const STAKE_PER_NUMBER = 10;
-let totalRegisteredUsers = 12500;
 let userBalances = {};
 
+// ሁሉንም የተመዘገቡ ተጠቃሚዎች መያዣ (Unique User IDs)
+const registeredUsersSet = new Set(); 
+
+// አሁን አክቲቭ የሆኑ ተጠቃሚዎች መያዣ (socket.id -> userId)
+const activeUsersMap = new Map();
+
 // --- HELPER FUNCTIONS ---
+function formatUserCount(num) {
+  if (num >= 10000) {
+    return Math.floor(num / 1000) * 1000 + '+';
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  }
+  return num.toString();
+}
+
 const getGameStats = () => {
   const uniquePlayers = new Set(selectedNumbers.map(n => String(n.userId))).size;
   const totalCollected = selectedNumbers.length * STAKE_PER_NUMBER;
   const derash = Math.floor(totalCollected * 0.8);
   return { totalPlayers: uniquePlayers, derash };
 };
-
-function formatK(num) {
-  return num >= 1000 ? (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : num.toString();
-}
 
 // --- API ENDPOINTS ---
 app.post('/api/deposit', (req, res) => {
@@ -56,6 +67,12 @@ app.post('/api/withdraw', (req, res) => {
 
 app.get('/api/user', (req, res) => {
   const { id } = req.query;
+  
+  // ተጠቃሚው API ጥሪ ሲያደርግም ወደ Registered Users መዝገብ ይገባል
+  if (id && id !== 'GUEST_USER') {
+    registeredUsersSet.add(String(id));
+  }
+
   res.json({
     mainWallet: userBalances[id] || 0,
     playWallet: 0,
@@ -65,19 +82,98 @@ app.get('/api/user', (req, res) => {
   });
 });
 
-// Render ሰርቨር እንዳይተኛ እራሱን በየ14 ደቂቃው Ping ያደርጋል
+// --- RENDER KEEP-ALIVE PING ---
 setInterval(() => {
   https.get('https://fetan-lottery-backend.onrender.com', (res) => {
     console.log('Keep-alive ping sent');
   }).on('error', (err) => {
     console.log('Ping error:', err.message);
   });
-}, 14 * 60 * 1000); // በየ 14 ደቂቃው
+}, 14 * 60 * 1000);
 
 // --- SOCKET LOGIC ---
 io.on('connection', (socket) => {
   console.log('ተጫዋች ተገናኝቷል:', socket.id);
+// --- SOCKET LOGIC ---
+  socket.on('select_number', (data) => {
+    if (gamePhase !== 'selecting') return;
 
+    const { numberChosen, userId, userName } = data;
+    const uid = String(userId);
+
+    // ቁጥሩ ቀደም ብሎ መመረጡን ማረጋገጥ
+    const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
+    if (exists) return;
+
+    // 1. የተጫዋቹን የኪስ ሂሳብ ማረጋገጥ
+    const currentBalance = userBalances[uid] || 0;
+    if (currentBalance < STAKE_PER_NUMBER) {
+      // ሂሳብ ካልበቃ ለተጫዋቹ ብቻ የማስጠንቀቂያ መልእክት መላክ
+      socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን አስቀድመው ሂሳብዎን ይሙሉ::' });
+      return;
+    }
+
+    // 2. ሂሳብ መቀነስ (10 ETB)
+    userBalances[uid] -= STAKE_PER_NUMBER;
+
+    // 3. ቁጥሩን መመዝገብ
+    selectedNumbers.push({
+      number: Number(numberChosen),
+      userId: uid,
+      userName: userName || `ተጫዋች_${uid}`
+    });
+
+    const s = getGameStats();
+    
+    // ለሁሉም ተጫዋቾች የቦርዱን ሁኔታ ማሳወቅ
+    io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
+    
+    // ለተጫዋቹ አዲሱን የተቀነሰ የኪስ ሂሳቡን መላክ
+    socket.emit('balance_updated', { balance: userBalances[uid] });
+  });
+
+  socket.on('deselect_number', (data) => {
+    if (gamePhase !== 'selecting') return;
+
+    const { numberChosen, userId } = data;
+    const uid = String(userId);
+
+    const isSelected = selectedNumbers.some(
+      n => Number(n.number) === Number(numberChosen) && String(n.userId) === uid
+    );
+
+    if (isSelected) {
+      // 1. ቁጥሩን ከዝርዝር ማስወጣት
+      selectedNumbers = selectedNumbers.filter(
+        n => !(Number(n.number) === Number(numberChosen) && String(n.userId) === uid)
+      );
+
+      // 2. የተቀነሰውን 10 ETB ለተጫዋቹ መልሶ መመለስ (Refund)
+      if (!userBalances[uid]) userBalances[uid] = 0;
+      userBalances[uid] += STAKE_PER_NUMBER;
+
+      const s = getGameStats();
+      io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
+      
+      // የተመለሰውን አዲስ ሂሳብ ለተጫዋቹ መላክ
+      socket.emit('balance_updated', { balance: userBalances[uid] });
+    }
+  });
+
+  // ከ Frontend የመጣውን userId መቀበል
+  const userId = socket.handshake.query.userId;
+
+  if (userId && userId !== 'GUEST_USER') {
+    // 1. አዲስ ሰው ሲገባ በራስ-ሰር Register ይሆናል
+    registeredUsersSet.add(String(userId));
+    // 2. አሁን በሲስተሙ ውስጥ Active መሆኑን ይመዘግባል
+    activeUsersMap.set(socket.id, String(userId));
+  }
+
+  const activeCount = new Set(activeUsersMap.values()).size;
+  const registeredCount = registeredUsersSet.size;
+
+  // የመጀመሪያ ሁኔታን ለተጠቃሚው መላክ
   const stats = getGameStats();
   socket.emit('init_state', {
     selectedNumbers,
@@ -88,12 +184,12 @@ io.on('connection', (socket) => {
     derash: stats.derash
   });
 
-  const activeCount = io.engine.clientsCount;
+  // ለሁሉም ተጠቃሚዎች የነባር/አዲስ ቁጥር መረጃ ማሰራጨት
   io.emit('stats_updated', {
     activePlayers: activeCount,
-    activePlayersFormatted: formatK(activeCount),
-    totalRegistered: totalRegisteredUsers,
-    totalRegisteredFormatted: formatK(totalRegisteredUsers)
+    activePlayersFormatted: formatUserCount(activeCount),
+    totalRegistered: registeredCount,
+    totalRegisteredFormatted: formatUserCount(registeredCount)
   });
 
   socket.on('select_number', (data) => {
@@ -109,8 +205,7 @@ io.on('connection', (socket) => {
       io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
     }
   });
-
-  socket.on('deselect_number', (data) => {
+ socket.on('deselect_number', (data) => {
     if (gamePhase !== 'selecting') return;
     selectedNumbers = selectedNumbers.filter(
       n => !(Number(n.number) === Number(data.numberChosen) && String(n.userId) === String(data.userId))
@@ -120,25 +215,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    const currentActive = io.engine.clientsCount;
+    activeUsersMap.delete(socket.id);
+    const updatedActiveCount = new Set(activeUsersMap.values()).size;
+    const currentRegisteredCount = registeredUsersSet.size;
+
     io.emit('stats_updated', {
-      activePlayers: currentActive,
-      activePlayersFormatted: formatK(currentActive),
-      totalRegistered: totalRegisteredUsers,
-      totalRegisteredFormatted: formatK(totalRegisteredUsers)
+      activePlayers: updatedActiveCount,
+      activePlayersFormatted: formatUserCount(updatedActiveCount),
+      totalRegistered: currentRegisteredCount,
+      totalRegisteredFormatted: formatUserCount(currentRegisteredCount)
     });
   });
-});
-
-// Backend ላይ ዕጣ ሲወጣ
-const winningTicket = tickets.find(t => t.number === winningNumber);
-
-io.emit('gameResult', {
-  winnerNumber: winningNumber,
-  winnerUser: winningTicket ? {
-    username: winningTicket.user.username, // የቴሌግራም @username
-    first_name: winningTicket.user.first_name // Username ከሌለው ስሙን ለመጠቀም
-  } : null
 });
 
 // --- TIMER LOGIC ---
@@ -148,7 +235,7 @@ setInterval(() => {
       timeLeft--;
     } else {
       if (selectedNumbers.length > 0) {
-        // ቁጥር ተመርጦ ከሆነ ብቻ ዕጣ ይወጣል
+        // ቁጥር ተመርጦ ከሆነ ዕጣ ይወጣል
         gamePhase = 'spinning';
         const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
         winningNumber = selectedNumbers[randomIndex].number;
@@ -177,7 +264,7 @@ setInterval(() => {
         }, 10000);
 
       } else {
-        // ቁጥር ካልተመረጠ ዕጣ አይወጣም፤ ሰዓቱ እንደገና 50 ብሎ ይጀምራል
+        // ምንም ቁጥር ካልተመረጠ ሰዓቱ በራስ-ሰር 50 ብሎ እንደገና ይጀምራል
         timeLeft = 50;
         winningNumber = 'NONE';
         io.emit('reset_game', {
@@ -194,4 +281,6 @@ setInterval(() => {
   io.emit('timer_tick', { timeLeft, gamePhase });
 }, 1000);
 
-server.listen(5000, () => console.log('Server is running on port 5000'));
+// --- SERVER START ---
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));

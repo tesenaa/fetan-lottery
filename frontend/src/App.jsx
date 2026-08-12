@@ -34,9 +34,10 @@ const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) =
 export default function App() {
   // 2. የ SOCKET.IO ግንኙነት ማዘጋጃ (WEBSOCKET SETUP)
   const socket = useMemo(() => io(API_BASE_URL, {
-    autoConnect: true,
-    transports: ['polling', 'websocket']
-  }), []);
+  autoConnect: true,
+  transports: ['polling', 'websocket'],
+  query: { userId }
+}), [userId]);
 
   // 3. የሁኔታዎች እና ዳታዎች ማከማቻ (STATE VARIABLES)
   const [currentTab, setCurrentTab] = useState('game');
@@ -156,6 +157,16 @@ export default function App() {
         setDerash(data.derash || 0);
       }
     });
+
+    // በቂ ሂሳብ ከሌለው Alert እንዲያሳይ
+socket.on('error_message', (data) => {
+  alert(data.message);
+});
+
+// ብር ሲቆረጥ ወይም ሲመለስ በስክሪኑ ላይ ያለው Balance እንዲቀየር
+socket.on('balance_updated', (data) => {
+  setMainWallet(data.balance);
+});
 
     socket.on('stats_updated', (data) => {
       if (!data) return;
@@ -589,7 +600,7 @@ export default function App() {
           <button onClick={() => setCurrentTab('history')} style={{ background: 'none', border: 'none', color: currentTab === 'history' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
             <span style={{ fontSize: '18px' }}>📜</span> History
           </button>
-          <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color: currentTab === 'wallet' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
+          <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color:  currentTab === 'wallet' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
             <span style={{ fontSize: '18px' }}>👛</span> Wallet
           </button>
           <button onClick={() => setCurrentTab('profile')} style={{ background: 'none', border: 'none', color: currentTab === 'profile' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
