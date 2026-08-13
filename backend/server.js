@@ -20,9 +20,11 @@ const io = new Server(server, {
 
 // ቦቱን እንዲነሳ ማድረግ
 if (bot) {
-  bot.start();
-  onStart: 
-  console.log('🤖 Telegram Bot is running...');
+  bot.start({
+    onStart: (botInfo) => {
+      console.log(`🤖 Telegram Bot (@${botInfo.username}) is running!`);
+    }
+  });
 }
 
 // --- STATE VARIABLES ---
