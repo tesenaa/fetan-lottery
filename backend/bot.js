@@ -27,7 +27,6 @@ if (bot) {
     const firstName = ctx.from?.first_name || '';
     const username = ctx.from?.username || '';
 
-    // ተጠቃሚውን በዳታቤዝ የመመዝገብ ተግባር
     try {
       await fetch(`${API_BASE_URL}/api/user/register`, {
         method: 'POST',
@@ -44,9 +43,7 @@ if (bot) {
     );
   });
 
-  // 3. የቁልፎቹ ተግባራት (Menu Handlers)
-
-  // Check Balance 💵
+  // 3. Check Balance 💵
   bot.hears('Check Balance 💵', async (ctx) => {
     const userId = String(ctx.from?.id);
     try {
@@ -57,7 +54,7 @@ if (bot) {
         const playWallet = data.playWallet || 0;
 
         await ctx.reply(
-         `💰 *የእርስዎ የሂሳብ መጠን (Balance)*:\n\n` +
+          `💰 *የእርስዎ የሂሳብ መጠን (Balance)*:\n\n` +
           `• *Main Wallet:* ${mainWallet} ETB\n` +
           `• *Play Wallet:* ${playWallet} ETB`,
           { parse_mode: 'Markdown' }
@@ -70,7 +67,7 @@ if (bot) {
     }
   });
 
-  // Register 📝
+  // 4. Register 📝
   bot.hears('Register 📝', async (ctx) => {
     const userId = String(ctx.from?.id);
     const firstName = ctx.from?.first_name || '';
@@ -92,18 +89,18 @@ if (bot) {
     }
   });
 
-  // Deposit 💵
+  // 5. Deposit 💵
   bot.hears('Deposit 💵', async (ctx) => {
     await ctx.reply(
       `📥 *ገንዘብ ገቢ ማድረጊያ (Telebirr Deposit)*\n\n` +
       `ገንዘብ ገቢ ለማድረግ በሚከተለው የቴሌብር ቁጥር ያስገቡ፡\n\n` +
-      `📱 *Telebirr Number:* \${TELEBIRR_NUMBER}\\n\n` +
+      `📱 *Telebirr Number:* ${TELEBIRR_NUMBER}\n\n` +
       `ክፍያውን እንደፈፀሙ የወጣውን የትራንዛክሽን SMS/ID ለቀጥታ ረዳታችን ይላኩ።`,
       { parse_mode: 'Markdown' }
     );
   });
 
-  // Withdraw 🤑
+  // 6. Withdraw 🤑
   bot.hears('Withdraw 🤑', async (ctx) => {
     const userId = String(ctx.from?.id);
     try {
@@ -124,23 +121,23 @@ if (bot) {
       await ctx.reply('❌ የኔትወርክ ስህተት አጋጥሟል።');
     }
   });
- // Invite 🔗
+ // 7. Invite 🔗
   bot.hears('Invite 🔗', async (ctx) => {
     const userId = ctx.from?.id;
-    const inviteLink = `https://t.me/fetan_lottery_bot?start=${userId}`;
+    const inviteLink = `https://t.me/TesFetanlottery_bot?start=${userId}`;
     await ctx.reply(
-      `🔗 *የእርስዎ ልዩ የሪፌራል ሊንክ*:\n\n\${inviteLink}\\n\n` +
+      `🔗 *የእርስዎ ልዩ የሪፌራል ሊንክ*:\n\n${inviteLink}\n\n` +
       `ይህንን ሊንክ ለጓደኞችዎ በመላክ የእያንዳንዱ ጋበዙት ተጫዋች ቦነስ ያግኙ!`,
       { parse_mode: 'Markdown' }
     );
   });
 
-  // Contact Support ☎️
+  // 8. Contact Support ☎️
   bot.hears('Contact Support ☎️', async (ctx) => {
     await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @fetan_support_admin');
   });
 
-  // Instruction 📖
+  // 9. Instruction 📖
   bot.hears('Instruction 📖', async (ctx) => {
     await ctx.reply(
       `📖 *የጨዋታው መመሪያ*:\n\n` +
@@ -151,12 +148,12 @@ if (bot) {
     );
   });
 
-  // Transfer 🎁
+  // 10. Transfer 🎁
   bot.hears('Transfer 🎁', async (ctx) => {
     await ctx.reply('🎁 ለሌላ ተጫዋች ገንዘብ ለማስተላለፍ በ WebApp ውስጥ ያለውን Transfer ገፅ ይጠቀሙ።');
   });
 
-  // Convert Bonus 💱
+  // 11. Convert Bonus 💱
   bot.hears('Convert Bonus 💱', async (ctx) => {
     await ctx.reply('💱 Play Wallet ቦነስን ወደ Main Wallet ለመቀየር አነስተኛው መጠን 100 ETB መሆን አለበት።');
   });

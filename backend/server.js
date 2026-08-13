@@ -5,10 +5,9 @@ import cors from 'cors';
 import https from 'https';
 import { bot } from './bot.js';
 import { webhookCallback } from 'grammy';
-import { Keyboard } from 'grammy';
 
 // WEB_APP_URL - ትክክለኛውን የ Vercel WebApp URL አስገባ
-const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery-frontend.vercel.app";
+const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery-irkk.vercel.app";
 
 const app = express();
 app.use(cors());
@@ -34,43 +33,12 @@ let userBalances = {};
 // ሁሉንም የተመዘገቡ ተጠቃሚዎች መያዣ (Unique User IDs)
 const registeredUsersSet = new Set();
 
-// በምስሉ ላይ ባለው ቅደም ተከተል ያዘጋጀው Keyboard
-// 2. ቦቱን በ Token መክፈት
-const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN);
-
-// 3. የ Keyboard አቀማመጥ ማዘጋጀት (ከታች እንዳይጠፋ persistent አድርገነዋል)
-const mainKeyboard = new Keyboard()
-  .webApp("Play 🎮", WEB_APP_URL)
-  .text("Register 📝")
-  .row()
-  .text("Check Balance 💵")
-  .text("Deposit 💵")
-  .row()
-  .text("Contact Support ☎️")
-  .text("Instruction 📖")
-  .row()
-  .text("Transfer 🎁")
-  .text("Withdraw 🤑")
-  .row()
-  .text("Invite 🔗")
-  .text("Convert Bonus 💱")
-  .resized()
-  .persistent(); // ተጠቃሚው የትኛውንም ቁልፍ ቢጫን Keyboard-ኡ አይጠፋም
-
-// 4. /start Command
-bot.command("start", async (ctx) => {
-  await ctx.reply("እንኳን ወደ Fetan Lottery በደህና መጡ! 🎯\nከታች ያሉትን ቁልፎች በመጠቀም አገልግሎቱን ማግኘት ይችላሉ።", {
-    reply_markup: mainKeyboard,
-  });
-});
-
-// 5. ቦቱን ማስነሳት
-bot.start();
-
 // አሁን አክቲቭ የሆኑ ተጠቃሚዎች መያዣ (socket.id -> userId)
 const activeUsersMap = new Map();
 
-if (process.env.NODE_ENV === 'production' && process.env.RENDER_EXTERNAL_URL) {
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
+
+if (process.env.NODE_ENV === 'production' && RENDER_URL) {
   // Webhook handler ለ ቦቱ
   app.use('/webhook', webhookCallback(bot, 'express'));
 }
@@ -111,7 +79,7 @@ app.post('/api/withdraw', (req, res) => {
 
 app.get('/api/user', (req, res) => {
   const { id } = req.query;
-  
+ 
   if (id && id !== 'GUEST_USER') {
     registeredUsersSet.add(String(id));
   }
@@ -173,8 +141,7 @@ io.on('connection', (socket) => {
 
     const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
     if (exists) return;
-
-    const currentBalance = userBalances[uid] || 0;
+ const currentBalance = userBalances[uid] || 0;
     if (currentBalance < STAKE_PER_NUMBER) {
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን አስቀድመው ሂሳብዎን ይሙሉ::' });
       return;
@@ -187,7 +154,8 @@ io.on('connection', (socket) => {
       userId: uid,
       userName: userName || `ተጫዋች_${uid}`
     });
- const s = getGameStats();
+
+    const s = getGameStats();
     io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
     socket.emit('balance_updated', { balance: userBalances[uid] });
   });
@@ -284,14 +252,6 @@ setInterval(() => {
 // --- SERVER START ---
 const PORT = process.env.PORT || 10000;
 
-// Render ላይ ሲሆን Render በራሱ RENDER_EXTERNAL_URL የሚል Environment variable ይሰጥሃል
-const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
-
-// 1. Webhook Route ማዘጋጀት (Express app ካለህ)
-if (process.env.NODE_ENV === 'production' && RENDER_URL) {
-  app.use('/webhook', express.json(), webhookCallback(bot, 'express'));
-}
-
 server.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
 
@@ -302,12 +262,10 @@ server.listen(PORT, async () => {
 
     try {
       if (process.env.NODE_ENV === 'production' && RENDER_URL) {
-        // 2. Production (Render) ላይ Webhook መጠቀም
         const webhookUrl = `${RENDER_URL}/webhook`;
         await bot.api.setWebhook(webhookUrl, { drop_pending_updates: true });
         console.log(`🤖 Telegram Bot set up with Webhook: ${webhookUrl}`);
       } else {
-        // 3. Local (በላፕቶፕህ) ላይ ሲሆን Polling መጠቀም
         await bot.api.deleteWebhook({ drop_pending_updates: true });
         bot.start({
           drop_pending_updates: true,
