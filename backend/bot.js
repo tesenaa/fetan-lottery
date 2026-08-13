@@ -5,7 +5,7 @@ dotenv.config();
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 const API_BASE_URL = process.env.BACKEND_URL || 'https://fetan-lottery-backend.onrender.com';
-const WEB_APP_URL = process.env.WEB_APP_URL || 'https://fetan-lottery-irkk.vercel.app';
+const WEB_APP_URL = process.env.WEB_APP_URL || 'https://fetan-lottery.vercel.app';
 const TELEBIRR_NUMBER = process.env.TELEBIRR_NUMBER || '0920790583';
 
 // የባነር ምስልህ ሊንክ (የራስህን የሎጎ/ባነር ምስል URL እዚህ መተካት ትችላለህ)
