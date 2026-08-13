@@ -96,28 +96,41 @@ if (bot) {
   });
 
   // Register 📝
+  // Register 📝 በተን ሲነካ አውቶማቲክ መመዝገብ
   bot.callbackQuery('register', async (ctx) => {
     await ctx.answerCallbackQuery();
+    
     const userId = String(ctx.from?.id);
     const firstName = ctx.from?.first_name || '';
     const username = ctx.from?.username || '';
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/user/register`, {
-method: 'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, firstName, username })
       });
+
       if (res.ok) {
-        await ctx.reply('✅ በስኬት ተመዝግበዋል! አሁን "Play 🎮" የሚለውን በመጫን መጫወት ይችላሉ።');
+        await ctx.reply(
+          `🎉 *በስኬት ተመዝግበዋል!*\n\n` +
+          `አሁን መጫወት ለመጀመር የሚከተሉትን ደረጃዎች ይከተሉ፡\n` +
+         ` 1️⃣ *Deposit 💵* የሚለውን ተጭነው ሂሳብዎን ይሙሉ\n` +
+         ` 2️⃣ *Play 🎮* የሚለውን ተጭነው ጨዋታውን ይጀምሩ!`,
+          { parse_mode: 'Markdown' }
+        );
       } else {
-        await ctx.reply('ℹ️ ቀደም ሲል ተመዝግበዋል።');
+        await ctx.reply(
+         `ℹ️ *ቀደም ሲል ተመዝግበዋል!*\n\n` +
+          `አሁኑኑ መጫወት ለመጀመር *Play 🎮* የሚለውን ይጫኑ ወይም *Deposit 💵* በማድረግ ሂሳብዎን ይሙሉ፤`,
+          { parse_mode: 'Markdown' }
+        );
       }
     } catch (err) {
-      await ctx.reply('❌ የምዝገባ ስህተት አጋጥሟል።');
+      console.error('Registration Error:', err);
+      await ctx.reply('❌ የምዝገባ ስህተት አጋጥሟል። እባክዎን እንደገና ይሞክሩ።');
     }
   });
-
   // Deposit 💵
   bot.callbackQuery('deposit', async (ctx) => {
     await ctx.answerCallbackQuery();
