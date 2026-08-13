@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import https from 'https';
 import { bot } from './bot.js';
+import { webhookCallback } from 'grammy';
 
 const app = express();
 app.use(cors());
@@ -241,26 +242,36 @@ setInterval(() => {
 // --- SERVER START ---
 const PORT = process.env.PORT || 10000;
 
+// Render ላይ ሲሆን Render በራሱ RENDER_EXTERNAL_URL የሚል Environment variable ይሰጥሃል
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
+
+// 1. Webhook Route ማዘጋጀት (Express app ካለህ)
+if (process.env.NODE_ENV === 'production' && RENDER_URL) {
+  app.use('/webhook', express.json(), webhookCallback(bot, 'express'));
+}
+
 server.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
 
   if (bot) {
-    // 1. ቦቱ ከባድ ስህተት እንዳይፈጥር የሚያደርግ Error Handler
     bot.catch((err) => {
-      console.error('Telegram Bot Error:', err.message);
+      console.error('Bot Error:', err.message);
     });
 
     try {
-      // 2. የቀደሙትን Webhooks እና Pending messages ሙሉ በሙሉ ማፅዳት
-      await bot.api.deleteWebhook({ drop_pending_updates: true });
-
-      // 3. ቦቱን ማስነሳት
-      bot.start({
-        drop_pending_updates: true,
-        onStart: (botInfo) => {
-          console.log(`🤖 Telegram Bot (@${botInfo.username}) is running!`);
-        }
-      });
+      if (process.env.NODE_ENV === 'production' && RENDER_URL) {
+        // 2. Production (Render) ላይ Webhook መጠቀም
+        const webhookUrl = `${RENDER_URL}/webhook`;
+        await bot.api.setWebhook(webhookUrl, { drop_pending_updates: true });
+        console.log(`🤖 Telegram Bot set up with Webhook: ${webhookUrl}`);
+      } else {
+        // 3. Local (በላፕቶፕህ) ላይ ሲሆን Polling መጠቀም
+        await bot.api.deleteWebhook({ drop_pending_updates: true });
+        bot.start({
+          drop_pending_updates: true,
+          onStart: (botInfo) => console.log(`🤖 Telegram Bot (@${botInfo.username}) started locally!`),
+        });
+      }
     } catch (err) {
       console.error('Bot start error:', err);
     }
