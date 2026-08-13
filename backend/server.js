@@ -3,6 +3,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import https from 'https';
+import { Bot } from '.bot.js';
 
 const app = express();
 app.use(cors());
@@ -16,6 +17,13 @@ const io = new Server(server, {
   },
   transports: ['polling', 'websocket']
 });
+
+// ቦቱን እንዲነሳ ማድረግ
+if (bot) {
+  bot.start();
+  onStart: 
+  console.log('🤖 Telegram Bot is running...');
+}
 
 // --- STATE VARIABLES ---
 let selectedNumbers = [];
