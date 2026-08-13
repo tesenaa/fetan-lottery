@@ -4,8 +4,8 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import https from 'https';
 import { bot } from './bot.js';
-import { webhookCallback } from 'grammY';
-import { Keyboard } from 'grammY';
+import { webhookCallback } from 'grammy';
+import { Keyboard } from 'grammy';
 
 // WEB_APP_URL - ትክክለኛውን የ Vercel WebApp URL አስገባ
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery-frontend.vercel.app";
