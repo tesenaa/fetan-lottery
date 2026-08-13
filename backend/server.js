@@ -245,11 +245,18 @@ server.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
 
   if (bot) {
+    // 1. ቦቱ ከባድ ስህተት እንዳይፈጥር የሚያደርግ Error Handler
+    bot.catch((err) => {
+      console.error('Telegram Bot Error:', err.message);
+    });
+
     try {
-      // የቀደሙ የቆዩ Webhook እና Pending Updates ማፅዳት
+      // 2. የቀደሙትን Webhooks እና Pending messages ሙሉ በሙሉ ማፅዳት
       await bot.api.deleteWebhook({ drop_pending_updates: true });
 
+      // 3. ቦቱን ማስነሳት
       bot.start({
+        drop_pending_updates: true,
         onStart: (botInfo) => {
           console.log(`🤖 Telegram Bot (@${botInfo.username}) is running!`);
         }
