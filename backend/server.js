@@ -240,12 +240,22 @@ setInterval(() => {
 
 // --- SERVER START ---
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
-// ቦቱን እንዲነሳ ማድረግ
-if (bot) {
-  bot.start({
-    onStart: (botInfo) => {
-      console.log(`🤖 Telegram Bot (@${botInfo.username}) is running!`);
+
+server.listen(PORT, async () => {
+  console.log(`Server is running on port ${PORT}`);
+
+  if (bot) {
+    try {
+      // የቀደሙ የቆዩ Webhook እና Pending Updates ማፅዳት
+      await bot.api.deleteWebhook({ drop_pending_updates: true });
+
+      bot.start({
+        onStart: (botInfo) => {
+          console.log(`🤖 Telegram Bot (@${botInfo.username}) is running!`);
+        }
+      });
+    } catch (err) {
+      console.error('Bot start error:', err);
     }
-  });
-}
+  }
+});
