@@ -8,19 +8,28 @@ const API_BASE_URL = process.env.BACKEND_URL || 'https://fetan-lottery-backend.o
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://fetan-lottery.vercel.app';
 const TELEBIRR_NUMBER = process.env.TELEBIRR_NUMBER || '0920790583';
 
-// የባነር ምስልህ ሊንክ (የራስህን የሎጎ/ባነር ምስል URL እዚህ መተካት ትችላለህ)
+// የባነር ምስልህ ሊንክ
 const BANNER_IMAGE_URL = process.env.BANNER_IMAGE_URL || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800';
 
 export const bot = botToken ? new Bot(botToken) : null;
 
 if (bot) {
   // 1. ከታች ግራ በኩል ሰማያዊውን "≡ Menu" በተን ማዘጋጀት
-  bot.api.setMyCommands([
+  await bot.api.setMyCommands([
     { command: "start", description: "ዋና ሜኑን ለመክፈት" },
     { command: "help", description: "እርዳታ ለማግኘት" }
   ]);
 
-  // 2. Inline Keyboard (ከመልእክቱ ስር ተያይዘው የሚመጡ በተኖች)
+  // 2. Menu Button ሲነካ ቀጥታ Web App እንዲከፍት ማድረግ
+  await bot.api.setChatMenuButton({
+    menu_button: {
+      type: 'web_app',
+      text: 'Play 🎮',
+      web_app: { url: WEB_APP_URL }
+    }
+  });
+
+  // 3. Inline Keyboard (ከመልእክቱ ስር ተያይዘው የሚመጡ በተኖች)
   const mainInlineMenu = new InlineKeyboard()
     .webApp('Play 🎮', WEB_APP_URL).text('Register 📝', 'register').row()
     .text('Check Balance 💵', 'check_balance').text('Deposit 💵', 'deposit').row()
@@ -28,7 +37,7 @@ if (bot) {
     .text('Transfer 🎁', 'transfer').text('Withdraw 🤑', 'withdraw').row()
     .text('Invite 🔗', 'invite').text('Convert Bonus 💱', 'convert');
 
-  // 3. /start ትእዛዝ ሲላክ
+  // 4. /start ትእዛዝ ሲላክ
   bot.command('start', async (ctx) => {
     const userId = String(ctx.from?.id);
     const firstName = ctx.from?.first_name || '';
@@ -47,25 +56,26 @@ if (bot) {
     const captionText = `👋 Welcome to Fetan Lottery! Choose an option below.\n\n` +
                         `እንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወት ይችላሉ።`;
 
-    // 1. አስቀድሞ የነበረውን የታችኛውን ኪቦርድ ማስወገድ
-    try {
-      await ctx.reply('ላንዴ ጊዜ የሚወገድ...', {
-        reply_markup: { remove_keyboard: true }
-      });
-    } catch (e) {}
-
-    // 2. ምስሉን እና Inline Keyboard-ኡን ብቻ መላክ
+    // የቀደመውን ተደራራቢ Reply Keyboard ለማጥፋት እና ምስሉን መላክ
     try {
       await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
         caption: captionText,
-        reply_markup: mainInlineMenu
+        reply_markup: {
+          inline_keyboard: mainInlineMenu.inline_keyboard,
+          remove_keyboard: true
+        }
       });
     } catch (err) {
-      await ctx.reply(captionText, { reply_markup: mainInlineMenu });
+      await ctx.reply(captionText, {
+        reply_markup: {
+          inline_keyboard: mainInlineMenu.inline_keyboard,
+          remove_keyboard: true
+        }
+      });
     }
   });
 
-  // --- 4. INLINE BUTTON HANDLERS ---
+  // --- 5. INLINE BUTTON HANDLERS ---
 
   // Check Balance 💵
   bot.callbackQuery('check_balance', async (ctx) => {
@@ -101,7 +111,7 @@ if (bot) {
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/user/register`, {
-        method: 'POST',
+method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, firstName, username })
       });
@@ -114,7 +124,8 @@ if (bot) {
       await ctx.reply('❌ የምዝገባ ስህተት አጋጥሟል።');
     }
   });
-// Deposit 💵
+
+  // Deposit 💵
   bot.callbackQuery('deposit', async (ctx) => {
     await ctx.answerCallbackQuery();
     await ctx.reply(
