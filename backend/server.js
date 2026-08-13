@@ -4,7 +4,11 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import https from 'https';
 import { bot } from './bot.js';
-import { webhookCallback } from 'grammy';
+import { webhookCallback } from 'grammY';
+import { Keyboard } from 'grammY';
+
+// WEB_APP_URL - ትክክለኛውን የ Vercel WebApp URL አስገባ
+const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery-frontend.vercel.app";
 
 const app = express();
 app.use(cors());
@@ -29,6 +33,24 @@ let userBalances = {};
 
 // ሁሉንም የተመዘገቡ ተጠቃሚዎች መያዣ (Unique User IDs)
 const registeredUsersSet = new Set();
+
+// በምስሉ ላይ ባለው ቅደም ተከተል ያዘጋጀው Keyboard
+// 1. የ Keyboard አቀማመጥ ማዘጋጀት
+const mainKeyboard = new Keyboard()
+  .webApp("Play 🎮", WEB_APP_URL).text("Register 📝").row()
+  .text("Check Balance 💵").text("Deposit 💵").row()
+  .text("Contact Support ☎️").text("Instruction 📖").row()
+  .text("Transfer 🎁").text("Withdraw 🤑").row()
+  .text("Invite 🔗").text("Convert Bonus 💱")
+  .resized()
+  .persistent(); // <--- ይህት ወሳኝ ናት! Keyboard-ኡ ተጠቃሚው የሆነ ነገር ሲነካ እንኳን እንዳይጠፋ ያደርገዋል!
+
+// 2. /start ሲባል Keyboard-ኡን መላክ
+bot.command("start", async (ctx) => {
+  await ctx.reply("እንኳን ወደ Fetan Lottery በደህና መጡ! 🎯\nከታች ያሉትን ቁልፎች በመጠቀም መጫወት ይችላሉ::", {
+    reply_markup: mainKeyboard,
+  });
+});
 
 // አሁን አክቲቭ የሆኑ ተጠቃሚዎች መያዣ (socket.id -> userId)
 const activeUsersMap = new Map();
