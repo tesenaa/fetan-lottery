@@ -18,15 +18,6 @@ const io = new Server(server, {
   transports: ['polling', 'websocket']
 });
 
-// ቦቱን እንዲነሳ ማድረግ
-if (bot) {
-  bot.start({
-    onStart: (botInfo) => {
-      console.log(`🤖 Telegram Bot (@${botInfo.username}) is running!`);
-    }
-  });
-}
-
 // --- STATE VARIABLES ---
 let selectedNumbers = [];
 let timeLeft = 50;
@@ -248,5 +239,13 @@ setInterval(() => {
 }, 1000);
 
 // --- SERVER START ---
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+// ቦቱን እንዲነሳ ማድረግ
+if (bot) {
+  bot.start({
+    onStart: (botInfo) => {
+      console.log(`🤖 Telegram Bot (@${botInfo.username}) is running!`);
+    }
+  });
+}

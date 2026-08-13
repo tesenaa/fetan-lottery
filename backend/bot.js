@@ -1,4 +1,4 @@
- import { Bot, Keyboard } from 'grammy';
+import { Bot, Keyboard } from 'grammy';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -57,7 +57,7 @@ if (bot) {
         const playWallet = data.playWallet || 0;
 
         await ctx.reply(
-          `💰 *የእርስዎ የሂሳብ መጠን (Balance)*:\n\n` +
+         `💰 *የእርስዎ የሂሳብ መጠን (Balance)*:\n\n` +
           `• *Main Wallet:* ${mainWallet} ETB\n` +
           `• *Play Wallet:* ${playWallet} ETB`,
           { parse_mode: 'Markdown' }
@@ -124,7 +124,7 @@ if (bot) {
       await ctx.reply('❌ የኔትወርክ ስህተት አጋጥሟል።');
     }
   });
-             // Invite 🔗
+ // Invite 🔗
   bot.hears('Invite 🔗', async (ctx) => {
     const userId = ctx.from?.id;
     const inviteLink = `https://t.me/fetan_lottery_bot?start=${userId}`;
