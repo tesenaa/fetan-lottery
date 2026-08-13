@@ -33,6 +33,11 @@ const registeredUsersSet = new Set();
 // አሁን አክቲቭ የሆኑ ተጠቃሚዎች መያዣ (socket.id -> userId)
 const activeUsersMap = new Map();
 
+if (process.env.NODE_ENV === 'production' && process.env.RENDER_EXTERNAL_URL) {
+  // Webhook handler ለ ቦቱ
+  app.use('/webhook', webhookCallback(bot, 'express'));
+}
+
 // --- HELPER FUNCTIONS ---
 function formatUserCount(num) {
   if (num >= 10000) {
