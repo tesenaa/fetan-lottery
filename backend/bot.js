@@ -1,4 +1,4 @@
-import { Bot, Keyboard } from 'grammy';
+import { Bot, InlineKeyboard } from 'grammy';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -8,25 +8,33 @@ const API_BASE_URL = process.env.BACKEND_URL || 'https://fetan-lottery-backend.o
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://fetan-lottery-irkk.vercel.app';
 const TELEBIRR_NUMBER = process.env.TELEBIRR_NUMBER || '0920790583';
 
+// የባነር ምስልህ ሊንክ (የራስህን የሎጎ/ባነር ምስል URL እዚህ መተካት ትችላለህ)
+const BANNER_IMAGE_URL = process.env.BANNER_IMAGE_URL || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800';
+
 export const bot = botToken ? new Bot(botToken) : null;
 
 if (bot) {
-  // 1. የዋናው ኪቦርድ ማዋቀሪያ ( Reply Keyboard Menu )
-  const mainMenu = new Keyboard()
-    .webApp('Play 🎮', WEB_APP_URL).text('Register 📝').row()
-    .text('Check Balance 💵').text('Deposit 💵').row()
-    .text('Contact Support ☎️').text('Instruction 📖').row()
-    .text('Transfer 🎁').text('Withdraw 🤑').row()
-    .text('Invite 🔗').text('Convert Bonus 💱')
-    .resized()
-    .persistent();
+  // 1. ከታች ግራ በኩል ሰማያዊውን "≡ Menu" በተን ማዘጋጀት
+  bot.api.setMyCommands([
+    { command: "start", description: "ዋና ሜኑን ለመክፈት" },
+    { command: "help", description: "እርዳታ ለማግኘት" }
+  ]);
 
-  // 2. /start ትእዛዝ ሲላክ
+  // 2. Inline Keyboard (ከመልእክቱ ስር ተያይዘው የሚመጡ በተኖች)
+  const mainInlineMenu = new InlineKeyboard()
+    .webApp('Play 🎮', WEB_APP_URL).text('Register 📝', 'register').row()
+    .text('Check Balance 💵', 'check_balance').text('Deposit 💵', 'deposit').row()
+    .text('Contact Support ☎️', 'support').text('Instruction 📖', 'instruction').row()
+    .text('Transfer 🎁', 'transfer').text('Withdraw 🤑', 'withdraw').row()
+    .text('Invite 🔗', 'invite').text('Convert Bonus 💱', 'convert');
+
+  // 3. /start ትእዛዝ ሲላክ
   bot.command('start', async (ctx) => {
     const userId = String(ctx.from?.id);
     const firstName = ctx.from?.first_name || '';
     const username = ctx.from?.username || '';
 
+    // ተጠቃሚውን በዳታቤዝ የመመዝገብ ተግባር
     try {
       await fetch(`${API_BASE_URL}/api/user/register`, {
         method: 'POST',
@@ -37,14 +45,26 @@ if (bot) {
       console.error('Registration fetch error:', err);
     }
 
-    await ctx.reply(
-      `እንኳን ወደ Fetan Lottery በደህና መጡ! 🎯\n\nከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወትና አገልግሎቶችን ማግኘት ይችላሉ።`,
-      { reply_markup: mainMenu }
-    );
+    const captionText = `👋 Welcome to Fetan Lottery! Choose an option below.\n\n` +
+                        `እንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወት ይችላሉ።`;
+
+    // ፎቶውን ከነ በተኖቹ አብሮ መላክ
+    try {
+      await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
+        caption: captionText,
+        reply_markup: mainInlineMenu
+      });
+    } catch (err) {
+      // ፎቶው ካልሰራ በጽሁፍ ብቻ ይልካል
+      await ctx.reply(captionText, { reply_markup: mainInlineMenu });
+    }
   });
 
-  // 3. Check Balance 💵
-  bot.hears('Check Balance 💵', async (ctx) => {
+  // --- 4. INLINE BUTTON HANDLERS ---
+
+  // Check Balance 💵
+  bot.callbackQuery('check_balance', async (ctx) => {
+    await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
     try {
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
@@ -67,8 +87,9 @@ if (bot) {
     }
   });
 
-  // 4. Register 📝
-  bot.hears('Register 📝', async (ctx) => {
+  // Register 📝
+  bot.callbackQuery('register', async (ctx) => {
+    await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
     const firstName = ctx.from?.first_name || '';
     const username = ctx.from?.username || '';
@@ -88,9 +109,9 @@ if (bot) {
       await ctx.reply('❌ የምዝገባ ስህተት አጋጥሟል።');
     }
   });
-
-  // 5. Deposit 💵
-  bot.hears('Deposit 💵', async (ctx) => {
+// Deposit 💵
+  bot.callbackQuery('deposit', async (ctx) => {
+    await ctx.answerCallbackQuery();
     await ctx.reply(
       `📥 *ገንዘብ ገቢ ማድረጊያ (Telebirr Deposit)*\n\n` +
       `ገንዘብ ገቢ ለማድረግ በሚከተለው የቴሌብር ቁጥር ያስገቡ፡\n\n` +
@@ -100,8 +121,9 @@ if (bot) {
     );
   });
 
-  // 6. Withdraw 🤑
-  bot.hears('Withdraw 🤑', async (ctx) => {
+  // Withdraw 🤑
+  bot.callbackQuery('withdraw', async (ctx) => {
+    await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
     try {
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
@@ -121,10 +143,12 @@ if (bot) {
       await ctx.reply('❌ የኔትወርክ ስህተት አጋጥሟል።');
     }
   });
- // 7. Invite 🔗
-  bot.hears('Invite 🔗', async (ctx) => {
+
+  // Invite 🔗
+  bot.callbackQuery('invite', async (ctx) => {
+    await ctx.answerCallbackQuery();
     const userId = ctx.from?.id;
-    const inviteLink = `https://t.me/TesFetanlottery_bot?start=${userId}`;
+    const inviteLink = `https://t.me/fetan_lottery_bot?start=${userId}`;
     await ctx.reply(
       `🔗 *የእርስዎ ልዩ የሪፌራል ሊንክ*:\n\n${inviteLink}\n\n` +
       `ይህንን ሊንክ ለጓደኞችዎ በመላክ የእያንዳንዱ ጋበዙት ተጫዋች ቦነስ ያግኙ!`,
@@ -132,13 +156,15 @@ if (bot) {
     );
   });
 
-  // 8. Contact Support ☎️
-  bot.hears('Contact Support ☎️', async (ctx) => {
+  // Support ☎️
+  bot.callbackQuery('support', async (ctx) => {
+    await ctx.answerCallbackQuery();
     await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @fetan_support_admin');
   });
 
-  // 9. Instruction 📖
-  bot.hears('Instruction 📖', async (ctx) => {
+  // Instruction 📖
+  bot.callbackQuery('instruction', async (ctx) => {
+    await ctx.answerCallbackQuery();
     await ctx.reply(
       `📖 *የጨዋታው መመሪያ*:\n\n` +
       `1. "Play 🎮" የሚለውን ተጭነው WebApp ይክፈቱ።\n` +
@@ -148,13 +174,15 @@ if (bot) {
     );
   });
 
-  // 10. Transfer 🎁
-  bot.hears('Transfer 🎁', async (ctx) => {
+  // Transfer 🎁
+  bot.callbackQuery('transfer', async (ctx) => {
+    await ctx.answerCallbackQuery();
     await ctx.reply('🎁 ለሌላ ተጫዋች ገንዘብ ለማስተላለፍ በ WebApp ውስጥ ያለውን Transfer ገፅ ይጠቀሙ።');
   });
 
-  // 11. Convert Bonus 💱
-  bot.hears('Convert Bonus 💱', async (ctx) => {
+  // Convert Bonus 💱
+  bot.callbackQuery('convert', async (ctx) => {
+    await ctx.answerCallbackQuery();
     await ctx.reply('💱 Play Wallet ቦነስን ወደ Main Wallet ለመቀየር አነስተኛው መጠን 100 ETB መሆን አለበት።');
   });
 
