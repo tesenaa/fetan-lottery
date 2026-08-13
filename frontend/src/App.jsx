@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-// 1. የ BACKEND ማገናኛ URL (SERVER CONNECTION)
 const API_BASE_URL = "https://fetan-lottery-backend.onrender.com";
 
-// 1000 ቁጥሮች እንዳይዘገዩ በ React.memo የተሰራ የቁጥር በተን
+// 1. የቁጥር ቦርድ ቁልፎች (1000 ቁጥሮች ለብቻቸው Optimized ሆነው የቀረቡ)
 const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) => {
   let bgColor = '#2a2a40';
   if (isMine) bgColor = '#22c55e';
@@ -32,14 +31,20 @@ const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) =
 });
 
 export default function App() {
-  // 2. የ SOCKET.IO ግንኙነት ማዘጋጃ (WEBSOCKET SETUP)
-  const socket = useMemo(() => io(API_BASE_URL, {
-  autoConnect: true,
-  transports: ['polling', 'websocket'],
-  query: { userId }
-}), [userId]);
+  // 2. የቴሌግራም ተጠቃሚ መረጃ (Telegram WebApp Data)
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const userId = tgUser?.id ? String(tgUser.id) : 'GUEST_USER';
+  const userName = tgUser ? (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')) : 'ተጫዋች';
+  const userPhone = tgUser?.username ? `@${tgUser.username}` : userId;
+  const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
 
-  // 3. የሁኔታዎች እና ዳታዎች ማከማቻ (STATE VARIABLES)
+  // 3. States & Socket Setup
+  const socket = useMemo(() => io(API_BASE_URL, {
+    autoConnect: true,
+    transports: ['polling', 'websocket'],
+    query: { userId }
+  }), [userId]);
+
   const [currentTab, setCurrentTab] = useState('game');
   const [currentScreen, setCurrentScreen] = useState('home');
   const [stake, setStake] = useState(10);
@@ -61,18 +66,12 @@ export default function App() {
   const [winnerInfo, setWinnerInfo] = useState(null);
   const [depAmount, setDepAmount] = useState('');
   const [withAmount, setWithAmount] = useState('');
+  const [gameHistory, setGameHistory] = useState([]);
+  const [copiedLink, setCopiedLink] = useState(false);
 
-  // የ 1000 ቁጥሮች Array ለአንድ ጊዜ ብቻ እንዲፈጠር Optimization
   const numbersArray = useMemo(() => Array.from({ length: 1000 }, (_, i) => i + 1), []);
 
-  // 4. የ TELEGRAM ተጠቃሚ መረጃ መቀበያ (TELEGRAM USER DATA)
-  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-  const userId = tgUser?.id ? String(tgUser.id) : 'GUEST_USER';
-  const userName = tgUser ? (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')) : 'ተጫዋች';
-  const userPhone = tgUser?.username ? `@${tgUser.username}` : userId;
-  const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
-
-  // 5. የቦርድ ስታቲስቲክስ ማስያ (BOARD STATS CALCULATOR)
+  // 4. ቦርድ ስታቲስቲክስ
   const updateBoardStats = useCallback((allSelectedList) => {
     if (allSelectedList && Array.isArray(allSelectedList)) {
       const uniquePlayers = new Set(
@@ -83,7 +82,7 @@ export default function App() {
     }
   }, [stake]);
 
-  // 6. የተጠቃሚውን የዋሌት መረጃ ከ API መሳቢያ (FETCH USER DATA)
+  // 5. የተጠቃሚ መረጃዎችን ከ API መሳብ
   const fetchUserData = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`, {
@@ -96,16 +95,16 @@ export default function App() {
         setGamesWon(data.gamesWon || 0);
         setTotalInvite(data.totalInvite || 0);
         setTotalGames(data.totalGames || 0);
+        setGameHistory(data.history || []);
       }
     } catch (err) {
       console.error("Data Fetch Error:", err);
     }
   }, [userId]);
-// 7. የ SOCKET LISTENERS
+ // 6. የ Socket.io አዳምጮች (Listeners)
   useEffect(() => {
     socket.on("connect", () => console.log("✅ Socket ተገናኝቷል! ID:", socket.id));
     socket.on("connect_error", (err) => console.log("❌ Socket ስህተት:", err.message));
-
     return () => {
       socket.off("connect");
       socket.off("connect_error");
@@ -158,15 +157,13 @@ export default function App() {
       }
     });
 
-    // በቂ ሂሳብ ከሌለው Alert እንዲያሳይ
-socket.on('error_message', (data) => {
-  alert(data.message);
-});
+    socket.on('error_message', (data) => {
+      alert(data.message);
+    });
 
-// ብር ሲቆረጥ ወይም ሲመለስ በስክሪኑ ላይ ያለው Balance እንዲቀየር
-socket.on('balance_updated', (data) => {
-  setMainWallet(data.balance);
-});
+    socket.on('balance_updated', (data) => {
+      setMainWallet(data.balance);
+    });
 
     socket.on('stats_updated', (data) => {
       if (!data) return;
@@ -178,6 +175,7 @@ socket.on('balance_updated', (data) => {
       if (!data || data.winningNumber === 'NONE') return;
       setPhase('spinning');
       setWinningNumber('SPINNING');
+
       spinTimeout = setTimeout(() => {
         setPhase('result');
         const winNum = data.winningNumber;
@@ -190,19 +188,19 @@ socket.on('balance_updated', (data) => {
         if (winItem) {
           setWinnerInfo({
             number: winNum,
-            userName: winItem.userName ||`user_${winItem.userId}`,
+            userName: winItem.userName || `user_${winItem.userId}`,
             derash: winAmount
           });
 
-          // አውቶማቲክ ክፍያ፡ ደራሹ የወጣለት ሰው እኛ ከሆንን ገንዘቡ አውቶማቲካሊ ዋሌታችን ውስጥ እንዲገባ ማድረግ
           if (String(winItem.userId) === String(userId)) {
             setMainWallet(prev => prev + winAmount);
             setGamesWon(prev => prev + 1);
             alert(`🎉 እንኳን ደስ አለዎት! ዕጣው በቁጥር #${winNum} ለእርስዎ ወጥቷል! ${winAmount} ETB ወደ ዋሌትዎ ገቢ ሆኗል።`);
           }
         }
-        
+
         fetchUserData();
+
         resultTimeout = setTimeout(() => {
           setSelectedNumbers([]);
           setAllPickedNumbers([]);
@@ -218,7 +216,7 @@ socket.on('balance_updated', (data) => {
 
     socket.on('reset_game', (data) => {
       clearTimeout(spinTimeout);
-      clearTimeout(resultTimeout);
+       clearTimeout(resultTimeout);
       setSelectedNumbers([]);
       setAllPickedNumbers([]);
       setWinningNumber('?');
@@ -228,7 +226,8 @@ socket.on('balance_updated', (data) => {
       setPlayerCount(0);
       setDerash(0);
     });
- return () => {
+
+    return () => {
       socket.off('init_state');
       socket.off('timer_tick');
       socket.off('board_updated');
@@ -240,30 +239,22 @@ socket.on('balance_updated', (data) => {
     };
   }, [socket, userId, updateBoardStats, fetchUserData, derash]);
 
-  // 8. ቁጥር የመምረጥ እና የዋሌት ቅናሽ/ተመላሽ ማረጋገጫ ተግባር
+  // 7. ቁጥር መምረጫ እና ማስወገጃ Logic
   const toggleNumber = useCallback((num) => {
     if (phase !== 'selecting') return;
 
-    // ቁጥሩ ቀደም ሲል ከተመረጠ (Deselect ሊደረግ ከሆነ) -> ገንዘቡን መመለስ
     if (selectedNumbers.includes(num)) {
       setSelectedNumbers(prev => prev.filter(n => n !== num));
       setAllPickedNumbers(prev => prev.filter(n => n !== num));
-      
-      // ከ playWallet ወይም ከ mainWallet ከተቀነሰ መልሶ መጨመር
       setMainWallet(prev => prev + stake);
-      
       socket.emit('deselect_number', { numberChosen: num, userId });
-    } 
-    // አዲስ ቁጥር ሊመረጥ ከሆነ -> የቀሪ ሂሳብ ማረጋገጫ (Wallet Check)
-    else {
+    } else {
       const totalAvailableBalance = mainWallet + playWallet;
-
       if (totalAvailableBalance < stake) {
         alert("⚠️ የእርስዎ ቀሪ ሂሳብ በቂ አይደለም! እባክዎን አስቀድመው ገንዘብ ያስገቡ።");
         return;
       }
 
-      // ከዋሌት ላይ ገንዘቡን መቀነስ (ቅድሚያ ከ Play Wallet፣ ካለቀ ከ Main Wallet)
       if (playWallet >= stake) {
         setPlayWallet(prev => prev - stake);
       } else {
@@ -278,16 +269,13 @@ socket.on('balance_updated', (data) => {
     }
   }, [phase, selectedNumbers, mainWallet, playWallet, stake, socket, userId, userName]);
 
-  // 9. ገመዝ የማስገባት እና የማውጣት Handlerዎች
+  // 8. ዲፖዚት እና ዊዝድሮው Handlers
   const handleDeposit = async () => {
     if (!depAmount || Number(depAmount) <= 0) return alert("እባክዎ ትክክለኛ መጠን ያስገቡ!");
     try {
       const res = await fetch(`${API_BASE_URL}/api/deposit`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Bypass-Tunnel-Remainder': 'true'
-        },
+        headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Remainder': 'true' },
         body: JSON.stringify({ userId, amount: depAmount })
       });
       const data = await res.json();
@@ -297,7 +285,7 @@ socket.on('balance_updated', (data) => {
         alert("ገንዘቡ በተሳካ ሁኔታ ገቢ ሆኗል!");
       }
     } catch (err) {
-      alert("የገንዘብ ማስገባት ስህተት አጋጥሟል!");
+      alert("የገንዘብ ማስገባቱ ስህተት አጋጥሞታል!");
     }
   };
 
@@ -306,10 +294,7 @@ socket.on('balance_updated', (data) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/withdraw`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Bypass-Tunnel-Remainder': 'true'
-        },
+        headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Remainder': 'true' },
         body: JSON.stringify({ userId, amount: withAmount, phone: userPhone })
       });
       const data = await res.json();
@@ -319,14 +304,40 @@ socket.on('balance_updated', (data) => {
         setWithAmount('');
       }
     } catch (err) {
-      alert("የገንዘብ ማውጣት ስህተት አጋጥሟል!");
+      alert("የገንዘብ ማውጣቱ ስህተት አጋጥሞታል!");
     }
   };
 
-  // 10. MAIN UI RENDER
+ // 9. የሪፌራል ሊንክ ኮፒ ማድረጊያ
+  const copyReferralLink = () => {
+    const refLink = `https://t.me/fetan_lottery_bot?start=${userId}`;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(refLink)
+        .then(() => {
+          setCopiedLink(true);
+          setTimeout(() => setCopiedLink(false), 2000);
+        })
+        .catch((err) => console.error("Copy error:", err));
+    } else {
+      // Telegram WebApp ወይም ሌሎች ብራውዘሮች fallback
+      const textArea = document.createElement("textarea");
+      textArea.value = refLink;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand("copy");
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+      } catch (err) {
+        console.error("Fallback copy error:", err);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   return (
     <div style={{ maxWidth: '500px', margin: '0 auto', backgroundColor: '#0c0c1e', color: '#ffffff', height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', boxSizing: 'border-box', overflow: 'hidden' }}>
-      
       <style>{`
         @keyframes arrowSpin {
           0% { transform: rotate(0deg); }
@@ -336,9 +347,8 @@ socket.on('balance_updated', (data) => {
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #312e81; border-radius: 4px; }
       `}</style>
-
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
- {/* GAME TAB */}
+<div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {/* GAME TAB */}
         {currentTab === 'game' && (
           <>
             {/* HOME SCREEN */}
@@ -349,9 +359,7 @@ socket.on('balance_updated', (data) => {
                 </h1>
                 
                 <div style={{ width: '100%', backgroundColor: '#15152a', border: '1px solid #ef4444', borderRadius: '16px', padding: '24px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)', marginBottom: '20px', boxSizing: 'border-box' }}>
-                  <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px' }}>
-                    Choose Your Stake
-                  </div>
+                  <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px' }}>Choose Your Stake</div>
                   <button onClick={() => { setStake(10); setCurrentScreen('board'); }} style={{ width: '100%', backgroundColor: '#22c55e', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px' }}>
                     ► Play 10 ETB
                   </button>
@@ -405,13 +413,11 @@ socket.on('balance_updated', (data) => {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '0 8px 8px 8px', overflow: 'hidden' }}>
-                  
                   {/* GRID LIST (1 - 1000) */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
                     <div style={{ backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
                       {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
                     </div>
-
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
                       {numbersArray.map((num) => {
                         const isMine = selectedNumbers.includes(num);
@@ -440,18 +446,12 @@ socket.on('balance_updated', (data) => {
                         {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
                       </div>
                     </div>
-            {/* SPINNER ANIMATION */}
+ {/* SPINNER ANIMATION */}
                     <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
                       <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}>
                         🎰 የዕጣ ማውጫ
                       </div>
-                      <div style={{
-                        width: '110px', height: '110px', borderRadius: '50%', background: '#0d0d1a',
-                        border: winningNumber === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber !== '?' && winningNumber !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'),
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: winningNumber === 'SPINNING' ? '0 0 20px rgba(0, 242, 254, 0.6), inset 0 0 10px rgba(0, 242, 254, 0.4)' : (winningNumber !== '?' && winningNumber !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'),
-                        transition: 'all 0.3s ease', position: 'relative'
-                      }}>
+                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: '#0d0d1a', border: winningNumber === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber !== '?' && winningNumber !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: winningNumber === 'SPINNING' ? '0 0 20px rgba(0, 242, 254, 0.6), inset 0 0 10px rgba(0, 242, 254, 0.4)' : (winningNumber !== '?' && winningNumber !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'), transition: 'all 0.3s ease', position: 'relative' }}>
                         {winningNumber === 'SPINNING' ? (
                           <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="80" height="80" viewBox="0 0 100 100">
@@ -481,7 +481,7 @@ socket.on('balance_updated', (data) => {
                           አሸናፊ ቁጥር: #{winnerInfo.number}
                         </div>
                         <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: '600', marginTop: '6px' }}>
-                          👤 አሸናፊ፦ {winnerInfo.userName}
+                          👤 አሸናፊው፡ {winnerInfo.userName}
                         </div>
                       </div>
                     )}
@@ -494,13 +494,35 @@ socket.on('balance_updated', (data) => {
 
         {/* HISTORY TAB */}
         {currentTab === 'history' && (
-          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column' }}>
-               <h1 style={{ fontSize: '26px', fontWeight: 'bold', marginBottom: '16px' }}>Game History</h1>
-            <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '16px', marginBottom: '24px', border: '1px solid #2a2a4a' }}>
-              <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '6px' }}>Total Games</div>
+          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>📜 Game History</h1>
+ <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '16px', marginBottom: '20px', border: '1px solid #2a2a4a' }}>
+              <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '6px' }}>Total Games Played</div>
               <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{totalGames}</div>
             </div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ffffff' }}>Recent Games</div>
+
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff', marginBottom: '12px' }}>Recent Games</div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {gameHistory.length > 0 ? (
+                gameHistory.map((item, idx) => (
+                  <div key={idx} style={{ backgroundColor: '#181830', border: '1px solid #2a2a4a', borderRadius: '10px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#38bdf8' }}>Winning Num: #{item.winningNumber}</div>
+                      <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>Winner: {item.winnerName}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#22c55e' }}>+{item.derash} ETB</div>
+                      <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px' }}>{item.date || 'Recently'}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', color: '#6b7280', padding: '20px', fontSize: '13px' }}>
+                  ምንም የጨዋታ ታሪክ አልተገኘም።
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -526,8 +548,7 @@ socket.on('balance_updated', (data) => {
               <button onClick={() => setWalletTab('balance')} style={{ flex: 1, padding: '10px 0', borderRadius: '8px', border: 'none', backgroundColor: walletTab === 'balance' ? '#2a2a4a' : 'transparent', color: walletTab === 'balance' ? '#ffffff' : '#9ca3af', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}>Balance</button>
               <button onClick={() => setWalletTab('history')} style={{ flex: 1, padding: '10px 0', borderRadius: '8px', border: 'none', backgroundColor: walletTab === 'history' ? '#2a2a4a' : 'transparent', color: walletTab === 'history' ? '#ffffff' : '#9ca3af', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}>History</button>
             </div>
-
-            {walletTab === 'balance' && (
+ {walletTab === 'balance' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px', border: '1px solid #2a2a4a' }}>
@@ -562,35 +583,49 @@ socket.on('balance_updated', (data) => {
 
         {/* PROFILE TAB */}
         {currentTab === 'profile' && (
-          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10px', marginBottom: '24px' }}>
+          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10px', marginBottom: '20px' }}>
               <div style={{ width: '70px', height: '70px', borderRadius: '50%', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 'bold', color: '#ffffff', marginBottom: '12px' }}>
                 {userInitial}
               </div>
               <h2 style={{ fontSize: '22px', fontWeight: 'bold', margin: 0 }}>{userName}</h2>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '28px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
               <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px', border: '1px solid #2a2a4a' }}>
                 <div style={{ color: '#60a5fa', fontSize: '13px', marginBottom: '8px' }}>👛 Main Wallet</div>
-                <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{mainWallet} ETB</div>
+ <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{mainWallet} ETB</div>
               </div>
               <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px', border: '1px solid #2a2a4a' }}>
                 <div style={{ color: '#34d399', fontSize: '13px', marginBottom: '8px' }}>👛 Play Wallet</div>
-                <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{playWallet} ETB</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{playWallet} ETB</div>
               </div>
               <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px', border: '1px solid #2a2a4a' }}>
                 <div style={{ color: '#c084fc', fontSize: '13px', marginBottom: '8px' }}>🏆 Games Won</div>
-                <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{gamesWon}</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{gamesWon}</div>
               </div>
               <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px', border: '1px solid #2a2a4a' }}>
                 <div style={{ color: '#f87171', fontSize: '13px', marginBottom: '8px' }}>👥 Total Invite</div>
-                <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{totalInvite}</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{totalInvite}</div>
               </div>
+            </div>
+
+            {/* REFERRAL SYSTEM BOX */}
+            <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '16px', border: '1px solid #2a2a4a' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginTop: 0, marginBottom: '8px', color: '#f59e0b' }}>
+                🎁 ጓደኞችዎን ይጋብዙ (Invite Friends)
+              </h3>
+              <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px', lineHeight: '1.4' }}>
+                የእርስዎን የግብዣ ቪዲዮ/ሊንክ ለጓደኞችዎ በማጋራት በእያንዳንዱ የጋበዙት ሰው ተጨማሪ የPlay Wallet ቦነስ ያግኙ!
+              </p>
+              <button onClick={copyReferralLink} style={{ width: '100%', padding: '12px', backgroundColor: copiedLink ? '#10b981' : '#0284c7', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
+                {copiedLink ? '✓ የግብዣ ሊንኩ ተቀድቷል (Copied)' : '🔗 የግብዣ ሊንክ ቅዳ (Copy Invite Link)'}
+              </button>
             </div>
           </div>
         )}
       </div>
+
       {/* BOTTOM NAVIGATION MENU */}
       {currentScreen !== 'board' && (
         <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', backgroundColor: '#0f0f26', borderTop: '1px solid #2a2a50', padding: '6px 4px 8px 4px', flexShrink: 0, boxShadow: '0 -4px 12px rgba(0,0,0,0.4)' }}>
@@ -600,10 +635,11 @@ socket.on('balance_updated', (data) => {
           <button onClick={() => setCurrentTab('history')} style={{ background: 'none', border: 'none', color: currentTab === 'history' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
             <span style={{ fontSize: '18px' }}>📜</span> History
           </button>
-          <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color:  currentTab === 'wallet' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
+          <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color: currentTab === 'wallet' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
             <span style={{ fontSize: '18px' }}>👛</span> Wallet
           </button>
-          <button onClick={() => setCurrentTab('profile')} style={{ background: 'none', border: 'none', color: currentTab === 'profile' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
+          <button onClick={() => setCurrentTab('profile')} style={{ background: 'none', border: 'none', color: currentTab === 'profile' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius:
+ '8px' }}>
             <span style={{ fontSize: '18px' }}>👤</span> Profile
           </button>
         </div>
