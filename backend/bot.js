@@ -38,11 +38,12 @@ if (bot) {
     .text('Invite 🔗', 'invite').text('Convert Bonus 💱', 'convert');
 
   // 4. /start ትእዛዝ ሲላክ
-  bot.command('start', async (ctx) => {
+ bot.command('start', async (ctx) => {
     const userId = String(ctx.from?.id);
     const firstName = ctx.from?.first_name || '';
     const username = ctx.from?.username || '';
 
+    // የተጠቃሚውን መረጃ መመዝገብ
     try {
       await fetch(`${API_BASE_URL}/api/user/register`, {
         method: 'POST',
@@ -56,22 +57,14 @@ if (bot) {
     const captionText = `👋 Welcome to Fetan Lottery! Choose an option below.\n\n` +
                         `እንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወት ይችላሉ።`;
 
-    // የቀደመውን ተደራራቢ Reply Keyboard ለማጥፋት እና ምስሉን መላክ
+    // ቪዲዮው ላይ እንደሚታየው ምስሉን ከነ Inline Buttons መላክ
     try {
       await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
         caption: captionText,
-        reply_markup: {
-          inline_keyboard: mainInlineMenu.inline_keyboard,
-          remove_keyboard: true
-        }
+        reply_markup: mainInlineMenu
       });
     } catch (err) {
-      await ctx.reply(captionText, {
-        reply_markup: {
-          inline_keyboard: mainInlineMenu.inline_keyboard,
-          remove_keyboard: true
-        }
-      });
+      await ctx.reply(captionText, { reply_markup: mainInlineMenu });
     }
   });
 
