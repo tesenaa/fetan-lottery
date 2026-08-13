@@ -35,22 +35,37 @@ let userBalances = {};
 const registeredUsersSet = new Set();
 
 // በምስሉ ላይ ባለው ቅደም ተከተል ያዘጋጀው Keyboard
-// 1. የ Keyboard አቀማመጥ ማዘጋጀት
-const mainKeyboard = new Keyboard()
-  .webApp("Play 🎮", WEB_APP_URL).text("Register 📝").row()
-  .text("Check Balance 💵").text("Deposit 💵").row()
-  .text("Contact Support ☎️").text("Instruction 📖").row()
-  .text("Transfer 🎁").text("Withdraw 🤑").row()
-  .text("Invite 🔗").text("Convert Bonus 💱")
-  .resized()
-  .persistent(); // <--- ይህት ወሳኝ ናት! Keyboard-ኡ ተጠቃሚው የሆነ ነገር ሲነካ እንኳን እንዳይጠፋ ያደርገዋል!
+// 2. ቦቱን በ Token መክፈት
+const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN);
 
-// 2. /start ሲባል Keyboard-ኡን መላክ
+// 3. የ Keyboard አቀማመጥ ማዘጋጀት (ከታች እንዳይጠፋ persistent አድርገነዋል)
+const mainKeyboard = new Keyboard()
+  .webApp("Play 🎮", WEB_APP_URL)
+  .text("Register 📝")
+  .row()
+  .text("Check Balance 💵")
+  .text("Deposit 💵")
+  .row()
+  .text("Contact Support ☎️")
+  .text("Instruction 📖")
+  .row()
+  .text("Transfer 🎁")
+  .text("Withdraw 🤑")
+  .row()
+  .text("Invite 🔗")
+  .text("Convert Bonus 💱")
+  .resized()
+  .persistent(); // ተጠቃሚው የትኛውንም ቁልፍ ቢጫን Keyboard-ኡ አይጠፋም
+
+// 4. /start Command
 bot.command("start", async (ctx) => {
-  await ctx.reply("እንኳን ወደ Fetan Lottery በደህና መጡ! 🎯\nከታች ያሉትን ቁልፎች በመጠቀም መጫወት ይችላሉ::", {
+  await ctx.reply("እንኳን ወደ Fetan Lottery በደህና መጡ! 🎯\nከታች ያሉትን ቁልፎች በመጠቀም አገልግሎቱን ማግኘት ይችላሉ።", {
     reply_markup: mainKeyboard,
   });
 });
+
+// 5. ቦቱን ማስነሳት
+bot.start();
 
 // አሁን አክቲቭ የሆኑ ተጠቃሚዎች መያዣ (socket.id -> userId)
 const activeUsersMap = new Map();
