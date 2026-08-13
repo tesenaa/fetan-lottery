@@ -3,7 +3,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import https from 'https';
-import { Bot } from '.bot.js';
+import { bot } from './bot.js';
 
 const app = express();
 app.use(cors());
