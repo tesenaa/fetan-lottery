@@ -1,18 +1,19 @@
-import { Bot, Keyboard } from 'grammy';
+ import { Bot, Keyboard } from 'grammy';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
+const API_BASE_URL = process.env.BACKEND_URL || 'https://fetan-lottery-backend.onrender.com';
+const WEB_APP_URL = process.env.WEB_APP_URL || 'https://fetan-lottery-irkk.vercel.app';
+const TELEBIRR_NUMBER = process.env.TELEBIRR_NUMBER || '0920790583';
+
 export const bot = botToken ? new Bot(botToken) : null;
 
 if (bot) {
-  const webAppUrl = process.env.WEB_APP_URL || 'https://fetan-lottery-irkk.vercel.app';
-  const TELEBIRR_NUMBER = process.env.TELEBIRR_NUMBER || '0920790583';
-
-  // 1. Reply Keyboard (በምስሉ መሰረት የተቀናጀ)
+  // 1. የዋናው ኪቦርድ ማዋቀሪያ ( Reply Keyboard Menu )
   const mainMenu = new Keyboard()
-    .webApp('Play 🎮', webAppUrl).text('Register 📝').row()
+    .webApp('Play 🎮', WEB_APP_URL).text('Register 📝').row()
     .text('Check Balance 💵').text('Deposit 💵').row()
     .text('Contact Support ☎️').text('Instruction 📖').row()
     .text('Transfer 🎁').text('Withdraw 🤑').row()
@@ -20,76 +21,144 @@ if (bot) {
     .resized()
     .persistent();
 
-  // 2. /start ትእዛዝ
+  // 2. /start ትእዛዝ ሲላክ
   bot.command('start', async (ctx) => {
+    const userId = String(ctx.from?.id);
+    const firstName = ctx.from?.first_name || '';
+    const username = ctx.from?.username || '';
+
+    // ተጠቃሚውን በዳታቤዝ የመመዝገብ ተግባር
+    try {
+      await fetch(`${API_BASE_URL}/api/user/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, firstName, username })
+      });
+    } catch (err) {
+      console.error('Registration fetch error:', err);
+    }
+
     await ctx.reply(
-      'እንኳን ወደ Fetan Lottery በደህና መጡ! 🎯\n\nከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወትና አገልግሎቶችን ማግኘት ይችላሉ።',
+      `እንኳን ወደ Fetan Lottery በደህና መጡ! 🎯\n\nከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወትና አገልግሎቶችን ማግኘት ይችላሉ።`,
       { reply_markup: mainMenu }
     );
   });
 
-  // 3. የቁልፎች ምላሾች (Handlers)
+  // 3. የቁልፎቹ ተግባራት (Menu Handlers)
 
-  // Register
-  bot.hears('Register 📝', async (ctx) => {
-    await ctx.reply('ለመመዝገብ "Play 🎮" የሚለውን በመጫን WebApp ውስጥ ዝርዝር መረጃዎን ይሙሉ ወይም ስልክ ቁጥርዎን ያጋሩ።');
-  });
-
-  // Check Balance
+  // Check Balance 💵
   bot.hears('Check Balance 💵', async (ctx) => {
-    await ctx.reply(
-      '💰 *የእርስዎ የሂሳብ መጠን (Balance)*:\n\nMain Wallet: 0.00 ETB\nPlay Wallet: 0.00 ETB',
-      { parse_mode: 'Markdown' }
-    );
+    const userId = String(ctx.from?.id);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const mainWallet = data.mainWallet || 0;
+        const playWallet = data.playWallet || 0;
+
+        await ctx.reply(
+          `💰 *የእርስዎ የሂሳብ መጠን (Balance)*:\n\n` +
+          `• *Main Wallet:* ${mainWallet} ETB\n` +
+          `• *Play Wallet:* ${playWallet} ETB`,
+          { parse_mode: 'Markdown' }
+        );
+      } else {
+        await ctx.reply('⚠️ የመረጃ ስህተት አጋጥሟል። እባክዎን ቦቱን እንደገና /start በሉ።');
+      }
+    } catch (err) {
+      await ctx.reply('❌ የኔትወርክ ስህተት አጋጥሟል። እባክዎን ቆየት ብለው ይሞክሩ።');
+    }
   });
 
-  // Deposit
+  // Register 📝
+  bot.hears('Register 📝', async (ctx) => {
+    const userId = String(ctx.from?.id);
+    const firstName = ctx.from?.first_name || '';
+    const username = ctx.from?.username || '';
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/user/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, firstName, username })
+      });
+      if (res.ok) {
+        await ctx.reply('✅ በስኬት ተመዝግበዋል! አሁን "Play 🎮" የሚለውን በመጫን መጫወት ይችላሉ።');
+      } else {
+        await ctx.reply('ℹ️ ቀደም ሲል ተመዝግበዋል።');
+      }
+    } catch (err) {
+      await ctx.reply('❌ የምዝገባ ስህተት አጋጥሟል።');
+    }
+  });
+
+  // Deposit 💵
   bot.hears('Deposit 💵', async (ctx) => {
     await ctx.reply(
-      `📥 *ገንዘብ ገቢ ማድረጊያ (Telebirr deposit)*\n\n` +
-     `እባክዎን ማስገባት የሚፈልጉትን ገንዘብ በሚከተለው Telebirr ቁጥር ይላኩ፡\n\n` +
+      `📥 *ገንዘብ ገቢ ማድረጊያ (Telebirr Deposit)*\n\n` +
+      `ገንዘብ ገቢ ለማድረግ በሚከተለው የቴሌብር ቁጥር ያስገቡ፡\n\n` +
       `📱 *Telebirr Number:* \${TELEBIRR_NUMBER}\\n\n` +
-      `ገንዘቡን ከላኩ በኋላ Transaction ID/SMS ለስፖርት ይላኩ።`,
+      `ክፍያውን እንደፈፀሙ የወጣውን የትራንዛክሽን SMS/ID ለቀጥታ ረዳታችን ይላኩ።`,
       { parse_mode: 'Markdown' }
     );
   });
 
-  // Contact Support
-  bot.hears('Contact Support ☎️', async (ctx) => {
-    await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @fetan_support_admin');
-  });
-
-  // Instruction
-  bot.hears('Instruction 📖', async (ctx) => {
-    await ctx.reply(
-      '📖 *የጨዋታው መመሪያ*:\n\n1. "Play 🎮" በመጫን ጨዋታውን ይጀምሩ።\n2. ቁጥር ይምረጡና እድልዎን ይሞክሩ።\n3. ከቀረቡት አማራጮች የቴሌብር ክፍያ በመፈጸም መጫወት ይችላሉ።',
-      { parse_mode: 'Markdown' }
-    );
-  });
-
-  // Transfer
-  bot.hears('Transfer 🎁', async (ctx) => {
-    await ctx.reply('🎁 ለሌላ ተጫዋች ገንዘብ ለማስተላለፍ የላኪውን User ID እና መጠን ያስገቡ።');
-  });
-
-  // Withdraw
+  // Withdraw 🤑
   bot.hears('Withdraw 🤑', async (ctx) => {
-    await ctx.reply('ወደ Telebirr Accountዎ ገንዘብ ለማውጣት የጠየቁት መጠን ከ 50 ETB በላይ መሆን አለበት።');
-  });
+    const userId = String(ctx.from?.id);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const mainWallet = data.mainWallet || 0;
 
-  // Invite
+        await ctx.reply(
+          `📤 *ገንዘብ ማውጫ (Withdrawal)*\n\n` +
+          `• *ያልዎት ቀሪ ሂሳብ:* ${mainWallet} ETB\n` +
+          `• *አነስተኛ ወጪ ማድረጊያ:* 50 ETB\n\n` +
+          `ገንዘብ ለማውጣት በ WebApp ውስጥ ያለውን Wallet ገፅ ይጠቀሙ ወይም አስተዳዳሪውን ያናግሩ።`,
+          { parse_mode: 'Markdown' }
+        );
+      }
+    } catch (err) {
+      await ctx.reply('❌ የኔትወርክ ስህተት አጋጥሟል።');
+    }
+  });
+             // Invite 🔗
   bot.hears('Invite 🔗', async (ctx) => {
     const userId = ctx.from?.id;
     const inviteLink = `https://t.me/fetan_lottery_bot?start=${userId}`;
     await ctx.reply(
-      `🔗 *የእርስዎ የሪፌራል ሊንክ*:\n\n\${inviteLink}\\n\nይህንን ሊንክ ለጓደኞችዎ በመላክ ቦኑስ ያግኙ!`,
+      `🔗 *የእርስዎ ልዩ የሪፌራል ሊንክ*:\n\n\${inviteLink}\\n\n` +
+      `ይህንን ሊንክ ለጓደኞችዎ በመላክ የእያንዳንዱ ጋበዙት ተጫዋች ቦነስ ያግኙ!`,
       { parse_mode: 'Markdown' }
     );
   });
 
-  // Convert Bonus
+  // Contact Support ☎️
+  bot.hears('Contact Support ☎️', async (ctx) => {
+    await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @fetan_support_admin');
+  });
+
+  // Instruction 📖
+  bot.hears('Instruction 📖', async (ctx) => {
+    await ctx.reply(
+      `📖 *የጨዋታው መመሪያ*:\n\n` +
+      `1. "Play 🎮" የሚለውን ተጭነው WebApp ይክፈቱ።\n` +
+      `2. የሚወዱትን የሎተሪ ቁጥር ይምረጡ።\n` +
+      `3. ሰዓቱ ሲያልቅ እጣው በቀጥታ ይወጣል፤ ካሸነፉ ገንዘቡ ወዲያውኑ ወደ Main Walletዎ ገቢ ይሆናል።`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  // Transfer 🎁
+  bot.hears('Transfer 🎁', async (ctx) => {
+    await ctx.reply('🎁 ለሌላ ተጫዋች ገንዘብ ለማስተላለፍ በ WebApp ውስጥ ያለውን Transfer ገፅ ይጠቀሙ።');
+  });
+
+  // Convert Bonus 💱
   bot.hears('Convert Bonus 💱', async (ctx) => {
-    await ctx.reply('💱 የሰበሰቡትን Bonus Wallet ወደ Main Balance ለመቀየር አነስተኛው መጠን 100 ETB መሆን አለበት።');
+    await ctx.reply('💱 Play Wallet ቦነስን ወደ Main Wallet ለመቀየር አነስተኛው መጠን 100 ETB መሆን አለበት።');
   });
 
   bot.catch((err) => {
