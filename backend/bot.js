@@ -34,7 +34,6 @@ if (bot) {
     const firstName = ctx.from?.first_name || '';
     const username = ctx.from?.username || '';
 
-    // ተጠቃሚውን በዳታቤዝ የመመዝገብ ተግባር
     try {
       await fetch(`${API_BASE_URL}/api/user/register`, {
         method: 'POST',
@@ -48,14 +47,20 @@ if (bot) {
     const captionText = `👋 Welcome to Fetan Lottery! Choose an option below.\n\n` +
                         `እንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወት ይችላሉ።`;
 
-    // ፎቶውን ከነ በተኖቹ አብሮ መላክ
+    // 1. አስቀድሞ የነበረውን የታችኛውን ኪቦርድ ማስወገድ
+    try {
+      await ctx.reply('ላንዴ ጊዜ የሚወገድ...', {
+        reply_markup: { remove_keyboard: true }
+      });
+    } catch (e) {}
+
+    // 2. ምስሉን እና Inline Keyboard-ኡን ብቻ መላክ
     try {
       await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
         caption: captionText,
         reply_markup: mainInlineMenu
       });
     } catch (err) {
-      // ፎቶው ካልሰራ በጽሁፍ ብቻ ይልካል
       await ctx.reply(captionText, { reply_markup: mainInlineMenu });
     }
   });
