@@ -114,36 +114,37 @@ Coin:         ${coin}
       reply_markup: balanceMenu
     });
   });
- // Register 📝
+
+  // Register 📝
   bot.callbackQuery('register', async (ctx) => {
     await ctx.answerCallbackQuery();
-    
     const userId = String(ctx.from?.id);
-    const firstName = ctx.from?.first_name || '';
-    const username = ctx.from?.username || '';
+              try {
+      const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        
+        // ስልክ ቁጥር ካልተመዘገበ እንዲመዘገብ መጠየቅ
+        if (!data.phone || data.phone === "አልተመዘገበም") {
+          const contactKeyboard = new Keyboard()
+            .requestContact("📱 ስልክ ቁጥር አጋራ (Share Contact)")
+            .resized()
+            .oneTime();
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/user/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, firstName, username })
-      });
-      const data = await res.json();
-      if (data.isNew) {
-        await ctx.reply(
-          `🎉 *በስኬት ተመዝግበዋል!*\n\n` +
-          `አሁን መጫወት ለመጀመር የሚከተሉትን ደረጃዎች ይከተሉ፡\n` +
-          `1️⃣ *Deposit 💵* የሚለውን ተጭነው ሂሳብዎን ይሙሉ\n` +
-          `2️⃣ *Play 🎮* የሚለውን ተጭነው ጨዋታውን ይጀምሩ!`,
-          { parse_mode: 'Markdown' }
-        );
-      } else {
-        await ctx.reply(
-          `ℹ️ *ቀደም ሲል ተመዝግበዋል!*\n\n` +
-          `አሁኑኑ መጫወት ለመጀመር *Play 🎮* የሚለውን ይጫኑ ወይም *Deposit 💵* በማድረግ ሂሳብዎን ይሙሉ፤`,
-          { parse_mode: 'Markdown' }
-        );
+          await ctx.reply("እባክዎን ምዝገባዎን ለማጠናቀቅ ከታች ያለውን 'Share Contact' ቁልፍ ይጫኑ፡", {
+            reply_markup: contactKeyboard
+          });
+          return;
+        }
       }
+
+      // ስልክ ቁጥር ቀድሞ ከተመዘገበ
+      await ctx.reply(
+        `ℹ️ *ቀደም ሲል ተመዝግበዋል!*\n\n` +
+        `አሁኑኑ መጫወት ለመጀመር *Play 🎮* የሚለውን ይጫኑ ወይም *Deposit 💵* በማድረግ ሂሳብዎን ይሙሉ፤`,
+        { parse_mode: 'Markdown' }
+      );
+
     } catch (err) {
       console.error('Registration Error:', err);
       await ctx.reply('❌ የምዝገባ ስህተት አጋጥሟል። እባክዎን እንደገና ይሞክሩ።');
@@ -172,7 +173,7 @@ Coin:         ${coin}
           `📤 *ገንዘብ ማውጫ (Withdrawal)*\n\n` +
           `• *ያልዎት ቀሪ ሂሳብ:* ${mainWallet} ETB\n` +
           `• *አነስተኛ ወጪ ማድረጊያ:* 50 ETB\n\n` +
-         `ገንዘብ ለማውጣት በ WebApp ውስጥ ያለውን Wallet ገፅ ይጠቀሙ ወይም አስተዳዳሪውን ያናግሩ።`,
+          `ገንዘብ ለማውጣት በ WebApp ውስጥ ያለውን Wallet ገፅ ይጠቀሙ ወይም አስተዳዳሪውን ያናግሩ።`,
           { parse_mode: 'Markdown' }
         );
       }
@@ -192,7 +193,6 @@ Coin:         ${coin}
 
     const inviteMessage = 
 `🔗 **Invite your friends to Fetan Lottery and earn rewards!**
-
 🎁 ${inviteLink}`;
 
     const shareKeyboard = new InlineKeyboard()
@@ -233,12 +233,12 @@ Coin:         ${coin}
     await ctx.answerCallbackQuery();
     await ctx.reply('💱 Play Wallet ቦነስን ወደ Main Wallet ለመቀየር አነስተኛው መጠን 100 ETB መሆን አለበት።');
   });
- // Copy Code Callback Handler
+
+  // Copy Code Callback Handler
   bot.callbackQuery(/^copy_/, async (ctx) => {
     await ctx.answerCallbackQuery({ text: "Code Copied!", show_alert: false });
   });
-
-  // Telebirr / Cancel Payment Callbacks
+ // Telebirr / Cancel Payment Callbacks
   bot.callbackQuery(/^pay_telebirr_/, async (ctx) => {
     await ctx.answerCallbackQuery();
     const chatId = ctx.chat.id;
@@ -272,7 +272,28 @@ Coin:         ${coin}
     await ctx.reply("❌ የዲፖዚት ሂደቱ ተሰርዟል።");
   });
 
-  // --- 6. TEXT MESSAGE LISTENER (ለ DEPOSIT FLOW) ---
+  // --- 6. EVENT LISTENERS ---
+
+  // 📱 Contact Listener (ተጠቃሚው የስልክ ቁጥር Share ሲያደርግ)
+  bot.on(':contact', async (ctx) => {
+    const userId = String(ctx.from?.id);
+    const phoneNumber = ctx.message.contact.phone_number;
+
+    try {
+      await fetch(`${API_BASE_URL}/api/user/update-phone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, phone: phoneNumber })
+      });
+
+      await ctx.reply(`🎉 **ምዝገባዎ በስኬት ተጠናቋል!**\n\n📱 ስልክ ቁጥርዎ: \${phoneNumber}\ ተመዝግቧል።, { parse_mode: 'Markdown'}`);
+    } catch (err) {
+      console.error('Phone update error:', err);
+      await ctx.reply(`✅ ስልክ ቁጥርዎ (\${phoneNumber}\) ደርሶናል!, { parse_mode: 'Markdown' }`);
+    }
+  });
+
+  // 💬 TEXT MESSAGE LISTENER (ለ DEPOSIT FLOW)
   bot.on('message:text', async (ctx) => {
     const chatId = ctx.chat.id;
     const text = ctx.message.text;
@@ -291,9 +312,7 @@ Coin:         ${coin}
 
       const paymentOptionMessage = 
 `✦ ብር ማስገባት የሚችሉት አሁን በተቀመጠዉ የTelebirr አካዉንት ብቻ ነዉ::
-
 🚫 ከዚህ ውጭ የላከ አንስተናግድም 🚫
-
 👇 Telebirr የሚለውን ይምረጡ 👇`;
 
       const paymentKeyboard = new InlineKeyboard()
