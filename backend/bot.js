@@ -1,5 +1,6 @@
  import { Bot, InlineKeyboard } from 'grammy';
 import dotenv from 'dotenv';
+import { Bot, InlineKeyboard, InputFile } from 'grammy';
 
 dotenv.config();
 
@@ -9,7 +10,7 @@ const WEB_APP_URL = process.env.WEB_APP_URL || 'https://fetan-lottery.vercel.app
 const TELEBIRR_NUMBER = process.env.TELEBIRR_NUMBER || '0920790583';
 
 // የባነር ምስልህ ሊንክ (ኦንላይን የሚሰራ URL)
-const BANNER_IMAGE_URL = process.env.BANNER_IMAGE_URL || 'https://i.ibb.co/6P01K0b/fetan-lottery-banner.png';
+const BANNER_IMAGE_URL = process.env.BANNER_IMAGE_URL || 'https://ibb.co/MD4j7LZK';
 
 export const bot = botToken ? new Bot(botToken) : null;
 
