@@ -1,6 +1,5 @@
- import { Bot, InlineKeyboard } from 'grammy';
+import { Bot, InlineKeyboard } from 'grammy';
 import dotenv from 'dotenv';
-import { Bot, InlineKeyboard, InputFile } from 'grammy';
 
 dotenv.config();
 
@@ -9,28 +8,28 @@ const API_BASE_URL = process.env.BACKEND_URL || 'https://fetan-lottery-backend.o
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://fetan-lottery.vercel.app';
 const TELEBIRR_NUMBER = process.env.TELEBIRR_NUMBER || '0920790583';
 
-// የባነር ምስልህ ሊንክ (ኦንላይን የሚሰራ URL)
+// የባነር ምስልህ ሊንክ
 const BANNER_IMAGE_URL = process.env.BANNER_IMAGE_URL || 'https://i.ibb.co/RpmMcWYt/F-20260814-095812-0000.png';
 
 export const bot = botToken ? new Bot(botToken) : null;
 
 if (bot) {
   // 1. ከታች ግራ በኩል ሰማያዊውን "≡ Menu" በተን ማዘጋጀት
-  await bot.api.setMyCommands([
+  bot.api.setMyCommands([
     { command: "start", description: "ዋና ሜኑን ለመክፈት" },
     { command: "help", description: "እርዳታ ለማግኘት" }
-  ]);
+  ]).catch(err => console.error('Menu setup error:', err));
 
   // 2. Menu Button ሲነካ ቀጥታ Web App እንዲከፍት ማድረግ
-  await bot.api.setChatMenuButton({
+  bot.api.setChatMenuButton({
     menu_button: {
       type: 'web_app',
       text: 'Play 🎮',
       web_app: { url: WEB_APP_URL }
     }
-  });
+  }).catch(err => console.error('ChatMenuButton error:', err));
 
-  // 3. Inline Keyboard (ከመልእክቱ ስር ተያይዘው የሚመጡ በተኖች)
+  // 3. Inline Keyboard
   const mainInlineMenu = new InlineKeyboard()
     .webApp('Play 🎮', WEB_APP_URL).text('Register 📝', 'register').row()
     .text('Check Balance 💵', 'check_balance').text('Deposit 💵', 'deposit').row()
@@ -38,14 +37,13 @@ if (bot) {
     .text('Transfer 🎁', 'transfer').text('Withdraw 🤑', 'withdraw').row()
     .text('Invite 🔗', 'invite').text('Convert Bonus 💱', 'convert');
 
-  // 4. /start ትእዛዝ ሲላክ (ኢንቫይት ሊንክን ጨምሮ ያስተናግዳል)
+  // 4. /start ትእዛዝ ሲላክ
   bot.command('start', async (ctx) => {
     const userId = String(ctx.from?.id);
     const firstName = ctx.from?.first_name || '';
     const username = ctx.from?.username || '';
-    const referrerId = ctx.match ? String(ctx.match).trim() : null; // በሪፌራል ሊንክ ከተላከ የጋባዡ ID
+    const referrerId = ctx.match ? String(ctx.match).trim() : null;
 
-    // የተጠቃሚውን መረጃ መመዝገብ እና የሪፌራል ቦነስ ማካተት
     try {
       await fetch(`${API_BASE_URL}/api/user/register`, {
         method: 'POST',
@@ -59,13 +57,13 @@ if (bot) {
     const captionText = `👋 Welcome to Fetan Lottery! Choose an option below.\n\n` +
                         `እንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወት ይችላሉ።`;
 
-    // ባነር ምስሉን ከነ Inline Buttons መላክ
     try {
       await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
         caption: captionText,
         reply_markup: mainInlineMenu
       });
     } catch (err) {
+      console.error('Photo send error:', err);
       await ctx.reply(captionText, { reply_markup: mainInlineMenu });
     }
   });
@@ -111,14 +109,13 @@ if (bot) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, firstName, username })
       });
-
-      const data = await res.json();
- if (data.isNew) {
+ const data = await res.json();
+      if (data.isNew) {
         await ctx.reply(
           `🎉 *በስኬት ተመዝግበዋል!*\n\n` +
-         `አሁን መጫወት ለመጀመር የሚከተሉትን ደረጃዎች ይከተሉ፡\n` +
-         ` 1️⃣ *Deposit 💵* የሚለውን ተጭነው ሂሳብዎን ይሙሉ\n` +
-         ` 2️⃣ *Play 🎮* የሚለውን ተጭነው ጨዋታውን ይጀምሩ!`,
+          `አሁን መጫወት ለመጀመር የሚከተሉትን ደረጃዎች ይከተሉ፡\n` +
+          `1️⃣ *Deposit 💵* የሚለውን ተጭነው ሂሳብዎን ይሙሉ\n` +
+          `2️⃣ *Play 🎮* የሚለውን ተጭነው ጨዋታውን ይጀምሩ!`,
           { parse_mode: 'Markdown' }
         );
       } else {
@@ -173,7 +170,7 @@ if (bot) {
   bot.callbackQuery('invite', async (ctx) => {
     await ctx.answerCallbackQuery();
     const userId = ctx.from?.id;
-    const botUsername = ctx.me.username || 'fetan_lottery_bot';
+    const botUsername = ctx.me?.username || 'fetan_lottery_bot';
     const inviteLink = `https://t.me/${botUsername}?start=${userId}`;
     
     await ctx.reply(
