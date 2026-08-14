@@ -280,14 +280,13 @@ Coin:         ${coin}
     const phoneNumber = ctx.message.contact.phone_number;
 
     try {
-      await fetch(`${API_BASE_URL}/api/user/update-phone`, {
+      await fetch(API_BASE_URL + '/api/user/update-phone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, phone: phoneNumber })
       });
 
-      // ትኩረት: እዚህ ጋር Backticks (``) መጠቀማችንን አረጋግጥ
-      const successMessage = `🎉 *ምዝገባዎ በስኬት ተጠናቋል!*\n\n📱 ስልክ ቁጥርዎ: \${phoneNumber}\ ተመዝግቧል።`;
+      const successMessage = "🎉 *ምዝገባዎ በስኬት ተጠናቋል!*\n\n📱 ስልክ ቁጥርዎ: " + phoneNumber + " ተመዝግቧል።";
 
       await ctx.reply(successMessage, {
         parse_mode: 'Markdown'
@@ -295,7 +294,7 @@ Coin:         ${coin}
     } catch (err) {
       console.error('Phone update error:', err);
       
-      const fallbackMessage = `✅ ስልክ ቁጥርዎ (\${phoneNumber}\) ደርሶናል!`;
+      const fallbackMessage = "✅ ስልክ ቁጥርዎ (" + phoneNumber + ") ደርሶናል!";
 
       await ctx.reply(fallbackMessage, {
         parse_mode: 'Markdown'
