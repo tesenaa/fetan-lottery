@@ -61,19 +61,22 @@ const getGameStats = () => {
   return { totalPlayers: uniquePlayers, derash };
 };
 
-function initUser(userId, firstName = '', username = '') {
+function initUser(userId, firstName = '', username = '', phone = '') {
   const uid = String(userId);
   if (!usersData[uid]) {
     usersData[uid] = {
       userId: uid,
       firstName: firstName || '',
       username: username || '',
+      phone: phone || '',
       mainWallet: 0,
       playWallet: 0,
       totalInvite: 0,
       gamesWon: 0,
       totalGames: 0
     };
+  } else if (phone && !usersData[uid].phone) {
+    usersData[uid].phone = phone;
   }
   registeredUsersSet.add(uid);
   return usersData[uid];
@@ -83,13 +86,13 @@ function initUser(userId, firstName = '', username = '') {
 
 // 1. የተጠቃሚ ምዝገባ እና የሪፌራል (10 ETB ቦነስ)
 app.post('/api/user/register', async (req, res) => {
-  const { userId, firstName, username, referrerId } = req.body;
+  const { userId, firstName, username, referrerId, phone } = req.body;
   if (!userId) return res.status(400).json({ success: false, message: "User ID ያስፈልጋል።" });
 
   const uid = String(userId);
   const isNewUser = !usersData[uid];
 
-  const user = initUser(uid, firstName, username);
+  const user = initUser(uid, firstName, username, phone);
 
   if (isNewUser && referrerId && String(referrerId) !== uid) {
     const refUid = String(referrerId);
@@ -114,7 +117,23 @@ app.post('/api/user/register', async (req, res) => {
   res.json({ success: true, isNew: isNewUser, user });
 });
 
-// 2. Deposit
+// 2. 📱 አዲስ የተጨመረ፦ የስልክ ቁጥር ማዘመኛ (Update Phone Endpoint)
+app.post('/api/user/update-phone', (req, res) => {
+  const { userId, telegramId, phone, phoneNumber } = req.body;
+  const uid = String(userId || telegramId);
+  const finalPhone = phone || phoneNumber;
+
+  if (!uid || uid === 'undefined') {
+    return res.status(400).json({ success: false, message: "UserId ያስፈልጋል።" });
+  }
+
+  const user = initUser(uid);
+  user.phone = finalPhone;
+
+  console.log(`📱 User ${uid} Phone Updated: ${finalPhone}`);
+  res.json({ success: true, message: "ስልክ ቁጥር በትክክል ተመዝግቧል!", user });
+});
+ // 3. Deposit
 app.post('/api/deposit', (req, res) => {
   const { userId, amount } = req.body;
   const uid = String(userId);
@@ -123,7 +142,7 @@ app.post('/api/deposit', (req, res) => {
   res.json({ success: true, balance: user.mainWallet });
 });
 
-// 3. Withdraw
+// 4. Withdraw
 app.post('/api/withdraw', (req, res) => {
   const { userId, amount } = req.body;
   const uid = String(userId);
@@ -137,21 +156,23 @@ app.post('/api/withdraw', (req, res) => {
   res.json({ success: true, balance: user.mainWallet, message: "ተሳክቷል!" });
 });
 
-// 4. የተጠቃሚ መረጃ ማግኛ
+// 5. የተጠቃሚ መረጃ ማግኛ (User Info Endpoint)
 app.get('/api/user', (req, res) => {
-  const { id } = req.query;
+  const id = req.query.id || req.query.userId;
   const uid = String(id);
 
-  if (uid && uid !== 'GUEST_USER') {
+  if (uid && uid !== 'GUEST_USER' && uid !== 'undefined') {
     const user = initUser(uid);
     return res.json(user);
   }
-res.json({
+
+  res.json({
     mainWallet: 0,
     playWallet: 0,
     gamesWon: 0,
     totalInvite: 0,
-    totalGames: 0
+    totalGames: 0,
+    phone: ""
   });
 });
 
@@ -221,8 +242,7 @@ io.on('connection', (socket) => {
     selectedNumbers.push({
       number: Number(numberChosen),
       userId: uid,
-      userName: userName || `ተጫዋች_${uid}`
-    });
+      userName: userName || `ተጫዋች_${uid}`});
 
     const s = getGameStats();
     io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
@@ -252,8 +272,7 @@ io.on('connection', (socket) => {
       socket.emit('balance_updated', { balance: user.mainWallet });
     }
   });
-
-  socket.on('disconnect', () => {
+ socket.on('disconnect', () => {
     activeUsersMap.delete(socket.id);
     const updatedActiveCount = new Set(activeUsersMap.values()).size;
     const currentRegisteredCount = registeredUsersSet.size;
@@ -277,7 +296,7 @@ setInterval(() => {
         gamePhase = 'spinning';
         const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
         winningNumber = selectedNumbers[randomIndex].number;
- const stats = getGameStats();
+        const stats = getGameStats();
         io.emit('game_result', {
           winningNumber,
           gamePhase: 'spinning',

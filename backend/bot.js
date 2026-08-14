@@ -280,15 +280,13 @@ Coin:         ${coin}
     const userId = String(ctx.from?.id);
 
     try {
-      // id እና userId ሁለቱንም በ query በማስተላለፍ ማረጋገጥ
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}&userId=${userId}`);
       if (res.ok) {
         const data = await res.json();
-        // በተለያዩ የዳታ ፎርማቶች ሊመጣ ስለሚችል ማረጋገጥ
         const userObj = data.user || data;
-        const userPhone = userObj.phone || userObj.phoneNumber || userObj.phone_number;
-
-        if (userPhone && userPhone !== "አልተመዘገበም" && String(userPhone).trim() !== "") {
+        
+        // ስልክ ቁጥሩ በዳታቤዝ ውስጥ መኖር አለመኖሩን ማረጋገጥ
+        if (userObj && userObj.phone && userObj.phone !== "አልተመዘገበም" && String(userObj.phone).trim() !== "") {
           await ctx.reply(
             "ℹ️ *ቀደም ሲል ተመዝግበዋል!*\n\n" +
             "አሁኑኑ መጫወት ለመጀመር *Play 🎮* የሚለውን ይጫኑ ወይም *Deposit 💵* በማድረግ ሂሳብዎን ይሙሉ፤",
@@ -301,7 +299,7 @@ Coin:         ${coin}
         }
       }
 
-      // ካልተመዘገበ ብቻ Share Contact ማሳየት
+      // ስልክ ካልተመዘገበ ብቻ Share Contact መጠየቅ
       const contactKeyboard = new Keyboard()
         .requestContact("📱 ስልክ ቁጥር አጋራ (Share Contact)")
         .resized()
@@ -317,7 +315,7 @@ Coin:         ${coin}
     }
   });
 
-  // 📱 Contact Listener
+  // 📱 Contact Listener (ስልክ ቁጥር ሲላክ)
   bot.on(':contact', async (ctx) => {
     const userId = String(ctx.from?.id);
     let phoneNumber = ctx.message.contact.phone_number;
@@ -327,31 +325,20 @@ Coin:         ${coin}
     }
 
     try {
-      // 1. መጀመሪያ ተጠቃሚው ቀድሞ የተመዘገበ መሆኑን ማረጋገጥ
-      const checkRes = await fetch(`${API_BASE_URL}/api/user?id=${userId}&userId=${userId}`);
-      if (checkRes.ok) {
-        const checkData = await checkRes.json();
-        const userObj = checkData.user || checkData;
-        const existingPhone = userObj.phone || userObj.phoneNumber || userObj.phone_number;
-
-        if (existingPhone && existingPhone !== "አልተመዘገበም" && String(existingPhone).trim() !== "") {
-          await ctx.reply(
-            "ℹ️ *ቀደም ሲል ተመዝግበዋል!*\n\n📱 ስልክ ቁጥርዎ፦ " + existingPhone + " ቀድሞ ተመዝግቧል።",
-            { 
-              parse_mode: 'Markdown',
-              reply_markup: { remove_keyboard: true }
-            }
-          );
-          return;
-        }
-      }
-
-      // 2. ካልተመዘገበ አዲስ ስልክ ቁጥር መመዝገብ
-      await fetch(`${API_BASE_URL}/api/user/update-phone`, {
+      // 1. ወደ ባክኤንድ መላክ
+      const updateRes = await fetch(`${API_BASE_URL}/api/user/update-phone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, phone: phoneNumber })
+        body: JSON.stringify({ 
+          userId: userId, 
+          telegramId: userId, 
+          phone: phoneNumber, 
+          phoneNumber: phoneNumber 
+        })
       });
+
+      const updateData = await updateRes.json().catch(() => ({}));
+      console.log('Update Phone Response:', updateData);
 
       await ctx.reply(
         "🎉 *ምዝገባዎ በስኬት ተጠናቋል!*\n\n📱 ስልክ ቁጥርዎ፦ " + phoneNumber + " ተመዝግቧል።",
@@ -362,7 +349,7 @@ Coin:         ${coin}
       );
 
     } catch (err) {
-      console.error('Phone update error:', err);
+      console.error('Phone update fetch error:', err);
       await ctx.reply(
         "🎉 *ምዝገባዎ በስኬት ተጠናቋል!*\n\n📱 ስልክ ቁጥርዎ፦ " + phoneNumber + " ተመዝግቧል።",
         {
@@ -372,7 +359,6 @@ Coin:         ${coin}
       );
     }
   });
-
   // 💬 TEXT MESSAGE LISTENER (ለ DEPOSIT FLOW)
   bot.on('message:text', async (ctx) => {
     const chatId = ctx.chat.id;
