@@ -275,7 +275,7 @@ Coin:         ${coin}
   // --- 6. EVENT LISTENERS ---
 
   // Register 📝
-  bot.callbackQuery('register', async (ctx) => {
+    bot.callbackQuery('register', async (ctx) => {
     await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
 
@@ -283,22 +283,23 @@ Coin:         ${coin}
       const res = await fetch(API_BASE_URL + '/api/user?id=' + userId);
       if (res.ok) {
         const data = await res.json();
-        
-        // ስልክ ቁጥር ቀድሞ ከተመዘገበ
-        if (data.phone && data.phone !== "አልተመዘገበም" && data.phone.trim() !== "") {
+        // የስልክ ቁጥሩን በያነኛውም ፎርማት ማረጋገጥ (data.phone, data.phoneNumber, data.user?.phone)
+        const userPhone = data.phone  || data.phoneNumber || (data.user && data.user.phone);
+
+        if (userPhone && userPhone !== "አልተመዘገበም" && String(userPhone).trim() !== "") {
           await ctx.reply(
             "ℹ️ *ቀደም ሲል ተመዝግበዋል!*\n\n" +
             "አሁኑኑ መጫወት ለመጀመር *Play 🎮* የሚለውን ይጫኑ ወይም *Deposit 💵* በማድረግ ሂሳብዎን ይሙሉ፤",
             { 
               parse_mode: 'Markdown',
-              reply_markup: { remove_keyboard: true } // የስልክ ቁጥር ማጋሪያ ቁልፉን ያጠፋዋል
+              reply_markup: { remove_keyboard: true }
             }
           );
           return;
         }
       }
 
-      // ስልክ ቁጥር ካልተመዘገበ ብቻ እንዲመዘገብ መጠየቅ
+      // ስልክ ቁጥር ካልተመዘገበ ብቻ Share Contact ቁልፍ ማሳየት
       const contactKeyboard = new Keyboard()
         .requestContact("📱 ስልክ ቁጥር አጋራ (Share Contact)")
         .resized()
@@ -324,13 +325,15 @@ Coin:         ${coin}
     }
 
     try {
-      // 1. መጀመሪያ ተጠቃሚው ቀድሞ የተመዘገበ መሆኑን ማረጋገጥ
+      // 1. መጀመሪያ ቀድሞ የተመዘገበ መሆኑን ማረጋገጥ
       const userRes = await fetch(API_BASE_URL + '/api/user?id=' + userId);
       if (userRes.ok) {
         const userData = await userRes.json();
-        if (userData.phone && userData.phone !== "አልተመዘገበም" && userData.phone.trim() !== "") {
+        const existingPhone = userData.phone || userData.phoneNumber  (userData.user && userData.user.phone);
+
+        if (existingPhone && existingPhone !== "አልተመዘገበም" && String(existingPhone).trim() !== "") {
           await ctx.reply(
-            "ℹ️ *ቀደም ሲል ተመዝግበዋል!*\n\n📱 ስልክ ቁጥርዎ፦ " + userData.phone + " ቀድሞ ተመዝግቧል።",
+            "ℹ️ *ቀደም ሲል ተመዝግበዋል!*\n\n📱 ስልክ ቁጥርዎ፦ " + existingPhone + " ቀድሞ ተመዝግቧል።",
             { 
               parse_mode: 'Markdown',
               reply_markup: { remove_keyboard: true }
@@ -364,7 +367,6 @@ Coin:         ${coin}
       });
     }
   });
-
   // 💬 TEXT MESSAGE LISTENER (ለ DEPOSIT FLOW)
   bot.on('message:text', async (ctx) => {
     const chatId = ctx.chat.id;
