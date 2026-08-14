@@ -286,13 +286,18 @@ Coin:         ${coin}
         body: JSON.stringify({ userId, phone: phoneNumber })
       });
 
-      await ctx.reply(`🎉 **ምዝገባዎ በስኬት ተጠናቋል!**\n\n📱 ስልክ ቁጥርዎ: \${phoneNumber}\ ተመዝግቧል።, { parse_mode: 'Markdown'}`);
+      await ctx.reply(
+        `🎉 *ምዝገባዎ በስኬት ተጠናቋል!*\n\n📱 ስልክ ቁጥርዎ: \${phoneNumber}\ ተመዝግቧል።`,
+        { parse_mode: 'Markdown' }
+      );
     } catch (err) {
       console.error('Phone update error:', err);
-      await ctx.reply(`✅ ስልክ ቁጥርዎ (\${phoneNumber}\) ደርሶናል!, { parse_mode: 'Markdown' }`);
+      await ctx.reply(
+        `✅ ስልክ ቁጥርዎ (\${phoneNumber}\) ደርሶናል!`,
+        { parse_mode: 'Markdown' }
+      );
     }
   });
-
   // 💬 TEXT MESSAGE LISTENER (ለ DEPOSIT FLOW)
   bot.on('message:text', async (ctx) => {
     const chatId = ctx.chat.id;
