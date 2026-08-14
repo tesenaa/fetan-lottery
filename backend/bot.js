@@ -275,6 +275,7 @@ Coin:         ${coin}
   // --- 6. EVENT LISTENERS ---
 
   // 📱 Contact Listener (ተጠቃሚው የስልክ ቁጥር Share ሲያደርግ)
+  // 📱 Contact Listener (ተጠቃሚው የስልክ ቁጥር Share ሲያደርግ)
   bot.on(':contact', async (ctx) => {
     const userId = String(ctx.from?.id);
     const phoneNumber = ctx.message.contact.phone_number;
@@ -301,6 +302,7 @@ Coin:         ${coin}
       });
     }
   });
+
 
   // 💬 TEXT MESSAGE LISTENER (ለ DEPOSIT FLOW)
   bot.on('message:text', async (ctx) => {
