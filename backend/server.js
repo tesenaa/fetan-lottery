@@ -12,6 +12,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Server Ping Check Route
+app.get('/', (req, res) => {
+  res.send('Fetan Lottery Backend is running live 🚀');
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -29,19 +34,13 @@ let winningNumber = null;
 const STAKE_PER_NUMBER = 10;
 
 // የተጠቃሚዎች ዳታ መያዣ (In-Memory Database)
-// Structure: { [userId]: { userId, firstName, username, mainWallet, playWallet, totalInvite, gamesWon, totalGames } }
 const usersData = {};
-
-// ሁሉንም የተመዘገቡ ተጠቃሚዎች መያዣ (Unique User IDs)
 const registeredUsersSet = new Set();
-
-// አሁን አክቲቭ የሆኑ ተጠቃሚዎች መያዣ (socket.id -> userId)
 const activeUsersMap = new Map();
 
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
 
 if (process.env.NODE_ENV === 'production' && RENDER_URL) {
-  // Webhook handler ለ ቦቱ
   app.use('/webhook', webhookCallback(bot, 'express'));
 }
 
@@ -82,7 +81,7 @@ function initUser(userId, firstName = '', username = '') {
 
 // --- API ENDPOINTS ---
 
-// 1. የተጠቃሚ ምዝገባ እና የሪፌራል (10 ETB ቦነስ) ማስተናገጃ
+// 1. የተጠቃሚ ምዝገባ እና የሪፌራል (10 ETB ቦነስ)
 app.post('/api/user/register', async (req, res) => {
   const { userId, firstName, username, referrerId } = req.body;
   if (!userId) return res.status(400).json({ success: false, message: "User ID ያስፈልጋል።" });
@@ -92,14 +91,12 @@ app.post('/api/user/register', async (req, res) => {
 
   const user = initUser(uid, firstName, username);
 
-  // አዲስ ተጠቃሚ ከሆነ እና በኢንቫይት ሊንክ ከመጣ
   if (isNewUser && referrerId && String(referrerId) !== uid) {
     const refUid = String(referrerId);
     if (usersData[refUid]) {
       usersData[refUid].totalInvite += 1;
-      usersData[refUid].playWallet += 10; // 10 ETB Bonus ለጋባዡ
+      usersData[refUid].playWallet += 10;
 
-      // ለጋባዡ በቴሌግራም መልዕክት መላክ
       if (bot) {
         try {
           await bot.api.sendMessage(
@@ -117,7 +114,7 @@ app.post('/api/user/register', async (req, res) => {
   res.json({ success: true, isNew: isNewUser, user });
 });
 
-// 2. የገንዘብ ማስገቢያ (Deposit)
+// 2. Deposit
 app.post('/api/deposit', (req, res) => {
   const { userId, amount } = req.body;
   const uid = String(userId);
@@ -126,7 +123,7 @@ app.post('/api/deposit', (req, res) => {
   res.json({ success: true, balance: user.mainWallet });
 });
 
-// 3. የገንዘብ ማውጫ (Withdraw)
+// 3. Withdraw
 app.post('/api/withdraw', (req, res) => {
   const { userId, amount } = req.body;
   const uid = String(userId);
@@ -139,7 +136,8 @@ app.post('/api/withdraw', (req, res) => {
   user.mainWallet -= Number(amount);
   res.json({ success: true, balance: user.mainWallet, message: "ተሳክቷል!" });
 });
- // 4. የተጠቃሚ መረጃ ማግኛ
+
+// 4. የተጠቃሚ መረጃ ማግኛ
 app.get('/api/user', (req, res) => {
   const { id } = req.query;
   const uid = String(id);
@@ -148,8 +146,7 @@ app.get('/api/user', (req, res) => {
     const user = initUser(uid);
     return res.json(user);
   }
-
-  res.json({
+res.json({
     mainWallet: 0,
     playWallet: 0,
     gamesWon: 0,
@@ -160,17 +157,16 @@ app.get('/api/user', (req, res) => {
 
 // --- RENDER KEEP-ALIVE PING ---
 setInterval(() => {
-  https.get('https://fetan-lottery-backend.onrender.com', (res) => {
+  const backendPingUrl = RENDER_URL || 'https://fetan-lottery-backend.onrender.com';
+  https.get(backendPingUrl, (res) => {
     console.log('Keep-alive ping sent');
   }).on('error', (err) => {
     console.log('Ping error:', err.message);
   });
-}, 14 * 60 * 1000);
+}, 10 * 60 * 1000); // በየ 10 ደቂቃው እንዲነቃ ያደርገዋል
 
 // --- SOCKET LOGIC ---
 io.on('connection', (socket) => {
-  console.log('ተጫዋች ተገናኝቷል:', socket.id);
-
   const userId = socket.handshake.query.userId;
 
   if (userId && userId !== 'GUEST_USER') {
@@ -214,7 +210,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // ከ Play Wallet ጀምሮ መቀነስ
     if (user.playWallet >= STAKE_PER_NUMBER) {
       user.playWallet -= STAKE_PER_NUMBER;
     } else {
@@ -274,7 +269,7 @@ io.on('connection', (socket) => {
 
 // --- TIMER LOGIC ---
 setInterval(() => {
-    if (gamePhase === 'selecting') {
+  if (gamePhase === 'selecting') {
     if (timeLeft > 0) {
       timeLeft--;
     } else {
@@ -282,8 +277,7 @@ setInterval(() => {
         gamePhase = 'spinning';
         const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
         winningNumber = selectedNumbers[randomIndex].number;
-
-        const stats = getGameStats();
+ const stats = getGameStats();
         io.emit('game_result', {
           winningNumber,
           gamePhase: 'spinning',

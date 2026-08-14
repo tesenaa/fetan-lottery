@@ -109,7 +109,7 @@ if (bot) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, firstName, username })
       });
- const data = await res.json();
+         const data = await res.json();
       if (data.isNew) {
         await ctx.reply(
           `🎉 *በስኬት ተመዝግበዋል!*\n\n` +
