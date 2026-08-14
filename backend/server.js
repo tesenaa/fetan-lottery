@@ -6,8 +6,7 @@ import https from 'https';
 import { bot } from './bot.js';
 import { webhookCallback } from 'grammy';
 
-// WEB_APP_URL - ትክክለኛውን የ Vercel WebApp URL አስገባ
-const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery-irkk.vercel.app";
+const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
 
 const app = express();
 app.use(cors());
@@ -28,7 +27,10 @@ let timeLeft = 50;
 let gamePhase = 'selecting';
 let winningNumber = null;
 const STAKE_PER_NUMBER = 10;
-let userBalances = {};
+
+// የተጠቃሚዎች ዳታ መያዣ (In-Memory Database)
+// Structure: { [userId]: { userId, firstName, username, mainWallet, playWallet, totalInvite, gamesWon, totalGames } }
+const usersData = {};
 
 // ሁሉንም የተመዘገቡ ተጠቃሚዎች መያዣ (Unique User IDs)
 const registeredUsersSet = new Set();
@@ -60,32 +62,95 @@ const getGameStats = () => {
   return { totalPlayers: uniquePlayers, derash };
 };
 
+function initUser(userId, firstName = '', username = '') {
+  const uid = String(userId);
+  if (!usersData[uid]) {
+    usersData[uid] = {
+      userId: uid,
+      firstName: firstName || '',
+      username: username || '',
+      mainWallet: 0,
+      playWallet: 0,
+      totalInvite: 0,
+      gamesWon: 0,
+      totalGames: 0
+    };
+  }
+  registeredUsersSet.add(uid);
+  return usersData[uid];
+}
+
 // --- API ENDPOINTS ---
+
+// 1. የተጠቃሚ ምዝገባ እና የሪፌራል (10 ETB ቦነስ) ማስተናገጃ
+app.post('/api/user/register', async (req, res) => {
+  const { userId, firstName, username, referrerId } = req.body;
+  if (!userId) return res.status(400).json({ success: false, message: "User ID ያስፈልጋል።" });
+
+  const uid = String(userId);
+  const isNewUser = !usersData[uid];
+
+  const user = initUser(uid, firstName, username);
+
+  // አዲስ ተጠቃሚ ከሆነ እና በኢንቫይት ሊንክ ከመጣ
+  if (isNewUser && referrerId && String(referrerId) !== uid) {
+    const refUid = String(referrerId);
+    if (usersData[refUid]) {
+      usersData[refUid].totalInvite += 1;
+      usersData[refUid].playWallet += 10; // 10 ETB Bonus ለጋባዡ
+
+      // ለጋባዡ በቴሌግራም መልዕክት መላክ
+      if (bot) {
+        try {
+          await bot.api.sendMessage(
+            refUid,
+            `🎉 *እንኳን ደስ አለዎት!*\n\n${firstName || 'አዲስ አባል'} የእርስዎን መጋበዣ ሊንክ ተጠቅሞ ስለገባ *10 ETB* ቦነስ በ Play Walletዎ ላይ ተጨምሯል!\n\n👥 *ጠቅላላ የጋበዟቸው:* ${usersData[refUid].totalInvite}`,
+            { parse_mode: 'Markdown' }
+          );
+        } catch (err) {
+          console.error('ለጋባዡ መልዕክት መላክ አልተቻለም:', err.message);
+        }
+      }
+    }
+  }
+
+  res.json({ success: true, isNew: isNewUser, user });
+});
+
+// 2. የገንዘብ ማስገቢያ (Deposit)
 app.post('/api/deposit', (req, res) => {
   const { userId, amount } = req.body;
-  if (!userBalances[userId]) userBalances[userId] = 0;
-  userBalances[userId] += Number(amount);
-  res.json({ success: true, balance: userBalances[userId] });
+  const uid = String(userId);
+  const user = initUser(uid);
+  user.mainWallet += Number(amount || 0);
+  res.json({ success: true, balance: user.mainWallet });
 });
 
+// 3. የገንዘብ ማውጫ (Withdraw)
 app.post('/api/withdraw', (req, res) => {
   const { userId, amount } = req.body;
-  if (!userBalances[userId] || userBalances[userId] < amount) {
+  const uid = String(userId);
+  const user = initUser(uid);
+
+  if (user.mainWallet < Number(amount)) {
     return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም!" });
   }
-  userBalances[userId] -= Number(amount);
-  res.json({ success: true, balance: userBalances[userId], message: "ተሳክቷል!" });
-});
 
+  user.mainWallet -= Number(amount);
+  res.json({ success: true, balance: user.mainWallet, message: "ተሳክቷል!" });
+});
+ // 4. የተጠቃሚ መረጃ ማግኛ
 app.get('/api/user', (req, res) => {
   const { id } = req.query;
- 
-  if (id && id !== 'GUEST_USER') {
-    registeredUsersSet.add(String(id));
+  const uid = String(id);
+
+  if (uid && uid !== 'GUEST_USER') {
+    const user = initUser(uid);
+    return res.json(user);
   }
 
   res.json({
-    mainWallet: userBalances[id] || 0,
+    mainWallet: 0,
     playWallet: 0,
     gamesWon: 0,
     totalInvite: 0,
@@ -109,7 +174,7 @@ io.on('connection', (socket) => {
   const userId = socket.handshake.query.userId;
 
   if (userId && userId !== 'GUEST_USER') {
-    registeredUsersSet.add(String(userId));
+    initUser(userId);
     activeUsersMap.set(socket.id, String(userId));
   }
 
@@ -138,16 +203,25 @@ io.on('connection', (socket) => {
 
     const { numberChosen, userId, userName } = data;
     const uid = String(userId);
+    const user = initUser(uid);
 
     const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
     if (exists) return;
- const currentBalance = userBalances[uid] || 0;
-    if (currentBalance < STAKE_PER_NUMBER) {
+
+    const totalAvailable = user.mainWallet + user.playWallet;
+    if (totalAvailable < STAKE_PER_NUMBER) {
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን አስቀድመው ሂሳብዎን ይሙሉ::' });
       return;
     }
 
-    userBalances[uid] -= STAKE_PER_NUMBER;
+    // ከ Play Wallet ጀምሮ መቀነስ
+    if (user.playWallet >= STAKE_PER_NUMBER) {
+      user.playWallet -= STAKE_PER_NUMBER;
+    } else {
+      const remaining = STAKE_PER_NUMBER - user.playWallet;
+      user.playWallet = 0;
+      user.mainWallet -= remaining;
+    }
 
     selectedNumbers.push({
       number: Number(numberChosen),
@@ -157,7 +231,7 @@ io.on('connection', (socket) => {
 
     const s = getGameStats();
     io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
-    socket.emit('balance_updated', { balance: userBalances[uid] });
+    socket.emit('balance_updated', { balance: user.mainWallet });
   });
 
   socket.on('deselect_number', (data) => {
@@ -165,6 +239,7 @@ io.on('connection', (socket) => {
 
     const { numberChosen, userId } = data;
     const uid = String(userId);
+    const user = initUser(uid);
 
     const isSelected = selectedNumbers.some(
       n => Number(n.number) === Number(numberChosen) && String(n.userId) === uid
@@ -175,12 +250,11 @@ io.on('connection', (socket) => {
         n => !(Number(n.number) === Number(numberChosen) && String(n.userId) === uid)
       );
 
-      if (!userBalances[uid]) userBalances[uid] = 0;
-      userBalances[uid] += STAKE_PER_NUMBER;
+      user.mainWallet += STAKE_PER_NUMBER;
 
       const s = getGameStats();
       io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
-      socket.emit('balance_updated', { balance: userBalances[uid] });
+      socket.emit('balance_updated', { balance: user.mainWallet });
     }
   });
 
@@ -200,7 +274,7 @@ io.on('connection', (socket) => {
 
 // --- TIMER LOGIC ---
 setInterval(() => {
-  if (gamePhase === 'selecting') {
+    if (gamePhase === 'selecting') {
     if (timeLeft > 0) {
       timeLeft--;
     } else {
