@@ -51,9 +51,8 @@ export default function App() {
   }, [tgUser]);
 
   const userPhoto = tgUser?.photo_url || null;
-  const userPhone = user?.phone  || (tgUser?.username ? `@${tgUser.username}` : "ስልክ አልተመዘገበም");
+  const userPhone = tgUser?.username ? `@${tgUser.username}` : userId;
   const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
-  
 
   // 3. Socket Singleton Instance
   const socket = useMemo(() => io(API_BASE_URL, {
