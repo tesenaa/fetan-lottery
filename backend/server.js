@@ -1,4 +1,4 @@
- import express from 'express';
+import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -90,7 +90,7 @@ const getGameStats = () => {
 
 async function initUser(userId, firstName = '', username = '', phone = '') {
   const uid = String(userId);
-  
+ 
   if (!usersData[uid]) {
     // 1. መጀመሪያ ከ MongoDB ፈልግ
     let dbUser = await User.findOne({ userId: uid });
@@ -130,11 +130,10 @@ app.post('/api/user/register', async (req, res) => {
   const isNewUser = !existingInDb;
 
   const user = await initUser(uid, firstName, username, phone);
-
-  if (isNewUser && referrerId && String(referrerId) !== uid) {
+     if (isNewUser && referrerId && String(referrerId) !== uid) {
     const refUid = String(referrerId);
     const refUser = await initUser(refUid);
- if (refUser) {
+    if (refUser) {
       usersData[refUid].totalInvite += 1;
       usersData[refUid].playWallet += 10;
 
@@ -270,14 +269,14 @@ io.on('connection', async (socket) => {
 
   socket.on('select_number', async (data) => {
     if (gamePhase !== 'selecting') return;
-
     const { numberChosen, userId, userName } = data;
     const uid = String(userId);
     const user = await initUser(uid);
 
     const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
     if (exists) return;
-       const totalAvailable = user.mainWallet + user.playWallet;
+
+    const totalAvailable = user.mainWallet + user.playWallet;
     if (totalAvailable < STAKE_PER_NUMBER) {
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን አስቀድመው ሂሳብዎን ይሙሉ::' });
       return;
@@ -389,8 +388,7 @@ setInterval(async () => {
             winningNumber: null
           });
         }, 10000);
-
-      } else {
+           } else {
         timeLeft = 50;
         winningNumber = 'NONE';
         io.emit('reset_game', {
@@ -406,7 +404,8 @@ setInterval(async () => {
   }
   io.emit('timer_tick', { timeLeft, gamePhase });
 }, 1000);
- // --- SERVER START ---
+
+// --- SERVER START ---
 const PORT = process.env.PORT || 10000;
 
 server.listen(PORT, async () => {
