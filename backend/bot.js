@@ -159,9 +159,8 @@ Coin:         ${coin}
     await ctx.reply("💰 ማስገባት የሚፈልጉትን መጠን ከ10 ብር ጀምሮ ያስገቡ::");
   });
 
-  // Withdraw 🤑
-  bot.callbackQuery('withdraw', async (ctx) => {
-    await ctx.answerCallbackQuery();
+  // Withdraw 🤑 (Reply Keyboard Button)
+  bot.hears(['Withdraw 🤑', 'Withdraw', '/withdraw'], async (ctx) => {
     const userId = String(ctx.from?.id);
     try {
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
@@ -169,31 +168,35 @@ Coin:         ${coin}
         const data = await res.json();
         const mainWallet = data.mainWallet || 0;
 
-        await ctx.reply(
+        const withdrawMessage = 
           `📤 *ገንዘብ ማውጫ (Withdrawal)*\n\n` +
           `• *ያልዎት ቀሪ ሂሳብ:* ${mainWallet} ETB\n` +
           `• *አነስተኛ ወጪ ማድረጊያ:* 50 ETB\n\n` +
-          `ገንዘብ ለማውጣት በ WebApp ውስጥ ያለውን Wallet ገፅ ይጠቀሙ ወይም አስተዳዳሪውን ያናግሩ።`,
-          { parse_mode: 'Markdown' }
-        );
+          `ገንዘብ ለማውጣት በ WebApp ውስጥ ያለውን Wallet ገፅ ይጠቀሙ ወይም አስተዳዳሪውን ያናግሩ።`;
+
+        await ctx.reply(withdrawMessage, { parse_mode: 'Markdown' });
+      } else {
+        await ctx.reply('❌ የተጠቃሚ መረጃ ማግኘት አልተቻለም።');
       }
     } catch (err) {
+      console.error('Withdraw Error:', err);
       await ctx.reply('❌ የኔትወርክ ስህተት አጋጥሟል።');
     }
   });
 
-  // Invite 🔗 (Inline Button)
-  bot.callbackQuery('invite', async (ctx) => {
-    await ctx.answerCallbackQuery();
+  // Invite 🔗 (Reply Keyboard Button)
+bot.hears(['Invite 🔗', 'Invite', '/invite'], async (ctx) => {
+  try {
     const userId = ctx.from?.id;
     const botUsername = ctx.me?.username || 'fetanlottery_bot';
     const inviteLink = `https://t.me/${botUsername}?start=${userId}`;
-    const shareText = encodeURIComponent(`👋 ና ወደ Fetan Lottery እንጫወት! በዚህ ሊንክ ተመዝገብ፦\n${inviteLink}`);
+    
+    // የሼር ማድረጊያ ጽሑፍ
+    const shareText = encodeURIComponent(`👋 ና ወደ Fetan Lottery እንጫወት! በዚህ ሊንክ ተመዝገብ፦`);
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${shareText}`;
 
-    const inviteMessage = 
-`🔗 **Invite your friends to Fetan Lottery and earn rewards!**
-🎁 ${inviteLink}`;
+    const inviteMessage = `🔗 **Invite your friends to Fetan Lottery and earn rewards!**\n\n` +
+                          `🎁 **Your Referral Link:**\n${inviteLink}`;
 
     const shareKeyboard = new InlineKeyboard()
       .url("📩 Share Invite Link", shareUrl);
@@ -202,12 +205,15 @@ Coin:         ${coin}
       parse_mode: 'Markdown',
       reply_markup: shareKeyboard
     });
-  });
+  } catch (error) {
+    console.error("Error handling invite command:", error);
+  }
+});
 
   // Support ☎️
   bot.callbackQuery('support', async (ctx) => {
     await ctx.answerCallbackQuery();
-    await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @betesebbingosupport');
+    await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @Fetanlotterysupport');
   });
 
   // Instruction 📖

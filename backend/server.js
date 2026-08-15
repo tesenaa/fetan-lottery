@@ -1,8 +1,9 @@
-import express from 'express';
+ import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import https from 'https';
+import mongoose from 'mongoose';
 import { bot } from './bot.js';
 import { webhookCallback } from 'grammy';
 
@@ -11,6 +12,32 @@ const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// --- MONGODB CONNECTION ---
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (MONGODB_URI) {
+  mongoose.connect(MONGODB_URI)
+    .then(() => console.log('✅ Connected to MongoDB Atlas successfully!'))
+    .catch((err) => console.error('❌ MongoDB Connection Error:', err));
+} else {
+  console.warn('⚠️ MONGODB_URI environment variable is missing!');
+}
+
+// --- USER MONGOOSE SCHEMA & MODEL ---
+const userSchema = new mongoose.Schema({
+  userId: { type: String, required: true, unique: true },
+  firstName: { type: String, default: '' },
+  username: { type: String, default: '' },
+  phone: { type: String, default: '' },
+  mainWallet: { type: Number, default: 0 },
+  playWallet: { type: Number, default: 0 },
+  totalInvite: { type: Number, default: 0 },
+  gamesWon: { type: Number, default: 0 },
+  totalGames: { type: Number, default: 0 }
+}, { timestamps: true });
+
+const User = mongoose.model('User', userSchema);
 
 // Server Ping Check Route
 app.get('/', (req, res) => {
@@ -33,7 +60,7 @@ let gamePhase = 'selecting';
 let winningNumber = null;
 const STAKE_PER_NUMBER = 10;
 
-// የተጠቃሚዎች ዳታ መያዣ (In-Memory Database)
+// የተጠቃሚዎች ዳታ መያዣ (In-Memory Database for fast lookup)
 const usersData = {};
 const registeredUsersSet = new Set();
 const activeUsersMap = new Map();
@@ -61,23 +88,32 @@ const getGameStats = () => {
   return { totalPlayers: uniquePlayers, derash };
 };
 
-function initUser(userId, firstName = '', username = '', phone = '') {
+async function initUser(userId, firstName = '', username = '', phone = '') {
   const uid = String(userId);
+  
   if (!usersData[uid]) {
-    usersData[uid] = {
-      userId: uid,
-      firstName: firstName || '',
-      username: username || '',
-      phone: phone || '',
-      mainWallet: 0,
-      playWallet: 0,
-      totalInvite: 0,
-      gamesWon: 0,
-      totalGames: 0
-    };
+    // 1. መጀመሪያ ከ MongoDB ፈልግ
+    let dbUser = await User.findOne({ userId: uid });
+    if (!dbUser) {
+      // 2. ከሌለ አዲስ ክሬት አድርገህ MongoDB ላይ ሴቭ አድርግ
+      dbUser = await User.create({
+        userId: uid,
+        firstName: firstName || '',
+        username: username || '',
+        phone: phone || '',
+        mainWallet: 0,
+        playWallet: 0,
+        totalInvite: 0,
+        gamesWon: 0,
+        totalGames: 0
+      });
+    }
+    usersData[uid] = dbUser.toObject();
   } else if (phone && !usersData[uid].phone) {
     usersData[uid].phone = phone;
+    await User.updateOne({ userId: uid }, { phone: phone });
   }
+
   registeredUsersSet.add(uid);
   return usersData[uid];
 }
@@ -90,15 +126,22 @@ app.post('/api/user/register', async (req, res) => {
   if (!userId) return res.status(400).json({ success: false, message: "User ID ያስፈልጋል።" });
 
   const uid = String(userId);
-  const isNewUser = !usersData[uid];
+  const existingInDb = await User.findOne({ userId: uid });
+  const isNewUser = !existingInDb;
 
-  const user = initUser(uid, firstName, username, phone);
+  const user = await initUser(uid, firstName, username, phone);
 
   if (isNewUser && referrerId && String(referrerId) !== uid) {
     const refUid = String(referrerId);
-    if (usersData[refUid]) {
+    const refUser = await initUser(refUid);
+ if (refUser) {
       usersData[refUid].totalInvite += 1;
       usersData[refUid].playWallet += 10;
+
+      await User.updateOne(
+        { userId: refUid },
+        { $inc: { totalInvite: 1, playWallet: 10 } }
+      );
 
       if (bot) {
         try {
@@ -117,8 +160,8 @@ app.post('/api/user/register', async (req, res) => {
   res.json({ success: true, isNew: isNewUser, user });
 });
 
-// 2. 📱 አዲስ የተጨመረ፦ የስልክ ቁጥር ማዘመኛ (Update Phone Endpoint)
-app.post('/api/user/update-phone', (req, res) => {
+// 2. 📱 የስልክ ቁጥር ማዘመኛ
+app.post('/api/user/update-phone', async (req, res) => {
   const { userId, telegramId, phone, phoneNumber } = req.body;
   const uid = String(userId || telegramId);
   const finalPhone = phone || phoneNumber;
@@ -127,42 +170,52 @@ app.post('/api/user/update-phone', (req, res) => {
     return res.status(400).json({ success: false, message: "UserId ያስፈልጋል።" });
   }
 
-  const user = initUser(uid);
+  const user = await initUser(uid);
   user.phone = finalPhone;
+
+  await User.updateOne({ userId: uid }, { phone: finalPhone });
 
   console.log(`📱 User ${uid} Phone Updated: ${finalPhone}`);
   res.json({ success: true, message: "ስልክ ቁጥር በትክክል ተመዝግቧል!", user });
 });
- // 3. Deposit
-app.post('/api/deposit', (req, res) => {
+
+// 3. Deposit
+app.post('/api/deposit', async (req, res) => {
   const { userId, amount } = req.body;
   const uid = String(userId);
-  const user = initUser(uid);
-  user.mainWallet += Number(amount || 0);
+  const user = await initUser(uid);
+  const addAmount = Number(amount || 0);
+
+  user.mainWallet += addAmount;
+  await User.updateOne({ userId: uid }, { $inc: { mainWallet: addAmount } });
+
   res.json({ success: true, balance: user.mainWallet });
 });
 
 // 4. Withdraw
-app.post('/api/withdraw', (req, res) => {
+app.post('/api/withdraw', async (req, res) => {
   const { userId, amount } = req.body;
   const uid = String(userId);
-  const user = initUser(uid);
+  const user = await initUser(uid);
 
   if (user.mainWallet < Number(amount)) {
     return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም!" });
   }
 
-  user.mainWallet -= Number(amount);
+  const subAmount = Number(amount);
+  user.mainWallet -= subAmount;
+  await User.updateOne({ userId: uid }, { $inc: { mainWallet: -subAmount } });
+
   res.json({ success: true, balance: user.mainWallet, message: "ተሳክቷል!" });
 });
 
-// 5. የተጠቃሚ መረጃ ማግኛ (User Info Endpoint)
-app.get('/api/user', (req, res) => {
+// 5. የተጠቃሚ መረጃ ማግኛ
+app.get('/api/user', async (req, res) => {
   const id = req.query.id || req.query.userId;
   const uid = String(id);
 
   if (uid && uid !== 'GUEST_USER' && uid !== 'undefined') {
-    const user = initUser(uid);
+    const user = await initUser(uid);
     return res.json(user);
   }
 
@@ -184,14 +237,14 @@ setInterval(() => {
   }).on('error', (err) => {
     console.log('Ping error:', err.message);
   });
-}, 10 * 60 * 1000); // በየ 10 ደቂቃው እንዲነቃ ያደርገዋል
+}, 10 * 60 * 1000);
 
 // --- SOCKET LOGIC ---
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
   const userId = socket.handshake.query.userId;
 
   if (userId && userId !== 'GUEST_USER') {
-    initUser(userId);
+    await initUser(userId);
     activeUsersMap.set(socket.id, String(userId));
   }
 
@@ -215,17 +268,16 @@ io.on('connection', (socket) => {
     totalRegisteredFormatted: formatUserCount(registeredCount)
   });
 
-  socket.on('select_number', (data) => {
+  socket.on('select_number', async (data) => {
     if (gamePhase !== 'selecting') return;
 
     const { numberChosen, userId, userName } = data;
     const uid = String(userId);
-    const user = initUser(uid);
+    const user = await initUser(uid);
 
     const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
     if (exists) return;
-
-    const totalAvailable = user.mainWallet + user.playWallet;
+       const totalAvailable = user.mainWallet + user.playWallet;
     if (totalAvailable < STAKE_PER_NUMBER) {
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን አስቀድመው ሂሳብዎን ይሙሉ::' });
       return;
@@ -233,10 +285,12 @@ io.on('connection', (socket) => {
 
     if (user.playWallet >= STAKE_PER_NUMBER) {
       user.playWallet -= STAKE_PER_NUMBER;
+      await User.updateOne({ userId: uid }, { $inc: { playWallet: -STAKE_PER_NUMBER } });
     } else {
       const remaining = STAKE_PER_NUMBER - user.playWallet;
       user.playWallet = 0;
       user.mainWallet -= remaining;
+      await User.updateOne({ userId: uid }, { playWallet: 0, $inc: { mainWallet: -remaining } });
     }
 
     selectedNumbers.push({
@@ -249,12 +303,12 @@ io.on('connection', (socket) => {
     socket.emit('balance_updated', { balance: user.mainWallet });
   });
 
-  socket.on('deselect_number', (data) => {
+  socket.on('deselect_number', async (data) => {
     if (gamePhase !== 'selecting') return;
 
     const { numberChosen, userId } = data;
     const uid = String(userId);
-    const user = initUser(uid);
+    const user = await initUser(uid);
 
     const isSelected = selectedNumbers.some(
       n => Number(n.number) === Number(numberChosen) && String(n.userId) === uid
@@ -266,13 +320,15 @@ io.on('connection', (socket) => {
       );
 
       user.mainWallet += STAKE_PER_NUMBER;
+      await User.updateOne({ userId: uid }, { $inc: { mainWallet: STAKE_PER_NUMBER } });
 
       const s = getGameStats();
       io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
       socket.emit('balance_updated', { balance: user.mainWallet });
     }
   });
- socket.on('disconnect', () => {
+
+  socket.on('disconnect', () => {
     activeUsersMap.delete(socket.id);
     const updatedActiveCount = new Set(activeUsersMap.values()).size;
     const currentRegisteredCount = registeredUsersSet.size;
@@ -287,7 +343,7 @@ io.on('connection', (socket) => {
 });
 
 // --- TIMER LOGIC ---
-setInterval(() => {
+setInterval(async () => {
   if (gamePhase === 'selecting') {
     if (timeLeft > 0) {
       timeLeft--;
@@ -295,8 +351,23 @@ setInterval(() => {
       if (selectedNumbers.length > 0) {
         gamePhase = 'spinning';
         const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
-        winningNumber = selectedNumbers[randomIndex].number;
+        const winner = selectedNumbers[randomIndex];
+        winningNumber = winner.number;
         const stats = getGameStats();
+
+        // አሸናፊውን በ MongoDB ላይ Update ማድረግ
+        if (winner && winner.userId) {
+          const wUid = String(winner.userId);
+          const wUser = await initUser(wUid);
+          wUser.mainWallet += stats.derash;
+          wUser.gamesWon += 1;
+
+          await User.updateOne(
+            { userId: wUid },
+            { $inc: { mainWallet: stats.derash, gamesWon: 1 } }
+          );
+        }
+
         io.emit('game_result', {
           winningNumber,
           gamePhase: 'spinning',
@@ -335,8 +406,7 @@ setInterval(() => {
   }
   io.emit('timer_tick', { timeLeft, gamePhase });
 }, 1000);
-
-// --- SERVER START ---
+ // --- SERVER START ---
 const PORT = process.env.PORT || 10000;
 
 server.listen(PORT, async () => {
