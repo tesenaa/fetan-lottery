@@ -85,11 +85,10 @@ if (bot) {
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
       if (res.ok) {
         const data = await res.json();
-        const userObj = data.user || data;
-        phone = userObj.phone || phone;
-        mainWallet = userObj.mainWallet || 0;
-        playWallet = userObj.playWallet || 0.0;
-        coin = userObj.coin || 0;
+        phone = data.phone || phone;
+        mainWallet = data.mainWallet || 0;
+        playWallet = data.playWallet || 0.0;
+        coin = data.coin || 0;
       }
     } catch (apiErr) {
       console.log("API Fetch Error (Using default/local values)");
@@ -101,8 +100,8 @@ if (bot) {
 \`\`\`
 Name:         ${telegramName}
 Phone:        ${phone}
-Main wallet:  ${mainWallet} ETB
-Play wallet:  ${Number(playWallet).toFixed(1)} ETB
+Main wallet:  ${mainWallet}
+Play wallet:  ${Number(playWallet).toFixed(1)}
 Coin:         ${coin}
 \`\`\``;
 
@@ -115,12 +114,13 @@ Coin:         ${coin}
       reply_markup: balanceMenu
     });
   });
-             // Register 📝 (Inline Button)
+
+  // Register 📝 (Inline Button)
   bot.callbackQuery('register', async (ctx) => {
     await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
+               try {
+      const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}&userId=${userId}`);
       if (res.ok) {
         const data = await res.json();
         const userObj = data.user || data;
@@ -171,8 +171,7 @@ Coin:         ${coin}
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
       if (res.ok) {
         const data = await res.json();
-        const userObj = data.user || data;
-        const mainWallet = userObj.mainWallet || 0;
+        const mainWallet = data.mainWallet || 0;
 
         const withdrawMessage = 
           `📤 *ገንዘብ ማውጫ (Withdrawal)*\n\n` +
@@ -205,7 +204,7 @@ Coin:         ${coin}
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
 
       const inviteMessage = `🔗 *ለጓደኞችዎ ያጋሩ እና ነፃ ቦነስ ያግኙ!*\n\n` +
-                            `🎁 *የእርስዎ መጋበዣ ሊንክ:*\n${inviteLink}\n\n` +
+                            `🎁 *የእርስዎ መጋበዣ ሊንክ:*\n\${inviteLink}\ \n\n` +
                             `💡 *ጥቅሙ:* ጓደኛዎ በእርስዎ ሊንክ ሲመዘገብ ለእርስዎ *10 ETB* ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!`;
 
       const shareKeyboard = new InlineKeyboard()
@@ -228,13 +227,13 @@ Coin:         ${coin}
     await ctx.answerCallbackQuery();
     await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @Fetanlotterysupport');
   });
-          // Instruction 📖
+  // Instruction 📖
   bot.callbackQuery('instruction', async (ctx) => {
     await ctx.answerCallbackQuery();
     await ctx.reply(
       `📖 *የጨዋታው መመሪያ*:\n\n` +
-      `1. "Register 📝" የሚለውን ተጭነው ይመዝገቡ።\n` +
-      `2. "Deposit 💵" የሚለውን ተጭነው ወደ ዋሌት ብር ያስቀምጡ።\n` +
+      `1."Register 📝" የሚለውን ተጭነው ይመዝገቡ።\n` +
+      `2."Deposit 💵" የሚለውን ተጭነው ወደ ዋሌት ብር ያስቀምጡ።\n` +
       `3. "Play 🎮" የሚለውን ተጭነው WebApp ይክፈቱ።\n` +
       `4. የሚወዱትን የሎተሪ ቁጥር ይምረጡ።\n` +
       `5. ሰዓቱ ሲያልቅ እጣው በቀጥታ ይወጣል፤ ካሸነፉ ገንዘቡ ወዲያውኑ ወደ Main Walletዎ ገቢ ይሆናል።`,
@@ -266,10 +265,13 @@ Coin:         ${coin}
     const amount = ctx.callbackQuery.data.split("_")[2];
     userStates[chatId] = { step: 'AWAITING_SMS', amount: amount };
 
-    const instructionsText = `የሚያጋጥሟችሁ የክፍያ ችግር: @Fetanlotterysupport ላይ ፃፉልን::\n\n +
-      1. ከታች ባለው የቴሌብር አካውንት ${amount} ብር ያስገቡ\n\n +
-       Phone: ${TELEBIRR_NUMBER}\n\n +
-      2. የከፈሉበትን አጭር የፅሁፍ መልዕክት (message) copy በማድረግ እዚህ ላይ Paste አድርገው ይላኩ👇👇👇`;
+    const instructionsText = `የሚያጋጥሟችሁ የክፍያ ችግር:@Fetanlotterysupport ላይ ፃፉልን::
+
+1. ከታች ባለው የቴሌብር አካውንት ${amount} ብር ያስገቡ
+
+ Phone: ${TELEBIRR_NUMBER}
+
+2. የከፈሉበትን አጭር የፅሁፍ መልዕክት(message) copy በማድረግ እዚ ላይ Past አድርገው ይላኩና ይላኩ👇👇👇`;
 
     const shareContactKeyboard = new Keyboard()
       .requestContact("📞 Share contact")
@@ -355,11 +357,11 @@ Coin:         ${coin}
 `✦ ብር ማስገባት የሚችሉት አሁን በተቀመጠዉ የTelebirr አካዉንት ብቻ ነዉ::
 🚫 ከዚህ ውጭ የላከ አንስተናግድም 🚫
 👇 Telebirr የሚለውን ይምረጡ 👇`;
- const paymentKeyboard = new InlineKeyboard()
+
+      const paymentKeyboard = new InlineKeyboard()
         .text("Telebirr", `pay_telebirr_${amount}`).row()
         .text("❌ Cancel", "cancel_deposit");
-      
-      await ctx.reply(paymentOptionMessage, {
+         await ctx.reply(paymentOptionMessage, {
         reply_markup: paymentKeyboard
       });
       return;
