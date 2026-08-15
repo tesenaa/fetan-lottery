@@ -1,4 +1,4 @@
- import { Bot, InlineKeyboard, Keyboard } from 'grammy';
+import { Bot, InlineKeyboard, Keyboard } from 'grammy';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -115,7 +115,7 @@ Coin:         ${coin}
       reply_markup: balanceMenu
     });
   });
- // Register 📝 (Inline Button)
+             // Register 📝 (Inline Button)
   bot.callbackQuery('register', async (ctx) => {
     await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
@@ -177,7 +177,7 @@ Coin:         ${coin}
         const withdrawMessage = 
           `📤 *ገንዘብ ማውጫ (Withdrawal)*\n\n` +
           `• *ያልዎት ቀሪ ሂሳብ:* ${mainWallet} ETB\n` +
-          `• *አነስተኛ ወጪ ማድረጊያ:* 50 ETB\n\n `+
+          `• *አነስተኛ ወጪ ማድረጊያ:* 50 ETB\n\n` +
           `ገንዘብ ለማውጣት በ WebApp ውስጥ ያለውን Wallet ገፅ ይጠቀሙ ወይም አስተዳዳሪውን ያናግሩ።`;
 
         await ctx.reply(withdrawMessage, { parse_mode: 'Markdown' });
@@ -228,7 +228,7 @@ Coin:         ${coin}
     await ctx.answerCallbackQuery();
     await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @Fetanlotterysupport');
   });
-              // Instruction 📖
+          // Instruction 📖
   bot.callbackQuery('instruction', async (ctx) => {
     await ctx.answerCallbackQuery();
     await ctx.reply(
@@ -355,7 +355,7 @@ Coin:         ${coin}
 `✦ ብር ማስገባት የሚችሉት አሁን በተቀመጠዉ የTelebirr አካዉንት ብቻ ነዉ::
 🚫 ከዚህ ውጭ የላከ አንስተናግድም 🚫
 👇 Telebirr የሚለውን ይምረጡ 👇`;
-          const paymentKeyboard = new InlineKeyboard()
+ const paymentKeyboard = new InlineKeyboard()
         .text("Telebirr", `pay_telebirr_${amount}`).row()
         .text("❌ Cancel", "cancel_deposit");
       

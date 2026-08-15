@@ -51,7 +51,7 @@ export default function App() {
   }, [tgUser]);
 
   const userPhoto = tgUser?.photo_url || null;
-  const userPhone = tgUser?.username ? `@${tgUser.username}` : userId;
+  const userPhone = user?.phone || (tgUser?.username ? `@${tgUser.username}` : "ስልክ አልተመዘገበም");
   const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
 
   // 3. Socket Singleton Instance
