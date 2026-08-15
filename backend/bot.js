@@ -189,17 +189,20 @@ bot.hears(['Invite 🔗', 'Invite', '/invite'], async (ctx) => {
   try {
     const userId = ctx.from?.id;
     const botUsername = ctx.me?.username || 'fetanlottery_bot';
+    
+    // ለእያንዳንዱ ተጠቃሚ የራሱ የሆነ unique referral link
     const inviteLink = `https://t.me/${botUsername}?start=${userId}`;
     
     // የሼር ማድረጊያ ጽሑፍ
-    const shareText = encodeURIComponent(`👋 ና ወደ Fetan Lottery እንጫወት! በዚህ ሊንክ ተመዝገብ፦`);
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${shareText}`;
+    const shareText = "🎉 ና ወደ Fetan Lottery እንጫወት! በዚህ ሊንክ ስትመዘገብ የ 10 ETB ነፃ ቦነስ ታገኛለህ፦";
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
 
-    const inviteMessage = `🔗 **Invite your friends to Fetan Lottery and earn rewards!**\n\n` +
-                          `🎁 **Your Referral Link:**\n${inviteLink}`;
+    const inviteMessage = `🔗 *ለጓደኞችዎ ያጋሩ እና ነፃ ቦነስ ያግኙ!*\n\n` +
+                          `🎁 *የእርስዎ መጋበዣ ሊንክ:*\n\${inviteLink}\ \n\n` +
+                          `💡 *ጥቅሙ:* ጓደኛዎ በእርስዎ ሊንክ ሲመዘገብ ለእርስዎ *10 ETB* ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!`;
 
     const shareKeyboard = new InlineKeyboard()
-      .url("📩 Share Invite Link", shareUrl);
+      .url("📩 ለጓደኛ Share አድርግ", shareUrl);
 
     await ctx.reply(inviteMessage, {
       parse_mode: 'Markdown',
