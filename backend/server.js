@@ -207,23 +207,26 @@ app.post('/api/withdraw', async (req, res) => {
 
   res.json({ success: true, balance: user.mainWallet, message: "ተሳክቷል!" });
 });
-
 app.get('/api/user', async (req, res) => {
-  const { id } = req.query;
-  const user = await User.findOne({ userId: id }); // እንደ ዳታቤዝህ አደረጃጀት
+  try {
+    const { id } = req.query;
+    const user = await User.findOne({ userId: String(id) });
 
-  if (user) {
-    res.json({
-      mainWallet: user.mainWallet,
-      playWallet: user.playWallet,
-      phoneNumber: user.phoneNumber, // 👈 ቦቱ ላይ Share Contact ያደረገውን ቁጥር እዚህ ጋር ላከው
-      gamesWon: user.gamesWon,
-      totalInvite: user.totalInvite,
-      totalGames: user.totalGames,
-      history: user.history
-    });
-  } else {
-    res.status(404).json({ message: "User not found" });
+    if (user) {
+      res.json({
+        mainWallet: user.mainWallet || 0,
+        playWallet: user.playWallet || 0,
+        phone: user.phone || user.phoneNumber || "", // 👈 ስልኩ በዳታቤዝህ 'phone' ወይም 'phoneNumber' በሚለው መላኩን አረጋግጥ
+        gamesWon: user.gamesWon || 0,
+        totalInvite: user.totalInvite || 0,
+        totalGames: user.totalGames || 0,
+        history: user.history || []
+      });
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
