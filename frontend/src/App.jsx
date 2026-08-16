@@ -51,8 +51,9 @@ export default function App() {
   }, [tgUser]);
 
   const userPhoto = tgUser?.photo_url || null;
-  const userPhone = userDbPhone || tgUser?.phone_number || "ስልክ አልተመዘገበም";
-  const [userPhoneNumber, setUserPhoneNumber] = useState('');
+  const userPhone = tgUser?.username ? `@${tgUser.username}` : userId;
+  const tg = window.Telegram.WebApp;
+  const phoneNumber = user?.phone_number || tg.initDataUnsafe?.user?.phone_number || "+2519........";
   const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
 
   // 3. Socket Singleton Instance
@@ -124,35 +125,6 @@ export default function App() {
     }
   }, [userId]);
 
-  const fetchUserData = useCallback(async () => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`, {
-      headers: { 'Bypass-Tunnel-Remainder': 'true' }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      
-      // 🔍 Backend የሚልከውን ዳታ በሙሉ ለመመልከት
-      console.log("Backend User Data:", data);
-
-      setMainWallet(data.mainWallet || 0);
-      setPlayWallet(data.playWallet || 0);
-      
-      // 👈 በዳታቤዝህ የተቀመጠውን Field Name እዚህ ጋር ያዝ (phone, phoneNumber, ወይም phone_number)
-      const phoneVal = data.phone || data.phoneNumber || data.phone_number;
-      if (phoneVal) {
-        setUserPhoneNumber(phoneVal);
-      }
-
-      setGamesWon(data.gamesWon || 0);
-      setTotalInvite(data.totalInvite || 0);
-      setTotalGames(data.totalGames || 0);
-      setGameHistory(data.history || []);
-    }
-  } catch (err) {
-    console.error("Data Fetch Error:", err);
-  }
-}, [userId]);
   const derashRef = useRef(derash);
   useEffect(() => {
     derashRef.current = derash;
@@ -595,9 +567,9 @@ export default function App() {
             <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', border: '1px solid #2a2a4a' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '18px' }}>👤</span>
-              <span style={{ fontSize: '15px', fontWeight: 'bold' }}>
-  {userPhoneNumber ? userPhoneNumber : "ስልክ አልተመዘገበም"}
-</span>
+                <span className="font-medium text-white">
+    {user.phoneNumber ? user.phoneNumber : "ስልክ ቁጥር አልተመዘገበም"}
+  </span>
               </div>
               <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid #10b981', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', fontWeight: 'bold' }}>
                 ✓ Verified
