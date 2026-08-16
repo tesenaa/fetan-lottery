@@ -443,7 +443,11 @@ export default function App() {
     }
   };
    const filteredAdminUsers = useMemo(() => {
-    return adminUsers.filter(u => u.userId.includes(adminSearch)  (u.phone && u.phone.includes(adminSearch))  (u.firstName && u.firstName.toLowerCase().includes(adminSearch.toLowerCase())));
+    return adminUsers.filter(u => 
+      (u.userId && String(u.userId).includes(adminSearch)) ||
+      (u.phone && u.phone.includes(adminSearch)) ||
+      (u.firstName && u.firstName.toLowerCase().includes(adminSearch.toLowerCase()))
+    );
   }, [adminUsers, adminSearch]);
 
   return (
