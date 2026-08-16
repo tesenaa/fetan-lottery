@@ -268,7 +268,7 @@ setInterval(() => {
     console.log('Ping error:', err.message);
   });
 }, 10 * 60 * 1000);
-            // --- SOCKET LOGIC ---
+    // --- SOCKET LOGIC ---
 io.on('connection', async (socket) => {
   const userId = socket.handshake.query.userId;
 
@@ -390,7 +390,7 @@ setInterval(async () => {
           const wUser = await initUser(wUid);
           wUser.mainWallet += stats.derash;
           wUser.gamesWon += 1;
-           await User.updateOne(
+          await User.updateOne(
             { userId: wUid },
             { $inc: { mainWallet: stats.derash, gamesWon: 1 } }
           );
