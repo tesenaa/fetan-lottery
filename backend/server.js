@@ -208,6 +208,25 @@ app.post('/api/withdraw', async (req, res) => {
   res.json({ success: true, balance: user.mainWallet, message: "ተሳክቷል!" });
 });
 
+app.get('/api/user', async (req, res) => {
+  const { id } = req.query;
+  const user = await User.findOne({ userId: id }); // እንደ ዳታቤዝህ አደረጃጀት
+
+  if (user) {
+    res.json({
+      mainWallet: user.mainWallet,
+      playWallet: user.playWallet,
+      phoneNumber: user.phoneNumber, // 👈 ቦቱ ላይ Share Contact ያደረገውን ቁጥር እዚህ ጋር ላከው
+      gamesWon: user.gamesWon,
+      totalInvite: user.totalInvite,
+      totalGames: user.totalGames,
+      history: user.history
+    });
+  } else {
+    res.status(404).json({ message: "User not found" });
+  }
+});
+
 // 5. የተጠቃሚ መረጃ ማግኛ
 app.get('/api/user', async (req, res) => {
   const id = req.query.id || req.query.userId;
