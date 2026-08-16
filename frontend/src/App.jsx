@@ -46,8 +46,8 @@ export default function App() {
     const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ');
     return fullName || 'ተጫዋች';
   }, [tgUser]);
-  const userPhoto = tgUser?.photo_url || null;
 
+  const userPhoto = tgUser?.photo_url || null;
   const isAdmin = useMemo(() => String(userId) === String(ADMIN_ID), [userId]);
 
   const [userPhone, setUserPhone] = useState('');
@@ -63,18 +63,21 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState('game');
   const [currentScreen, setCurrentScreen] = useState('home');
   const [stake, setStake] = useState(10);
+
   const [registeredCount, setRegisteredCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
 
   const [walletTab, setWalletTab] = useState('balance');
   const [mainWallet, setMainWallet] = useState(0);
   const [playWallet, setPlayWallet] = useState(0);
+
   const [gamesWon, setGamesWon] = useState(0);
   const [totalInvite, setTotalInvite] = useState(0);
   const [totalGames, setTotalGames] = useState(0);
 
   const [selectedNumbers, setSelectedNumbers] = useState([]);
   const [allPickedNumbers, setAllPickedNumbers] = useState([]);
+
   const myPickedSet = useMemo(() => new Set(selectedNumbers), [selectedNumbers]);
   const allPickedSet = useMemo(() => new Set(allPickedNumbers), [allPickedNumbers]);
 
@@ -88,6 +91,7 @@ export default function App() {
   const [depAmount, setDepAmount] = useState('');
   const [depProof, setDepProof] = useState('');
   const [withAmount, setWithAmount] = useState('');
+
   const [gameHistory, setGameHistory] = useState([]);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -166,7 +170,10 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/admin/toggle-ban`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'admin-key': userId },
+        headers: {
+          'Content-Type': 'application/json',
+          'admin-key': userId
+        },
         body: JSON.stringify({ targetUserId, isBanned: !currentStatus })
       });
       const data = await res.json();
@@ -184,12 +191,11 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/admin/update-balance`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'admin-key': userId },
-        body: JSON.stringify({
-          targetUserId: editingUser.userId,
-          mainWallet: editMain,
-          playWallet: editPlay
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          'admin-key': userId
+        },
+        body: JSON.stringify({ targetUserId: editingUser.userId, mainWallet: editMain, playWallet: editPlay })
       });
       const data = await res.json();
       if (data.success) {
@@ -206,7 +212,10 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/admin/process-transaction`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'admin-key': userId },
+        headers: {
+          'Content-Type': 'application/json',
+          'admin-key': userId
+        },
         body: JSON.stringify({ transactionId, action })
       });
       const data = await res.json();
@@ -220,11 +229,14 @@ export default function App() {
   };
 
   const handleSendBroadcast = async () => {
-    if (!broadcastText) return alert("እባክዎን መልዕክት ይፃፉ!");
+    if (!broadcastText) return alert("እባክዎን መልእክት ይጻፉ!");
     try {
       const res = await fetch(`${API_BASE_URL}/api/admin/broadcast`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'admin-key': userId },
+        headers: {
+          'Content-Type': 'application/json',
+          'admin-key': userId
+        },
         body: JSON.stringify({ message: broadcastText })
       });
       const data = await res.json();
@@ -244,7 +256,6 @@ export default function App() {
 
   useEffect(() => {
     fetchUserData();
-
     let spinTimeout;
     let resultTimeout;
 
@@ -318,7 +329,6 @@ export default function App() {
         const winItem = data.selectedNumbers?.find(
           n => typeof n === 'object' && String(n.number) === String(winNum)
         );
-
         const winAmount = data.derash !== undefined ? data.derash : derashRef.current;
 
         if (winItem) {
@@ -331,7 +341,7 @@ export default function App() {
           if (String(winItem.userId) === String(userId)) {
             setMainWallet(prev => prev + winAmount);
             setGamesWon(prev => prev + 1);
-            alert(`🎉 እንኳን ደስ አለዎት! ዕጣው በቁጥር #${winNum} ለእርስዎ ወጥቷል! ${winAmount} ETB ወደ ዋሌትዎ ገቢ ሆኗል ።`);
+            alert(`🎉 እንኳን ደስ አለዎት! ዕጣው በቁጥር #${winNum} ለእርስዎ ወጥቷል! ${winAmount} ETB ወደ ዋሌትዎ ገቢ ሆኗል 💸`);
           }
         }
 
@@ -347,7 +357,6 @@ export default function App() {
           setPlayerCount(0);
           setDerash(0);
         }, 4000);
-
       }, 6000);
     });
 
@@ -404,7 +413,6 @@ export default function App() {
 
       setSelectedNumbers(prev => [...prev, num]);
       setAllPickedNumbers(prev => [...prev, num]);
-
       socket.emit('select_number', { numberChosen: num, userId, userName });
     }
   }, [phase, isBanned, myPickedSet, mainWallet, playWallet, stake, socket, userId, userName]);
@@ -424,7 +432,7 @@ export default function App() {
         setDepProof('');
       }
     } catch (err) {
-      alert("የገንዘብ ማስገባቱ ስህተት አጋጥሟል!");
+      alert("የገንዘብ ማስገባት ስህተት አጋጥሟል!");
     }
   };
 
@@ -443,7 +451,7 @@ export default function App() {
         setWithAmount('');
       }
     } catch (err) {
-      alert("የገንዘብ ማውጣቱ ስህተት አጋጥሟል!");
+      alert("የገንዘብ ማውጣት ስህተት አጋጥሟል!");
     }
   };
 
@@ -469,7 +477,7 @@ export default function App() {
   };
 
   const filteredAdminUsers = useMemo(() => {
-    return adminUsers.filter(u => 
+    return adminUsers.filter(u =>
       (u.userId && String(u.userId).includes(adminSearch)) ||
       (u.phone && u.phone.includes(adminSearch)) ||
       (u.firstName && u.firstName.toLowerCase().includes(adminSearch.toLowerCase()))
@@ -692,9 +700,7 @@ export default function App() {
                       fontWeight: 'bold',
                       flexShrink: 0
                     }}>
-                      {phase === 'spinning'
-                        ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!')
-                        : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
+                      {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
                     </div>
 
                     <div style={{
@@ -723,15 +729,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div style={{
-                    width: '160px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    flexShrink: 0,
-                    justifyContent: 'flex-start',
-                    overflowY: 'auto'
-                  }}>
+                  <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
                     <div style={{
                       backgroundColor: '#1b1b32',
                       borderRadius: '8px',
@@ -883,7 +881,7 @@ export default function App() {
         {/* ADMIN TAB */}
         {currentTab === 'admin' && isAdmin && (
           <div style={{ padding: '16px', overflowY: 'auto' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>🛠 Admin Dashboard</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>🛠️ Admin Dashboard</h2>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
               <button onClick={() => { setAdminTab('users'); fetchAdminData(); }} style={{ flex: 1, padding: '6px', borderRadius: '6px', backgroundColor: adminTab === 'users' ? '#0284c7' : '#1e1b4b', color: '#fff', border: 'none' }}>Users</button>
               <button onClick={() => { setAdminTab('tx'); fetchAdminData(); }} style={{ flex: 1, padding: '6px', borderRadius: '6px', backgroundColor: adminTab === 'tx' ? '#0284c7' : '#1e1b4b', color: '#fff', border: 'none' }}>Transactions</button>
@@ -946,7 +944,7 @@ export default function App() {
       {/* BOTTOM NAVIGATION BAR */}
       <div style={{
         display: 'flex',
-        justifyContent: 'space-around',
+        justify: 'space-around',
         alignItems: 'center',
         backgroundColor: '#0a0a16',
         borderTop: '1px solid #1e1b4b',
@@ -957,7 +955,7 @@ export default function App() {
         <button onClick={() => setCurrentTab('wallet')} style={{ backgroundColor: 'transparent', color: currentTab === 'wallet' ? '#38bdf8' : '#9ca3af', border: 'none', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>💰 Wallet</button>
         <button onClick={() => setCurrentTab('profile')} style={{ backgroundColor: 'transparent', color: currentTab === 'profile' ? '#38bdf8' : '#9ca3af', border: 'none', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>👤 Profile</button>
         {isAdmin && (
-          <button onClick={() => setCurrentTab('admin')} style={{ backgroundColor: 'transparent', color: currentTab === 'admin' ? '#f59e0b' : '#9ca3af', border: 'none', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>🛠 Admin</button>
+          <button onClick={() => setCurrentTab('admin')} style={{ backgroundColor: 'transparent', color: currentTab === 'admin' ? '#f59e0b' : '#9ca3af', border: 'none', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>🛠️ Admin</button>
         )}
       </div>
     </div>
