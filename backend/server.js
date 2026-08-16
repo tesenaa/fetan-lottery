@@ -8,7 +8,7 @@ import { bot } from './bot.js';
 import { webhookCallback } from 'grammy';
 
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
-const ADMIN_ID = process.env.ADMIN_ID || "494653076"; // Admin Auth Key
+const ADMIN_ID = process.env.ADMIN_ID || "494653076";
 
 const app = express();
 app.use(cors());
@@ -27,12 +27,12 @@ if (MONGODB_URI) {
 
 // --- MONGOOSE SCHEMAS & MODELS ---
 const userSchema = new mongoose.Schema({
-  userId: { type: String, required: true, unique: true },
+  userId: { type: String, required: true, unique: true, index: true },
   firstName: { type: String, default: '' },
   username: { type: String, default: '' },
   phone: { type: String, default: '' },
-  mainWallet: { type: Number, default: 0 },
-  playWallet: { type: Number, default: 0 },
+  mainWallet: { type: Number, default: 0, min: 0 },
+  playWallet: { type: Number, default: 0, min: 0 },
   totalInvite: { type: Number, default: 0 },
   gamesWon: { type: Number, default: 0 },
   totalGames: { type: Number, default: 0 },
@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const transactionSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
+  userId: { type: String, required: true, index: true },
   userName: { type: String, default: '' },
   type: { type: String, enum: ['deposit', 'withdrawal'], required: true },
   amount: { type: Number, required: true },
@@ -85,7 +85,6 @@ let gamePhase = 'selecting';
 let winningNumber = null;
 const STAKE_PER_NUMBER = 10;
 
-const usersData = {};
 const registeredUsersSet = new Set();
 const activeUsersMap = new Map();
 
@@ -113,38 +112,34 @@ const getGameStats = () => {
   return { totalPlayers: uniquePlayers, totalCollected, derash, houseProfit };
 };
 
-async function initUser(userId, firstName = '', username = '', phone = '') {
- const uid = String(userId);
- 
-  if (!usersData[uid]) {
-    let dbUser = await User.findOne({ userId: uid });
-    if (!dbUser) {
-      dbUser = await User.create({
-        userId: uid,
-        firstName: firstName || '',
-        username: username || '',
-        phone: phone || '',
-        mainWallet: 0,
-        playWallet: 0,
-        totalInvite: 0,
-        gamesWon: 0,
-        totalGames: 0,
-        isBanned: false
-      });
-    }
-    usersData[uid] = dbUser.toObject();
-  } else if (phone && !usersData[uid].phone) {
-    usersData[uid].phone = phone;
-    await User.updateOne({ userId: uid }, { phone: phone });
+async function getOrInitUser(userId, firstName = '', username = '', phone = '') {
+  const uid = String(userId);
+  let dbUser = await User.findOne({ userId: uid });
+  
+  if (!dbUser) {
+    dbUser = await User.create({
+      userId: uid,
+      firstName: firstName || '',
+      username: username || '',
+      phone: phone || '',
+      mainWallet: 0,
+      playWallet: 0,
+      totalInvite: 0,
+      gamesWon: 0,
+      totalGames: 0,
+      isBanned: false
+    });
+  } else if (phone && !dbUser.phone) {
+    dbUser.phone = phone;
+    await dbUser.save();
   }
 
   registeredUsersSet.add(uid);
-  return usersData[uid];
+  return dbUser;
 }
 
 // --- ADMIN API ENDPOINTS ---
 
-// 1. የሁሉንም ተጠቃሚዎች ዝርዝር ማግኛ
 app.get('/api/admin/users', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -157,7 +152,6 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
-// 2. የተጠቃሚ ban/unban status ማስተካከያ
 app.post('/api/admin/toggle-ban', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -170,16 +164,12 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
       { $set: { isBanned: Boolean(isBanned) } },
       { new: true }
     );
-    if (usersData[uid]) {
-      usersData[uid].isBanned = Boolean(isBanned);
-    }
     res.json({ success: true, user: updatedUser });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// 3. የተጠቃሚ balance/wallet ማስተካከያ
 app.post('/api/admin/update-balance', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -189,20 +179,15 @@ app.post('/api/admin/update-balance', async (req, res) => {
   try {
     const updatedUser = await User.findOneAndUpdate(
       { userId: uid },
-      { $set: { mainWallet: Number(mainWallet), playWallet: Number(playWallet) } },
+      { $set: { mainWallet: Math.max(0, Number(mainWallet)), playWallet: Math.max(0, Number(playWallet)) } },
       { new: true }
     );
-    if (usersData[uid]) {
-      usersData[uid].mainWallet = Number(mainWallet);
-      usersData[uid].playWallet = Number(playWallet);
-    }
     res.json({ success: true, user: updatedUser });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// 4. Pending Transactions (የሐዋላ/ክፍያ ጥያቄዎች) ማግኛ
 app.get('/api/admin/transactions', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -215,12 +200,11 @@ app.get('/api/admin/transactions', async (req, res) => {
   }
 });
 
-// 5. Transaction Approve/Reject (የክፍያ ማረጋገጫ ማጽደቅ/ውድቅ ማድረግ)
 app.post('/api/admin/process-transaction', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
   
-  const { transactionId, action } = req.body; // action: 'approve' | 'reject'
+  const { transactionId, action } = req.body;
 
   try {
     const tx = await Transaction.findById(transactionId);
@@ -228,15 +212,14 @@ app.post('/api/admin/process-transaction', async (req, res) => {
       return res.status(400).json({ success: false, message: "ጥያቄው አልተገኘም ወይም ቀደም ብሎ ተስተናግዷል!" });
     }
 
+    const uid = String(tx.userId);
+
     if (action === 'approve') {
       tx.status = 'approved';
       await tx.save();
-    const uid = String(tx.userId);
+
       if (tx.type === 'deposit') {
         await User.updateOne({ userId: uid }, { $inc: { mainWallet: tx.amount } });
-        if (usersData[uid]) usersData[uid].mainWallet += tx.amount;
-      } else if (tx.type === 'withdrawal') {
-        // የወጪ ገንዘብ አስቀድሞ ተቀንሶ ስለነበረ Approve ሲሆን ተጨማሪ ቅናሽ አያደርግም
       }
 
       if (bot) {
@@ -248,11 +231,8 @@ app.post('/api/admin/process-transaction', async (req, res) => {
       tx.status = 'rejected';
       await tx.save();
 
-      // ውድቅ ከተደረገ የወጪ ጥያቄ ከሆነ የነበረውን ገንዘብ ለተጠቃሚው ይመልሳል
       if (tx.type === 'withdrawal') {
-        const uid = String(tx.userId);
         await User.updateOne({ userId: uid }, { $inc: { mainWallet: tx.amount } });
-        if (usersData[uid]) usersData[uid].mainWallet += tx.amount;
       }
 
       if (bot) {
@@ -268,7 +248,6 @@ app.post('/api/admin/process-transaction', async (req, res) => {
   }
 });
 
-// 6. Financial Dashboard Reports (የገቢ/ወጪ ሪፖርት)
 app.get('/api/admin/financial-stats', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -302,7 +281,6 @@ app.get('/api/admin/financial-stats', async (req, res) => {
   }
 });
 
-// 7. Broadcast Message Endpoint
 app.post('/api/admin/broadcast', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -339,14 +317,13 @@ app.post('/api/user/register', async (req, res) => {
   const existingInDb = await User.findOne({ userId: uid });
   const isNewUser = !existingInDb;
 
-  const user = await initUser(uid, firstName, username, phone);
+  const user = await getOrInitUser(uid, firstName, username, phone);
+
   if (isNewUser && referrerId && String(referrerId) !== uid) {
     const refUid = String(referrerId);
-    const refUser = await initUser(refUid);
+    const refUser = await getOrInitUser(refUid);
     if (refUser) {
-      usersData[refUid].totalInvite += 1;
-      usersData[refUid].playWallet += 10;
-          await User.updateOne(
+      await User.updateOne(
         { userId: refUid },
         { $inc: { totalInvite: 1, playWallet: 10 } }
       );
@@ -355,7 +332,7 @@ app.post('/api/user/register', async (req, res) => {
         try {
           await bot.api.sendMessage(
             refUid,
-            `🎉 *እንኳን ደስ አለዎት!*\n\n${firstName || 'አዲስ አባል'} የእርስዎን መጋበዣ ሊንክ ተጠቅሞ ስለገባ *10 ETB* ቦነስ በ Play Walletዎ ላይ ተጨምሯል!\n\n👥 *ጠቅላላ የጋበዟቸው:* ${usersData[refUid].totalInvite}`,
+            `🎉 *እንኳን ደስ አለዎት!*\n\n${firstName || 'አዲስ አባል'} የእርስዎን መጋበዣ ሊንክ ተጠቅሞ ስለገባ *10 ETB* ቦነስ በ Play Walletዎ ላይ ተጨምሯል!`,
             { parse_mode: 'Markdown' }
           );
         } catch (err) {
@@ -371,7 +348,7 @@ app.post('/api/user/register', async (req, res) => {
 app.post('/api/deposit-request', async (req, res) => {
   const { userId, userName, amount, proof } = req.body;
   const uid = String(userId);
-  const user = await initUser(uid);
+  const user = await getOrInitUser(uid);
 
   if (user.isBanned) return res.status(403).json({ success: false, message: "አካውንትዎ የታገደ ስለሆነ አገልግሎቱን ማግኘት አይችሉም!" });
 
@@ -390,27 +367,28 @@ app.post('/api/deposit-request', async (req, res) => {
 app.post('/api/withdraw-request', async (req, res) => {
   const { userId, userName, amount, phone } = req.body;
   const uid = String(userId);
-  const user = await initUser(uid);
-
-  if (user.isBanned) return res.status(403).json({ success: false, message: "አካውንትዎ የታገደ ስለሆነ አገልግሎቱን ማግኘት አይችሉም!" });
-
   const subAmount = Number(amount);
-  if (user.mainWallet < subAmount) {
-    return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም!" });
-  }
 
-  user.mainWallet -= subAmount;
-  await User.updateOne({ userId: uid }, { $inc: { mainWallet: -subAmount } });
+  // Atomic Balance Check and Deduction
+  const updatedUser = await User.findOneAndUpdate(
+    { userId: uid, isBanned: false, mainWallet: { $gte: subAmount } },
+    { $inc: { mainWallet: -subAmount } },
+    { new: true }
+  );
+
+  if (!updatedUser) {
+    return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም ወይም አካውንትዎ የታገደ ነው!" });
+  }
 
   await Transaction.create({
     userId: uid,
     userName: userName || `User_${uid}`,
     type: 'withdrawal',
     amount: subAmount,
-    phone: phone || user.phone
+    phone: phone || updatedUser.phone
   });
 
-  res.json({ success: true, balance: user.mainWallet, message: "የወጪ ጥያቄዎ ተልኳል! በቅርቡ ይስተናገዳል።" });
+  res.json({ success: true, balance: updatedUser.mainWallet, message: "የወጪ ጥያቄዎ ተልኳል! በቅርቡ ይስተናገዳል።" });
 });
 
 app.get('/api/user', async (req, res) => {
@@ -418,9 +396,9 @@ app.get('/api/user', async (req, res) => {
   const uid = String(id);
 
   if (uid && uid !== 'GUEST_USER' && uid !== 'undefined') {
-    const user = await initUser(uid);
+    const user = await getOrInitUser(uid);
     const history = await GameHistory.find({ winnerUserId: uid }).sort({ createdAt: -1 }).limit(10);
-    return res.json({ ...user, history });
+    return res.json({ ...user.toObject(), history });
   }
 
   res.json({
@@ -450,7 +428,7 @@ io.on('connection', async (socket) => {
   const userId = socket.handshake.query.userId;
 
   if (userId && userId !== 'GUEST_USER') {
-    await initUser(userId);
+    await getOrInitUser(userId);
     activeUsersMap.set(socket.id, String(userId));
   }
 
@@ -478,40 +456,52 @@ io.on('connection', async (socket) => {
     if (gamePhase !== 'selecting') return;
     const { numberChosen, userId, userName } = data;
     const uid = String(userId);
-    const user = await initUser(uid);
 
-    if (user.isBanned) {
+    const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
+    if (exists) return;
+
+    // Atomic Deduct Check from Database directly
+    const userDoc = await User.findOne({ userId: uid });
+    if (!userDoc || userDoc.isBanned) {
       socket.emit('error_message', { message: 'አካውንትዎ ስለታገደ መጫወት አይችሉም!' });
       return;
     }
-        const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
-    if (exists) return;
 
-    const totalAvailable = user.mainWallet + user.playWallet;
-    if (totalAvailable < STAKE_PER_NUMBER) {
+    if ((userDoc.mainWallet + userDoc.playWallet) < STAKE_PER_NUMBER) {
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን አስቀድመው ሂሳብዎን ይሙሉ::' });
       return;
     }
 
-    if (user.playWallet >= STAKE_PER_NUMBER) {
-      user.playWallet -= STAKE_PER_NUMBER;
-      await User.updateOne({ userId: uid }, { $inc: { playWallet: -STAKE_PER_NUMBER } });
+    let updatedUser;
+    if (userDoc.playWallet >= STAKE_PER_NUMBER) {
+      updatedUser = await User.findOneAndUpdate(
+        { userId: uid, playWallet: { $gte: STAKE_PER_NUMBER } },
+        { $inc: { playWallet: -STAKE_PER_NUMBER } },
+        { new: true }
+      );
     } else {
-      const remaining = STAKE_PER_NUMBER - user.playWallet;
-      user.playWallet = 0;
-      user.mainWallet -= remaining;
-      await User.updateOne({ userId: uid }, { playWallet: 0, $inc: { mainWallet: -remaining } });
+      const remaining = STAKE_PER_NUMBER - userDoc.playWallet;
+      updatedUser = await User.findOneAndUpdate(
+        { userId: uid, mainWallet: { $gte: remaining } },
+        { playWallet: 0, $inc: { mainWallet: -remaining } },
+        { new: true }
+      );
+    }
+
+    if (!updatedUser) {
+      socket.emit('error_message', { message: 'ክፍያው አልተሳካም። እባክዎን ድጋሚ ይሞክሩ።' });
+      return;
     }
 
     selectedNumbers.push({
       number: Number(numberChosen),
       userId: uid,
-      userName: userName || `ተጫዋች_${uid}
-    `});
+      userName: userName || `ተጫዋች_${uid}`
+    });
 
     const s = getGameStats();
     io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
-    socket.emit('balance_updated', { balance: user.mainWallet, playWallet: user.playWallet });
+    socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
   });
 
   socket.on('deselect_number', async (data) => {
@@ -519,7 +509,6 @@ io.on('connection', async (socket) => {
 
     const { numberChosen, userId } = data;
     const uid = String(userId);
-    const user = await initUser(uid);
 
     const isSelected = selectedNumbers.some(
       n => Number(n.number) === Number(numberChosen) && String(n.userId) === uid
@@ -530,12 +519,17 @@ io.on('connection', async (socket) => {
         n => !(Number(n.number) === Number(numberChosen) && String(n.userId) === uid)
       );
 
-      user.mainWallet += STAKE_PER_NUMBER;
-      await User.updateOne({ userId: uid }, { $inc: { mainWallet: STAKE_PER_NUMBER } });
+      const updatedUser = await User.findOneAndUpdate(
+        { userId: uid },
+        { $inc: { mainWallet: STAKE_PER_NUMBER } },
+        { new: true }
+      );
 
       const s = getGameStats();
       io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
-      socket.emit('balance_updated', { balance: user.mainWallet, playWallet: user.playWallet });
+      if (updatedUser) {
+        socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
+      }
     }
   });
 
@@ -568,15 +562,12 @@ setInterval(async () => {
 
         if (winner && winner.userId) {
           const wUid = String(winner.userId);
-          const wUser = await initUser(wUid);
-          wUser.mainWallet += stats.derash;
-          wUser.gamesWon += 1;
+          
           await User.updateOne(
             { userId: wUid },
             { $inc: { mainWallet: stats.derash, gamesWon: 1 } }
           );
 
-          // Save Game History to Mongo
           await GameHistory.create({
             gameId: `GAME_${Date.now()}`,
             winningNumber: winner.number,
@@ -589,13 +580,13 @@ setInterval(async () => {
           });
         }
 
-        // Increment total games played for all participants
         const participantIds = [...new Set(selectedNumbers.map(n => String(n.userId)))];
         await User.updateMany(
           { userId: { $in: participantIds } },
           { $inc: { totalGames: 1 } }
         );
-          io.emit('game_result', {
+
+        io.emit('game_result', {
           winningNumber,
           gamePhase: 'spinning',
           selectedNumbers,
