@@ -128,9 +128,8 @@ app.post('/api/user/register', async (req, res) => {
   const uid = String(userId);
   const existingInDb = await User.findOne({ userId: uid });
   const isNewUser = !existingInDb;
-
   const user = await initUser(uid, firstName, username, phone);
-     if (isNewUser && referrerId && String(referrerId) !== uid) {
+  if (isNewUser && referrerId && String(referrerId) !== uid) {
     const refUid = String(referrerId);
     const refUser = await initUser(refUid);
     if (refUser) {
@@ -266,7 +265,6 @@ io.on('connection', async (socket) => {
     totalRegistered: registeredCount,
     totalRegisteredFormatted: formatUserCount(registeredCount)
   });
-
   socket.on('select_number', async (data) => {
     if (gamePhase !== 'selecting') return;
     const { numberChosen, userId, userName } = data;
@@ -295,7 +293,8 @@ io.on('connection', async (socket) => {
     selectedNumbers.push({
       number: Number(numberChosen),
       userId: uid,
-      userName: userName || `ተጫዋች_${uid}`});
+      userName: userName || `ተጫዋች_${uid}
+    `});
 
     const s = getGameStats();
     io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
@@ -381,14 +380,14 @@ setInterval(async () => {
           timeLeft = 50;
           io.emit('reset_game', {
             selectedNumbers: [],
-            totalPlayers: 0,
+     totalPlayers: 0,
             derash: 0,
             timeLeft: 50,
             gamePhase: 'selecting',
             winningNumber: null
           });
         }, 10000);
-           } else {
+      } else {
         timeLeft = 50;
         winningNumber = 'NONE';
         io.emit('reset_game', {
