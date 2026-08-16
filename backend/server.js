@@ -8,6 +8,7 @@ import { bot } from './bot.js';
 import { webhookCallback } from 'grammy';
 
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
+const ADMIN_ID = process.env.ADMIN_ID || "ADMIN_123"; // Admin Auth Key
 
 const app = express();
 app.use(cors());
@@ -60,7 +61,6 @@ let gamePhase = 'selecting';
 let winningNumber = null;
 const STAKE_PER_NUMBER = 10;
 
-// የተጠቃሚዎች ዳታ መያዣ (In-Memory Database for fast lookup)
 const usersData = {};
 const registeredUsersSet = new Set();
 const activeUsersMap = new Map();
@@ -92,10 +92,8 @@ async function initUser(userId, firstName = '', username = '', phone = '') {
   const uid = String(userId);
  
   if (!usersData[uid]) {
-    // 1. መጀመሪያ ከ MongoDB ፈልግ
     let dbUser = await User.findOne({ userId: uid });
     if (!dbUser) {
-      // 2. ከሌለ አዲስ ክሬት አድርገህ MongoDB ላይ ሴቭ አድርግ
       dbUser = await User.create({
         userId: uid,
         firstName: firstName || '',
@@ -118,9 +116,46 @@ async function initUser(userId, firstName = '', username = '', phone = '') {
   return usersData[uid];
 }
 
-// --- API ENDPOINTS ---
+// --- ADMIN API ENDPOINTS ---
 
-// 1. የተጠቃሚ ምዝገባ እና የሪፌራል (10 ETB ቦነስ)
+// 1. የሁሉንም ተጠቃሚዎች ዝርዝር ማግኛ
+app.get('/api/admin/users', async (req, res) => {
+  const adminKey = req.headers['admin-key'];
+  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+
+  try {
+    const users = await User.find().sort({ createdAt: -1 });
+    res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 2. የተጠቃሚ balance/wallet በ Admin ማስተካከያ
+app.post('/api/admin/update-balance', async (req, res) => {
+  const adminKey = req.headers['admin-key'];
+  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+  const { targetUserId, mainWallet, playWallet } = req.body;
+  const uid = String(targetUserId);
+
+  try {
+    const updatedUser = await User.findOneAndUpdate(
+      { userId: uid },
+      { $set: { mainWallet: Number(mainWallet), playWallet: Number(playWallet) } },
+      { new: true }
+    );
+    if (usersData[uid]) {
+      usersData[uid].mainWallet = Number(mainWallet);
+      usersData[uid].playWallet = Number(playWallet);
+    }
+    res.json({ success: true, user: updatedUser });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// --- PUBLIC USER API ENDPOINTS ---
+
 app.post('/api/user/register', async (req, res) => {
   const { userId, firstName, username, referrerId, phone } = req.body;
   if (!userId) return res.status(400).json({ success: false, message: "User ID ያስፈልጋል።" });
@@ -128,6 +163,7 @@ app.post('/api/user/register', async (req, res) => {
   const uid = String(userId);
   const existingInDb = await User.findOne({ userId: uid });
   const isNewUser = !existingInDb;
+
   const user = await initUser(uid, firstName, username, phone);
   if (isNewUser && referrerId && String(referrerId) !== uid) {
     const refUid = String(referrerId);
@@ -158,7 +194,6 @@ app.post('/api/user/register', async (req, res) => {
   res.json({ success: true, isNew: isNewUser, user });
 });
 
-// 2. 📱 የስልክ ቁጥር ማዘመኛ
 app.post('/api/user/update-phone', async (req, res) => {
   const { userId, telegramId, phone, phoneNumber } = req.body;
   const uid = String(userId || telegramId);
@@ -177,7 +212,6 @@ app.post('/api/user/update-phone', async (req, res) => {
   res.json({ success: true, message: "ስልክ ቁጥር በትክክል ተመዝግቧል!", user });
 });
 
-// 3. Deposit
 app.post('/api/deposit', async (req, res) => {
   const { userId, amount } = req.body;
   const uid = String(userId);
@@ -190,7 +224,6 @@ app.post('/api/deposit', async (req, res) => {
   res.json({ success: true, balance: user.mainWallet });
 });
 
-// 4. Withdraw
 app.post('/api/withdraw', async (req, res) => {
   const { userId, amount } = req.body;
   const uid = String(userId);
@@ -207,7 +240,6 @@ app.post('/api/withdraw', async (req, res) => {
   res.json({ success: true, balance: user.mainWallet, message: "ተሳክቷል!" });
 });
 
-// 5. የተጠቃሚ መረጃ ማግኛ
 app.get('/api/user', async (req, res) => {
   const id = req.query.id || req.query.userId;
   const uid = String(id);
@@ -236,8 +268,7 @@ setInterval(() => {
     console.log('Ping error:', err.message);
   });
 }, 10 * 60 * 1000);
-
-// --- SOCKET LOGIC ---
+            // --- SOCKET LOGIC ---
 io.on('connection', async (socket) => {
   const userId = socket.handshake.query.userId;
 
@@ -265,6 +296,7 @@ io.on('connection', async (socket) => {
     totalRegistered: registeredCount,
     totalRegisteredFormatted: formatUserCount(registeredCount)
   });
+
   socket.on('select_number', async (data) => {
     if (gamePhase !== 'selecting') return;
     const { numberChosen, userId, userName } = data;
@@ -353,14 +385,12 @@ setInterval(async () => {
         winningNumber = winner.number;
         const stats = getGameStats();
 
-        // አሸናፊውን በ MongoDB ላይ Update ማድረግ
         if (winner && winner.userId) {
           const wUid = String(winner.userId);
           const wUser = await initUser(wUid);
           wUser.mainWallet += stats.derash;
           wUser.gamesWon += 1;
-
-          await User.updateOne(
+           await User.updateOne(
             { userId: wUid },
             { $inc: { mainWallet: stats.derash, gamesWon: 1 } }
           );
@@ -380,7 +410,7 @@ setInterval(async () => {
           timeLeft = 50;
           io.emit('reset_game', {
             selectedNumbers: [],
-     totalPlayers: 0,
+            totalPlayers: 0,
             derash: 0,
             timeLeft: 50,
             gamePhase: 'selecting',

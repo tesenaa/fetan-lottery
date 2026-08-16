@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { io } from 'socket.io-client';
 
 const API_BASE_URL = "https://fetan-lottery-backend.onrender.com";
+const ADMIN_ID = "ADMIN_123"; 
 
-// 1. የቁጥር ቦርድ ቁልፎች (Optimized with React.memo)
 const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) => {
   let bgColor = '#2a2a40';
   if (isMine) bgColor = '#22c55e';
@@ -39,7 +39,6 @@ const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) =
 });
 
 export default function App() {
-  // 2. የቴሌግራም ተጠቃሚ መረጃ
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
   const userId = useMemo(() => tgUser?.id ? String(tgUser.id) : 'GUEST_USER', [tgUser]);
   const userName = useMemo(() => {
@@ -49,11 +48,9 @@ export default function App() {
   }, [tgUser]);
   const userPhoto = tgUser?.photo_url || null;
   
-  // Wallet ላይ የሚታየው የስልክ ቁጥር State
   const [userPhone, setUserPhone] = useState('');
   const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
 
-  // 3. Socket Singleton Instance
   const socket = useMemo(() => io(API_BASE_URL, {
     autoConnect: true,
     transports: ['websocket', 'polling'],
@@ -76,7 +73,6 @@ export default function App() {
   const [selectedNumbers, setSelectedNumbers] = useState([]);
   const [allPickedNumbers, setAllPickedNumbers] = useState([]);
 
-  // ፈጣን ፍለጋ Set መጠቀም
   const myPickedSet = useMemo(() => new Set(selectedNumbers), [selectedNumbers]);
   const allPickedSet = useMemo(() => new Set(allPickedNumbers), [allPickedNumbers]);
 
@@ -92,9 +88,15 @@ export default function App() {
   const [gameHistory, setGameHistory] = useState([]);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // ADMIN STATES
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminSearch, setAdminSearch] = useState('');
+  const [editingUser, setEditingUser] = useState(null);
+  const [editMain, setEditMain] = useState(0);
+  const [editPlay, setEditPlay] = useState(0);
+
   const numbersArray = useMemo(() => Array.from({ length: 1000 }, (_, i) => i + 1), []);
 
-  // 4. ቦርድ ስታቲስቲክስ
   const updateBoardStats = useCallback((allSelectedList) => {
     if (allSelectedList && Array.isArray(allSelectedList)) {
       const uniquePlayers = new Set(
@@ -104,8 +106,7 @@ export default function App() {
       setDerash(Math.floor(allSelectedList.length * stake * 0.8));
     }
   }, [stake]);
-        // 5. የተጠቃሚ መረጃን ከ API መሳብ
-  const fetchUserData = useCallback(async () => {
+   const fetchUserData = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`, {
         headers: { 'Bypass-Tunnel-Remainder': 'true' }
@@ -119,7 +120,6 @@ export default function App() {
         setTotalGames(data.totalGames || 0);
         setGameHistory(data.history || []);
 
-        // የስልክ ቁጥር ካለ ቁጥሩን ያሳያል፤ ከሌለ username ወይም userId
         if (data.phone) {
           setUserPhone(data.phone);
         } else if (tgUser?.username) {
@@ -133,12 +133,51 @@ export default function App() {
     }
   }, [userId, tgUser]);
 
+  const fetchAdminUsers = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/users`, {
+        headers: { 'admin-key': ADMIN_ID }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAdminUsers(data.users);
+      }
+    } catch (err) {
+      console.error("Admin Users Fetch Error:", err);
+    }
+  }, []);
+
+  const handleUpdateUserBalance = async () => {
+    if (!editingUser) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/update-balance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'admin-key': ADMIN_ID
+        },
+        body: JSON.stringify({
+          targetUserId: editingUser.userId,
+          mainWallet: editMain,
+          playWallet: editPlay
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("የተጠቃሚ ሂሳብ ተስተካክሏል!");
+        setEditingUser(null);
+        fetchAdminUsers();
+      }
+    } catch (err) {
+      alert("ስህተት ተፈጥሯል!");
+    }
+  };
+
   const derashRef = useRef(derash);
   useEffect(() => {
     derashRef.current = derash;
   }, [derash]);
 
-  // 6. Socket Listeners
   useEffect(() => {
     fetchUserData();
     let spinTimeout;
@@ -197,8 +236,7 @@ export default function App() {
       setActiveCount(data.activePlayersFormatted || data.activePlayers);
       setRegisteredCount(data.totalRegisteredFormatted || data.totalRegistered);
     });
-
-    socket.on('game_result', (data) => {
+          socket.on('game_result', (data) => {
       if (!data || data.winningNumber === 'NONE') return;
 
       setPhase('spinning');
@@ -220,7 +258,8 @@ export default function App() {
             userName: winItem.userName || `user_${winItem.userId}`,
             derash: winAmount
           });
- if (String(winItem.userId) === String(userId)) {
+
+          if (String(winItem.userId) === String(userId)) {
             setMainWallet(prev => prev + winAmount);
             setGamesWon(prev => prev + 1);
             alert(`🎉 እንኳን ደስ አለዎት! ዕጣው በቁጥር #${winNum} ለእርስዎ ወጥቷል! ${winAmount} ETB ወደ ዋሌትዎ ገቢ ሆኗል።`);
@@ -269,7 +308,6 @@ export default function App() {
     };
   }, [socket, userId, updateBoardStats, fetchUserData]);
 
-  // 7. ቁጥር መምረጫ Logic
   const toggleNumber = useCallback((num) => {
     if (phase !== 'selecting') return;
 
@@ -299,7 +337,6 @@ export default function App() {
     }
   }, [phase, myPickedSet, mainWallet, playWallet, stake, socket, userId, userName]);
 
-  // Deposit/Withdraw Handlers
   const handleDeposit = async () => {
     if (!depAmount || Number(depAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
     try {
@@ -321,8 +358,7 @@ export default function App() {
       alert("የገንዘብ ማስገባት ስህተት አጋጥሟል!");
     }
   };
-
-  const handleWithdraw = async () => {
+const handleWithdraw = async () => {
     if (!withAmount || Number(withAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
     try {
       const res = await fetch(`${API_BASE_URL}/api/withdraw`, {
@@ -343,7 +379,8 @@ export default function App() {
       alert("የገንዘብ ማውጣት ስህተት አጋጥሟል!");
     }
   };
-    const copyReferralLink = () => {
+
+  const copyReferralLink = () => {
     const refLink = `https://t.me/fetan_lottery_bot?start=${userId}`;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(refLink).then(() => {
@@ -363,6 +400,14 @@ export default function App() {
       document.body.removeChild(textArea);
     }
   };
+
+  const filteredAdminUsers = useMemo(() => {
+    return adminUsers.filter(u => 
+      u.userId.includes(adminSearch) || 
+      (u.phone && u.phone.includes(adminSearch)) ||
+      (u.firstName && u.firstName.toLowerCase().includes(adminSearch.toLowerCase()))
+    );
+  }, [adminUsers, adminSearch]);
 
   return (
     <div style={{
@@ -392,7 +437,7 @@ export default function App() {
           background: #312e81;
           border-radius: 4px;
         }
-      `}} />
+       `}} />
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {currentTab === 'game' && (
@@ -406,7 +451,7 @@ export default function App() {
                 <div style={{ width: '100%', backgroundColor: '#15152a', border: '1px solid #ef4444', borderRadius: '16px', padding: '24px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)', marginBottom: '20px', boxSizing: 'border-box' }}>
                   <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px' }}>Choose Your Stake</div>
                   <button onClick={() => { setStake(10); setCurrentScreen('board'); }} style={{ width: '100%', backgroundColor: '#22c55e', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px' }}>
-                    ► Play 10 ETB
+                 ► Play 10 ETB
                   </button>
                   <button onClick={() => { setStake(20); setCurrentScreen('board'); }} style={{ width: '100%', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' }}>
                     ► Play 20 ETB
@@ -419,7 +464,7 @@ export default function App() {
                     <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Active Users</div>
                   </div>
                   <div style={{ borderTop: '1px solid #2d2d50', paddingTop: '12px' }}>
-    <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{registeredCount}</div>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{registeredCount}</div>
                     <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Registered Users</div>
                   </div>
                 </div>
@@ -455,9 +500,7 @@ export default function App() {
                     <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash} ETB</div>
                   </div>
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '0 8px 8px 8px', overflow: 'hidden' }}>
-                  {/* GRID LIST (1 - 1000) */}
+                  <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '0 8px 8px 8px', overflow: 'hidden' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
                     <div style={{ backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
                       {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
@@ -466,7 +509,7 @@ export default function App() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
                       {numbersArray.map((num) => {
                         const isMine = myPickedSet.has(num);
-           const isOthers = allPickedSet.has(num) && !isMine;
+                        const isOthers = allPickedSet.has(num) && !isMine;
                         return (
                           <NumberButton
                             key={num}
@@ -481,7 +524,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* SIDE PANEL */}
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
                     <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                       <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}>
@@ -492,7 +534,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* SPINNER ANIMATION */}
                     <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
                       <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}>
                         🎰 የዕጣ ማውጫ
@@ -501,7 +542,7 @@ export default function App() {
                         {winningNumber === 'SPINNING' ? (
                           <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="80" height="80" viewBox="0 0 100 100">
-                              <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="2" strokeDasharray="6 6" />
+                   <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="2" strokeDasharray="6 6" />
                               <polygon points="50,15 58,45 50,40 42,45" fill="#00f2fe" />
                               <polygon points="50,85 58,55 50,60 42,55" fill="#f59e0b" />
                               <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
@@ -516,7 +557,7 @@ export default function App() {
                         )}
                       </div>
                     </div>
-              {/* WINNER INFO CARD */}
+
                     {winnerInfo && (
                       <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#064e3b', border: '2px solid #10b981', borderRadius: '10px', textAlign: 'center', boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)' }}>
                         <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#34d399', marginBottom: '4px' }}>
@@ -537,7 +578,6 @@ export default function App() {
           </>
         )}
 
-        {/* HISTORY TAB */}
         {currentTab === 'history' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>📜 Game History</h1>
@@ -558,7 +598,7 @@ export default function App() {
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#22c55e' }}>+{item.derash} ETB</div>
                       <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px' }}>{item.date || 'Recently'}</div>
-                    </div>
+                 </div>
                   </div>
                 ))
               ) : (
@@ -570,7 +610,6 @@ export default function App() {
           </div>
         )}
 
-        {/* WALLET TAB */}
         {currentTab === 'wallet' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -578,9 +617,8 @@ export default function App() {
               <span onClick={fetchUserData} style={{ fontSize: '18px', cursor: 'pointer', color: '#9ca3af' }}>🔄</span>
             </div>
 
-            {/* WALLET USER HEADER (ስልክ ቁጥር እዚህ ጋር ይሳያል) */}
             <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', border: '1px solid #2a2a4a' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '18px' }}>👤</span>
                 <span style={{ fontSize: '15px', fontWeight: 'bold' }}>{userPhone || 'ስልክ አልተመዘገበም'}</span>
               </div>
@@ -610,7 +648,7 @@ export default function App() {
                 <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '15px' }}>📥 Deposit (ገንዘብ ማስገቢያ)</h4>
                   <input type="number" placeholder="መጠን (ETB)" value={depAmount} onChange={(e) => setDepAmount(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                  <button onClick={handleDeposit} style={{ width: '100%', padding: '12px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                   <button onClick={handleDeposit} style={{ width: '100%', padding: '12px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
                     ገንዘብ አስገባ (Deposit)
                   </button>
                 </div>
@@ -619,7 +657,7 @@ export default function App() {
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '15px' }}>📤 Withdraw (ገንዘብ ማውጫ)</h4>
                   <input type="number" placeholder="መጠን (ETB)" value={withAmount} onChange={(e) => setWithAmount(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
                   <button onClick={handleWithdraw} style={{ width: '100%', padding: '12px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-       ገንዘብ ወጪ አድርግ (Withdraw)
+                    ገንዘብ ወጪ አድርግ (Withdraw)
                   </button>
                 </div>
               </div>
@@ -627,7 +665,6 @@ export default function App() {
           </div>
         )}
 
-        {/* PROFILE TAB */}
         {currentTab === 'profile' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10px', marginBottom: '20px' }}>
@@ -660,8 +697,7 @@ export default function App() {
                 <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{totalInvite}</div>
               </div>
             </div>
-
-            <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '16px', border: '1px solid #2a2a4a' }}>
+               <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '16px', border: '1px solid #2a2a4a' }}>
               <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginTop: 0, marginBottom: '8px', color: '#f59e0b' }}>
                 🎁 ጓደኞችዎን ይጋብዙ (Invite Friends)
               </h3>
@@ -674,10 +710,61 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* ADMIN TAB */}
+        {currentTab === 'admin' && (
+          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h1 style={{ fontSize: '22px', fontWeight: 'bold', color: '#f59e0b' }}>⚙️ Admin Control Panel</h1>
+              <button onClick={fetchAdminUsers} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}>🔄 Fetch Users</button>
+            </div>
+
+            <input
+              type="text"
+              placeholder="በተጠቃሚ ID ወይም ስልክ ፈልግ..."
+              value={adminSearch}
+              onChange={(e) => setAdminSearch(e.target.value)}
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '16px', boxSizing: 'border-box' }}
+            />
+
+            {editingUser && (
+              <div style={{ backgroundColor: '#1b1b38', border: '1px solid #f59e0b', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '14px', color: '#f59e0b', margin: '0 0 10px 0' }}>ወደ ሂሳብ ማስተካከያ: {editingUser.userId}</h3>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '10px', color: '#9ca3af' }}>Main Wallet:</label>
+                    <input type="number" value={editMain} onChange={(e) => setEditMain(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #312e81', backgroundColor: '#0d0d1a', color: '#fff' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '10px', color: '#9ca3af' }}>Play Wallet:</label>
+                    <input type="number" value={editPlay} onChange={(e) => setEditPlay(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #312e81', backgroundColor: '#0d0d1a', color: '#fff' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={handleUpdateUserBalance} style={{ flex: 1, padding: '8px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>ሴቭ አድርግ</button>
+                  <button onClick={() => setEditingUser(null)} style={{ flex: 1, padding: '8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px' }}>ሰርዝ</button>
+                </div>
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {filteredAdminUsers.map((u) => (
+                <div key={u.userId} style={{ backgroundColor: '#181830', border: '1px solid #2a2a4a', borderRadius: '10px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#38bdf8' }}>{u.firstName || 'ተጠቃሚ'} (ID: {u.userId})</div>
+                    <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>📱 {u.phone || 'ስልክ የለም'}</div>
+                    <div style={{ fontSize: '11px', color: '#22c55e', marginTop: '2px' }}>Main: {u.mainWallet} ETB | Play: {u.playWallet} ETB</div>
+                  </div>
+                  <button onClick={() => { setEditingUser(u); setEditMain(u.mainWallet); setEditPlay(u.playWallet); }} style={{ backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    አስተካክል
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* BOTTOM NAVIGATION MENU */}
-    {currentScreen !== 'board' && (
+      {currentScreen !== 'board' && (
         <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', backgroundColor: '#0f0f26', borderTop: '1px solid #2a2a50', padding: '6px 4px 8px 4px', flexShrink: 0, boxShadow: '0 -4px 12px rgba(0,0,0,0.4)' }}>
           <button onClick={() => setCurrentTab('game')} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
             <span style={{ fontSize: '18px' }}>🎮</span> Game
@@ -691,8 +778,11 @@ export default function App() {
           <button onClick={() => setCurrentTab('profile')} style={{ background: 'none', border: 'none', color: currentTab === 'profile' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
             <span style={{ fontSize: '18px' }}>👤</span> Profile
           </button>
+          <button onClick={() => { setCurrentTab('admin'); fetchAdminUsers(); }} style={{ background: 'none', border: 'none', color: currentTab === 'admin' ? '#f59e0b' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
+            <span style={{ fontSize: '18px' }}>⚙️</span> Admin
+          </button>
         </div>
       )}
     </div>
   );
-}
+} 
