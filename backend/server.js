@@ -25,7 +25,7 @@ if (MONGODB_URI) {
   console.warn('⚠️ MONGODB_URI environment variable is missing!');
 }
 
-// --- USER MONGOOSE SCHEMA & MODEL ---
+// --- MONGOOSE SCHEMAS & MODELS ---
 const userSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true },
   firstName: { type: String, default: '' },
@@ -35,10 +35,34 @@ const userSchema = new mongoose.Schema({
   playWallet: { type: Number, default: 0 },
   totalInvite: { type: Number, default: 0 },
   gamesWon: { type: Number, default: 0 },
-  totalGames: { type: Number, default: 0 }
+  totalGames: { type: Number, default: 0 },
+  isBanned: { type: Boolean, default: false }
+}, { timestamps: true });
+
+const transactionSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  userName: { type: String, default: '' },
+  type: { type: String, enum: ['deposit', 'withdrawal'], required: true },
+  amount: { type: Number, required: true },
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  proof: { type: String, default: '' },
+  phone: { type: String, default: '' }
+}, { timestamps: true });
+
+const gameHistorySchema = new mongoose.Schema({
+  gameId: { type: String, required: true },
+  winningNumber: { type: Number, required: true },
+  winnerUserId: { type: String, required: true },
+  winnerName: { type: String, default: '' },
+  totalCollected: { type: Number, default: 0 },
+  derash: { type: Number, default: 0 },
+  houseProfit: { type: Number, default: 0 },
+  playersCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
+const Transaction = mongoose.model('Transaction', transactionSchema);
+const GameHistory = mongoose.model('GameHistory', gameHistorySchema);
 
 // Server Ping Check Route
 app.get('/', (req, res) => {
@@ -85,11 +109,12 @@ const getGameStats = () => {
   const uniquePlayers = new Set(selectedNumbers.map(n => String(n.userId))).size;
   const totalCollected = selectedNumbers.length * STAKE_PER_NUMBER;
   const derash = Math.floor(totalCollected * 0.8);
-  return { totalPlayers: uniquePlayers, derash };
+  const houseProfit = totalCollected - derash;
+  return { totalPlayers: uniquePlayers, totalCollected, derash, houseProfit };
 };
 
 async function initUser(userId, firstName = '', username = '', phone = '') {
-  const uid = String(userId);
+ const uid = String(userId);
  
   if (!usersData[uid]) {
     let dbUser = await User.findOne({ userId: uid });
@@ -103,7 +128,8 @@ async function initUser(userId, firstName = '', username = '', phone = '') {
         playWallet: 0,
         totalInvite: 0,
         gamesWon: 0,
-        totalGames: 0
+        totalGames: 0,
+        isBanned: false
       });
     }
     usersData[uid] = dbUser.toObject();
@@ -131,7 +157,29 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
-// 2. የተጠቃሚ balance/wallet በ Admin ማስተካከያ
+// 2. የተጠቃሚ ban/unban status ማስተካከያ
+app.post('/api/admin/toggle-ban', async (req, res) => {
+  const adminKey = req.headers['admin-key'];
+  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+  const { targetUserId, isBanned } = req.body;
+  const uid = String(targetUserId);
+
+  try {
+    const updatedUser = await User.findOneAndUpdate(
+      { userId: uid },
+      { $set: { isBanned: Boolean(isBanned) } },
+      { new: true }
+    );
+    if (usersData[uid]) {
+      usersData[uid].isBanned = Boolean(isBanned);
+    }
+    res.json({ success: true, user: updatedUser });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 3. የተጠቃሚ balance/wallet ማስተካከያ
 app.post('/api/admin/update-balance', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -154,6 +202,133 @@ app.post('/api/admin/update-balance', async (req, res) => {
   }
 });
 
+// 4. Pending Transactions (የሐዋላ/ክፍያ ጥያቄዎች) ማግኛ
+app.get('/api/admin/transactions', async (req, res) => {
+  const adminKey = req.headers['admin-key'];
+  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+
+  try {
+    const transactions = await Transaction.find({ status: 'pending' }).sort({ createdAt: -1 });
+    res.json({ success: true, transactions });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 5. Transaction Approve/Reject (የክፍያ ማረጋገጫ ማጽደቅ/ውድቅ ማድረግ)
+app.post('/api/admin/process-transaction', async (req, res) => {
+  const adminKey = req.headers['admin-key'];
+  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+  
+  const { transactionId, action } = req.body; // action: 'approve' | 'reject'
+
+  try {
+    const tx = await Transaction.findById(transactionId);
+    if (!tx || tx.status !== 'pending') {
+      return res.status(400).json({ success: false, message: "ጥያቄው አልተገኘም ወይም ቀደም ብሎ ተስተናግዷል!" });
+    }
+
+    if (action === 'approve') {
+      tx.status = 'approved';
+      await tx.save();
+    const uid = String(tx.userId);
+      if (tx.type === 'deposit') {
+        await User.updateOne({ userId: uid }, { $inc: { mainWallet: tx.amount } });
+        if (usersData[uid]) usersData[uid].mainWallet += tx.amount;
+      } else if (tx.type === 'withdrawal') {
+        // የወጪ ገንዘብ አስቀድሞ ተቀንሶ ስለነበረ Approve ሲሆን ተጨማሪ ቅናሽ አያደርግም
+      }
+
+      if (bot) {
+        try {
+          await bot.api.sendMessage(tx.userId, `✅ *የ${tx.type === 'deposit' ? 'ገቢ' : 'ወጪ'} ጥያቄዎ ጸድቋል!*\n💰 መጠን: ${tx.amount} ETB`, { parse_mode: 'Markdown' });
+        } catch (e) {}
+      }
+    } else {
+      tx.status = 'rejected';
+      await tx.save();
+
+      // ውድቅ ከተደረገ የወጪ ጥያቄ ከሆነ የነበረውን ገንዘብ ለተጠቃሚው ይመልሳል
+      if (tx.type === 'withdrawal') {
+        const uid = String(tx.userId);
+        await User.updateOne({ userId: uid }, { $inc: { mainWallet: tx.amount } });
+        if (usersData[uid]) usersData[uid].mainWallet += tx.amount;
+      }
+
+      if (bot) {
+        try {
+          await bot.api.sendMessage(tx.userId, `❌ *የ${tx.type === 'deposit' ? 'ገቢ' : 'ወጪ'} ጥያቄዎ ውድቅ ተደርጓል!*`, { parse_mode: 'Markdown' });
+        } catch (e) {}
+      }
+    }
+
+    res.json({ success: true, message: "በተሳካ ሁኔታ ተስተናግዷል!" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 6. Financial Dashboard Reports (የገቢ/ወጪ ሪፖርት)
+app.get('/api/admin/financial-stats', async (req, res) => {
+  const adminKey = req.headers['admin-key'];
+  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+
+  try {
+    const totalDeposits = await Transaction.aggregate([
+      { $match: { type: 'deposit', status: 'approved' } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+
+    const totalWithdrawals = await Transaction.aggregate([
+      { $match: { type: 'withdrawal', status: 'approved' } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+
+    const gameStats = await GameHistory.aggregate([
+      { $group: { _id: null, totalProfit: { $sum: "$houseProfit" }, totalPlayed: { $sum: "$totalCollected" } } }
+    ]);
+
+    res.json({
+      success: true,
+      stats: {
+        totalDeposit: totalDeposits[0]?.total || 0,
+        totalWithdrawal: totalWithdrawals[0]?.total || 0,
+        houseProfit: gameStats[0]?.totalProfit || 0,
+        totalGamesPlayedAmount: gameStats[0]?.totalPlayed || 0
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 7. Broadcast Message Endpoint
+app.post('/api/admin/broadcast', async (req, res) => {
+  const adminKey = req.headers['admin-key'];
+  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ success: false, message: "መልዕክት አልተጻፈም!" });
+
+  try {
+    const users = await User.find({}, 'userId');
+    let sentCount = 0;
+
+    for (const u of users) {
+      if (bot) {
+        try {
+          await bot.api.sendMessage(u.userId, `📢 *ማስታወቂያ ከFetan Lottery*\n\n${message}`, { parse_mode: 'Markdown' });
+          sentCount++;
+        } catch (err) {}
+      }
+    }
+
+    res.json({ success: true, message: `መልዕክቱ ለ ${sentCount} ተጠቃሚዎች ተልኳል!` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // --- PUBLIC USER API ENDPOINTS ---
 
 app.post('/api/user/register', async (req, res) => {
@@ -171,8 +346,7 @@ app.post('/api/user/register', async (req, res) => {
     if (refUser) {
       usersData[refUid].totalInvite += 1;
       usersData[refUid].playWallet += 10;
-
-      await User.updateOne(
+          await User.updateOne(
         { userId: refUid },
         { $inc: { totalInvite: 1, playWallet: 10 } }
       );
@@ -194,50 +368,49 @@ app.post('/api/user/register', async (req, res) => {
   res.json({ success: true, isNew: isNewUser, user });
 });
 
-app.post('/api/user/update-phone', async (req, res) => {
-  const { userId, telegramId, phone, phoneNumber } = req.body;
-  const uid = String(userId || telegramId);
-  const finalPhone = phone || phoneNumber;
-
-  if (!uid || uid === 'undefined') {
-    return res.status(400).json({ success: false, message: "UserId ያስፈልጋል።" });
-  }
-
-  const user = await initUser(uid);
-  user.phone = finalPhone;
-
-  await User.updateOne({ userId: uid }, { phone: finalPhone });
-
-  console.log(`📱 User ${uid} Phone Updated: ${finalPhone}`);
-  res.json({ success: true, message: "ስልክ ቁጥር በትክክል ተመዝግቧል!", user });
-});
-
-app.post('/api/deposit', async (req, res) => {
-  const { userId, amount } = req.body;
-  const uid = String(userId);
-  const user = await initUser(uid);
-  const addAmount = Number(amount || 0);
-
-  user.mainWallet += addAmount;
-  await User.updateOne({ userId: uid }, { $inc: { mainWallet: addAmount } });
-
-  res.json({ success: true, balance: user.mainWallet });
-});
-
-app.post('/api/withdraw', async (req, res) => {
-  const { userId, amount } = req.body;
+app.post('/api/deposit-request', async (req, res) => {
+  const { userId, userName, amount, proof } = req.body;
   const uid = String(userId);
   const user = await initUser(uid);
 
-  if (user.mainWallet < Number(amount)) {
+  if (user.isBanned) return res.status(403).json({ success: false, message: "አካውንትዎ የታገደ ስለሆነ አገልግሎቱን ማግኘት አይችሉም!" });
+
+  await Transaction.create({
+    userId: uid,
+    userName: userName || `User_${uid}`,
+    type: 'deposit',
+    amount: Number(amount),
+    proof: proof || '',
+    phone: user.phone || ''
+  });
+
+  res.json({ success: true, message: "የገቢ ጥያቄዎ ተልኳል! በአድሚን ተገምግሞ ይጸድቃል።" });
+});
+
+app.post('/api/withdraw-request', async (req, res) => {
+  const { userId, userName, amount, phone } = req.body;
+  const uid = String(userId);
+  const user = await initUser(uid);
+
+  if (user.isBanned) return res.status(403).json({ success: false, message: "አካውንትዎ የታገደ ስለሆነ አገልግሎቱን ማግኘት አይችሉም!" });
+
+  const subAmount = Number(amount);
+  if (user.mainWallet < subAmount) {
     return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም!" });
   }
 
-  const subAmount = Number(amount);
   user.mainWallet -= subAmount;
   await User.updateOne({ userId: uid }, { $inc: { mainWallet: -subAmount } });
 
-  res.json({ success: true, balance: user.mainWallet, message: "ተሳክቷል!" });
+  await Transaction.create({
+    userId: uid,
+    userName: userName || `User_${uid}`,
+    type: 'withdrawal',
+    amount: subAmount,
+    phone: phone || user.phone
+  });
+
+  res.json({ success: true, balance: user.mainWallet, message: "የወጪ ጥያቄዎ ተልኳል! በቅርቡ ይስተናገዳል።" });
 });
 
 app.get('/api/user', async (req, res) => {
@@ -246,7 +419,8 @@ app.get('/api/user', async (req, res) => {
 
   if (uid && uid !== 'GUEST_USER' && uid !== 'undefined') {
     const user = await initUser(uid);
-    return res.json(user);
+    const history = await GameHistory.find({ winnerUserId: uid }).sort({ createdAt: -1 }).limit(10);
+    return res.json({ ...user, history });
   }
 
   res.json({
@@ -255,7 +429,9 @@ app.get('/api/user', async (req, res) => {
     gamesWon: 0,
     totalInvite: 0,
     totalGames: 0,
-    phone: ""
+    phone: "",
+    isBanned: false,
+    history: []
   });
 });
 
@@ -268,7 +444,8 @@ setInterval(() => {
     console.log('Ping error:', err.message);
   });
 }, 10 * 60 * 1000);
-    // --- SOCKET LOGIC ---
+
+// --- SOCKET LOGIC ---
 io.on('connection', async (socket) => {
   const userId = socket.handshake.query.userId;
 
@@ -303,7 +480,11 @@ io.on('connection', async (socket) => {
     const uid = String(userId);
     const user = await initUser(uid);
 
-    const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
+    if (user.isBanned) {
+      socket.emit('error_message', { message: 'አካውንትዎ ስለታገደ መጫወት አይችሉም!' });
+      return;
+    }
+        const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
     if (exists) return;
 
     const totalAvailable = user.mainWallet + user.playWallet;
@@ -330,7 +511,7 @@ io.on('connection', async (socket) => {
 
     const s = getGameStats();
     io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
-    socket.emit('balance_updated', { balance: user.mainWallet });
+    socket.emit('balance_updated', { balance: user.mainWallet, playWallet: user.playWallet });
   });
 
   socket.on('deselect_number', async (data) => {
@@ -354,7 +535,7 @@ io.on('connection', async (socket) => {
 
       const s = getGameStats();
       io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
-      socket.emit('balance_updated', { balance: user.mainWallet });
+      socket.emit('balance_updated', { balance: user.mainWallet, playWallet: user.playWallet });
     }
   });
 
@@ -394,9 +575,27 @@ setInterval(async () => {
             { userId: wUid },
             { $inc: { mainWallet: stats.derash, gamesWon: 1 } }
           );
+
+          // Save Game History to Mongo
+          await GameHistory.create({
+            gameId: `GAME_${Date.now()}`,
+            winningNumber: winner.number,
+            winnerUserId: wUid,
+            winnerName: winner.userName,
+            totalCollected: stats.totalCollected,
+            derash: stats.derash,
+            houseProfit: stats.houseProfit,
+            playersCount: stats.totalPlayers
+          });
         }
 
-        io.emit('game_result', {
+        // Increment total games played for all participants
+        const participantIds = [...new Set(selectedNumbers.map(n => String(n.userId)))];
+        await User.updateMany(
+          { userId: { $in: participantIds } },
+          { $inc: { totalGames: 1 } }
+        );
+          io.emit('game_result', {
           winningNumber,
           gamePhase: 'spinning',
           selectedNumbers,
