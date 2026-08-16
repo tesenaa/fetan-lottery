@@ -52,8 +52,6 @@ export default function App() {
 
   const userPhoto = tgUser?.photo_url || null;
   const userPhone = tgUser?.username ? `@${tgUser.username}` : userId;
-  const tg = window.Telegram.WebApp;
-  const phoneNumber = user?.phone_number || tg.initDataUnsafe?.user?.phone_number || "+2519........";
   const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
 
   // 3. Socket Singleton Instance
@@ -567,9 +565,7 @@ export default function App() {
             <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', border: '1px solid #2a2a4a' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '18px' }}>👤</span>
-                <span className="font-medium text-white">
-    {user.phoneNumber ? user.phoneNumber : "ስልክ ቁጥር አልተመዘገበም"}
-  </span>
+                <span style={{ fontSize: '15px', fontWeight: 'bold' }}>{userPhone}</span>
               </div>
               <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid #10b981', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', fontWeight: 'bold' }}>
                 ✓ Verified
