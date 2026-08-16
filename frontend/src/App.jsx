@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { io } from 'socket.io-client';
 
 const API_BASE_URL = "https://fetan-lottery-backend.onrender.com";
-const ADMIN_ID = "ADMIN_123"; 
+const ADMIN_ID = "494653076"; 
 
 const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) => {
   let bgColor = '#2a2a40';
@@ -49,7 +49,7 @@ export default function App() {
   const userPhoto = tgUser?.photo_url || null;
   
   // ቼክ፡ ተጠቃሚው Admin መሆኑን ማረጋገጫ
-  const isAdmin = useMemo(() => userId === ADMIN_ID, [userId]);
+  const isAdmin = useMemo(() => String(userId) === String(ADMIN_ID), [userId]);
 
   const [userPhone, setUserPhone] = useState('');
   const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';

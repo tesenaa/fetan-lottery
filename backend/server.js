@@ -8,7 +8,7 @@ import { bot } from './bot.js';
 import { webhookCallback } from 'grammy';
 
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
-const ADMIN_ID = process.env.ADMIN_ID || "ADMIN_123"; // Admin Auth Key
+const ADMIN_ID = process.env.ADMIN_ID || "494653076"; // Admin Auth Key
 
 const app = express();
 app.use(cors());
