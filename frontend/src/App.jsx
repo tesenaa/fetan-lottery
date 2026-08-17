@@ -92,7 +92,7 @@ export default function App() {
   const [gameHistory, setGameHistory] = useState([]);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // ADMIN STATES
+  // ADMIN STATES (1-8)
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminSearch, setAdminSearch] = useState('');
   const [editingUser, setEditingUser] = useState(null);
@@ -103,7 +103,7 @@ export default function App() {
   const [financialStats, setFinancialStats] = useState(null);
   const [broadcastText, setBroadcastText] = useState('');
 
-  // SYSTEM SETTINGS
+  // SYSTEM SETTINGS STATE
   const [sysSettings, setSysSettings] = useState({
     ticketPrice: 10,
     winnerPercentage: 80,
@@ -378,7 +378,6 @@ export default function App() {
 
         fetchUserData();
 
-        // ጥያቄ 2 ማስተካከያ፡ ለአራት (4) ሰከንድ አሳይቶ ማጥፋት
         resultTimeout = setTimeout(() => {
           setSelectedNumbers([]);
           setAllPickedNumbers([]);
@@ -533,23 +532,11 @@ export default function App() {
       overflow: 'hidden'
     }}>
       <style dangerouslySetInnerHTML={{ __html: `
-        * {
-          box-sizing: border-box !important;
-        }
-        @keyframes arrowSpin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .spin-arrow-container {
-          animation: arrowSpin 0.5s linear infinite;
-        }
-        ::-webkit-scrollbar {
-          width: 4px;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: #312e81;
-          border-radius: 4px;
-        }
+        * { box-sizing: border-box !important; }
+        @keyframes arrowSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spin-arrow-container { animation: arrowSpin 0.5s linear infinite; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #312e81; border-radius: 4px; }
       `}} />
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', width: '100%', alignItems: 'center' }}>
@@ -678,7 +665,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* ጥያቄ 1 ማስተካከያ: የዕጣ ማውጫው ሳጥን እና የጥያቄ ምልክቱን ('?') መሀል ማድረግ */}
                     <div style={{
                       backgroundColor: '#13132b',
                       borderRadius: '12px',
@@ -707,41 +693,35 @@ export default function App() {
                         position: 'relative'
                       }}>
                         {winningNumber === 'SPINNING' ? (
-  <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-    <svg width="80" height="80" viewBox="0 0 100 100">
-      <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="4" />
-      <polygon points="50,15 58,45 50,40 42,45" fill="#00f2fe" />
-      <polygon points="50,85 58,55 50,60 42,55" fill="#f59e0b" />
-      <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
-    </svg>
-  </div>
-) : winningNumber === 'NONE' ? (
-  <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold' }}>
-    እስካሁን ምንም አልወጣም
-  </span>
-) : (
-  <div style={{
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  }}>
-    <span style={{
-      fontSize: winningNumber === '?' ? '42px' : '38px',
-      fontWeight: 'bold',
-      color: winningNumber === '?' ? '#ffffff' : '#00ffcc',
-      textShadow: winningNumber === '?' ? 'none' : '0 0 12px #00ffcc',
-      lineHeight: '1'
-    }}>
-      {winningNumber}
-    </span>
-  </div>
-)}
+                          <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="80" height="80" viewBox="0 0 100 100">
+                              <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="2" strokeDasharray="6 6" />
+                              <polygon points="50,15 58,45 50,40 42,45" fill="#00f2fe" />
+                              <polygon points="50,85 58,55 50,60 42,55" fill="#f59e0b" />
+                              <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
+                            </svg>
+                          </div>
+                        ) : winningNumber === 'NONE' ? (
+                          <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>አልተመረጠም</span>
+                        ) : (
+                          <span style={{
+                            fontSize: winningNumber === '?' ? '42px' : '38px',
+                            fontWeight: 'bold',
+                            color: winningNumber === '?' ? '#ffffff' : '#00ffcc',
+                            textShadow: winningNumber === '?' ? 'none' : '0 0 12px #00ffcc',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justify: 'center',
+                            width: '100%',
+                            height: '100%',
+                            lineHeight: 1
+                          }}>
+                            {winningNumber}
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    {/* ጥያቄ 2 ማስተካከያ: ከሳጥን ስር የአሸናፊውን ስም, የወጣለትን ብር እና ቁጥር ለአራት ሰከንድ አሳይቶ ማጥፋት */}
                     {winnerInfo && (
                       <div style={{
                         marginTop: '4px',
@@ -765,6 +745,7 @@ export default function App() {
           </>
         )}
 
+        {/* 4. Game History */}
         {currentTab === 'history' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px', textAlign: 'center' }}>📜 Game History</h1>
@@ -796,6 +777,7 @@ export default function App() {
           </div>
         )}
 
+        {/* User Wallet */}
         {currentTab === 'wallet' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -850,6 +832,7 @@ export default function App() {
           </div>
         )}
 
+        {/* Profile */}
         {currentTab === 'profile' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10px', marginBottom: '20px' }}>
@@ -897,7 +880,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ADMIN TAB */}
+        {/* --- FULL ADMIN PANEL (Items 1 to 8) --- */}
         {isAdmin && currentTab === 'admin' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -914,6 +897,7 @@ export default function App() {
               <button onClick={() => setAdminTab('broadcast')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'broadcast' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Broadcast</button>
             </div>
 
+            {/* 1, 2. USER & WALLET MANAGEMENT + BAN */}
             {adminTab === 'users' && (
               <>
                 <input type="text" placeholder="በተጠቃሚ ID ወይም ስልክ ፈልግ..." value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '16px', boxSizing: 'border-box' }} />
@@ -959,6 +943,7 @@ export default function App() {
               </>
             )}
 
+            {/* 5. DEPOSIT / WITHDRAWAL REQUESTS */}
             {adminTab === 'requests' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {pendingTx.length > 0 ? (
@@ -985,6 +970,7 @@ export default function App() {
               </div>
             )}
 
+            {/* 3. DRAW CONTROL */}
             {adminTab === 'game_control' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>🎯 የዕጣ ቁጥር ማውጣት መቆጣጠሪያ (Draw Control)</h3>
@@ -1008,6 +994,7 @@ export default function App() {
               </div>
             )}
 
+            {/* 7. SYSTEM SETTINGS */}
             {adminTab === 'settings' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>⚙️ የሲስተም አጠቃላይ ሶፍትዌር ማስተካከያ</h3>
@@ -1026,6 +1013,7 @@ export default function App() {
               </div>
             )}
 
+            {/* 6. FINANCIAL DASHBOARD */}
             {adminTab === 'reports' && financialStats && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '10px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
@@ -1043,6 +1031,7 @@ export default function App() {
               </div>
             )}
 
+            {/* 8. BROADCAST MESSAGE */}
             {adminTab === 'broadcast' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>📢 Broadcast Message to Users</h3>
@@ -1056,6 +1045,7 @@ export default function App() {
         )}
       </div>
 
+      {/* BOTTOM NAVIGATION */}
       {currentScreen !== 'board' && (
         <div style={{
           display: 'flex',

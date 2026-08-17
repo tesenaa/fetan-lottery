@@ -60,12 +60,11 @@ const gameHistorySchema = new mongoose.Schema({
   playersCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
-// --- NEW SYSTEM SETTINGS SCHEMA ---
 const systemSettingsSchema = new mongoose.Schema({
   ticketPrice: { type: Number, default: 10 },
-  winnerPercentage: { type: Number, default: 80 }, // የደራሽ መቶኛ (%)
-  houseCommissionPercentage: { type: Number, default: 20 }, // የቤት ኮሚሽን (%)
-  manualWinningNumber: { type: Number, default: null } // አድሚኑ በእጅ መምረጥ ከፈለገ (null = በራስ-ሰር)
+  winnerPercentage: { type: Number, default: 80 }, 
+  houseCommissionPercentage: { type: Number, default: 20 }, 
+  manualWinningNumber: { type: Number, default: null } 
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
@@ -73,21 +72,16 @@ const Transaction = mongoose.model('Transaction', transactionSchema);
 const GameHistory = mongoose.model('GameHistory', gameHistorySchema);
 const SystemSettings = mongoose.model('SystemSettings', systemSettingsSchema);
 
-// Server Ping Check Route
 app.get('/', (req, res) => {
   res.send('Fetan Lottery Backend is running live 🚀');
 });
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  },
+  cors: { origin: '*', methods: ['GET', 'POST'] },
   transports: ['polling', 'websocket']
 });
 
-// --- STATE VARIABLES ---
 let selectedNumbers = [];
 let timeLeft = 50;
 let gamePhase = 'selecting';
@@ -102,7 +96,6 @@ if (process.env.NODE_ENV === 'production' && RENDER_URL) {
   app.use('/webhook', webhookCallback(bot, 'express'));
 }
 
-// --- HELPER FUNCTIONS ---
 async function getSettings() {
   let settings = await SystemSettings.findOne();
   if (!settings) {
@@ -117,11 +110,8 @@ async function getSettings() {
 }
 
 function formatUserCount(num) {
-  if (num >= 10000) {
-    return Math.floor(num / 1000) * 1000 + '+';
-  } else if (num >= 1000) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  }
+  if (num >= 10000) return Math.floor(num / 1000) * 1000 + '+';
+  if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   return num.toString();
 }
 
@@ -164,8 +154,9 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
   return dbUser;
 }
 
-// --- ADMIN API ENDPOINTS ---
+// --- ADMIN API ENDPOINTS (1 - 8) ---
 
+// 1, 7. Settings
 app.get('/api/admin/settings', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -201,6 +192,7 @@ app.post('/api/admin/settings', async (req, res) => {
   }
 });
 
+// 1. Get Users
 app.get('/api/admin/users', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -213,6 +205,7 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
+// 2. Block / Ban User
 app.post('/api/admin/toggle-ban', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -231,6 +224,7 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
   }
 });
 
+// 1. Manually Deposit / Withdraw / Adjust Balance
 app.post('/api/admin/update-balance', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -249,6 +243,7 @@ app.post('/api/admin/update-balance', async (req, res) => {
   }
 });
 
+// 5. Transaction Requests (Approve/Reject)
 app.get('/api/admin/transactions', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -309,6 +304,7 @@ app.post('/api/admin/process-transaction', async (req, res) => {
   }
 });
 
+// 6. Financial Dashboard / Reports
 app.get('/api/admin/financial-stats', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -342,6 +338,7 @@ app.get('/api/admin/financial-stats', async (req, res) => {
   }
 });
 
+// 8. Broadcast Messages
 app.post('/api/admin/broadcast', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -457,6 +454,7 @@ app.get('/api/user', async (req, res) => {
 
   if (uid && uid !== 'GUEST_USER' && uid !== 'undefined') {
     const user = await getOrInitUser(uid);
+    // 4. User Game History
     const history = await GameHistory.find({ winnerUserId: uid }).sort({ createdAt: -1 }).limit(10);
     return res.json({ ...user.toObject(), history });
   }
@@ -473,7 +471,6 @@ app.get('/api/user', async (req, res) => {
   });
 });
 
-// --- RENDER KEEP-ALIVE PING ---
 setInterval(() => {
   const backendPingUrl = RENDER_URL || 'https://fetan-lottery-backend.onrender.com';
   https.get(backendPingUrl, (res) => {
@@ -613,7 +610,7 @@ io.on('connection', async (socket) => {
   });
 });
 
-// --- TIMER & DRAW CONTROL LOGIC ---
+// --- 3. TIMER & DRAW CONTROL LOGIC ---
 setInterval(async () => {
   if (gamePhase === 'selecting') {
     if (timeLeft > 0) {
@@ -668,7 +665,6 @@ setInterval(async () => {
           { $inc: { totalGames: 1 } }
         );
 
-        // በእጅ የተመረጠውን ቁጥር ለቀጣይ ጨዋታዎች Reset ማድረግ
         if (settings.manualWinningNumber !== null) {
           settings.manualWinningNumber = null;
           await settings.save();
@@ -712,7 +708,6 @@ setInterval(async () => {
   io.emit('timer_tick', { timeLeft, gamePhase });
 }, 1000);
 
-// --- SERVER START ---
 const PORT = process.env.PORT || 10000;
 
 server.listen(PORT, async () => {
