@@ -419,38 +419,23 @@ export default function App() {
     };
   }, [socket, userId, updateBoardStats, fetchUserData]);
 
+  // የወለል/ዋሌት ማረጋገጫና ብር የመቀነስ/መመለስ ህግ የተወገደበት የ toggleNumber ፋንክሽን
   const toggleNumber = useCallback((num) => {
     if (phase !== 'selecting') return;
     if (isBanned) return alert("አካውንትዎ የታገደ ስለሆነ መጫወት አይችሉም!");
 
     if (myPickedSet.has(num)) {
-      // ቁጥር ሲተው ብሩን ይመልሳል
+      // ቁጥሩን ከዝርዝር ያስወጣል (ብር መመለስ ሳይኖር)
       setSelectedNumbers(prev => prev.filter(n => n !== num));
       setAllPickedNumbers(prev => prev.filter(n => n !== num));
-      setMainWallet(prev => prev + stake);
       socket.emit('deselect_number', { numberChosen: num, userId });
     } else {
-      // አካውንት ላይ በቂ ብር ካልኖረ ቁጥር መምረጥ አይቻልም
-      const totalAvailableBalance = mainWallet + playWallet;
-      if (totalAvailableBalance < stake) {
-        alert("⚠️ የእርስዎ ቀሪ ሂሳብ በቂ አይደለም! እባክዎን አስቀድመው ገንዘብ ያስገቡ ።");
-        return;
-      }
-
-      // ብር ከዋሌት ይቀንሳል
-      if (playWallet >= stake) {
-        setPlayWallet(prev => prev - stake);
-      } else {
-        const remainingStake = stake - playWallet;
-        setPlayWallet(0);
-        setMainWallet(prev => prev - remainingStake);
-      }
-
+      // ቁጥሩን ይመርጣል (ቀሪ ሂሳብ ሳይፈተሽ እና ሳይቀነስ)
       setSelectedNumbers(prev => [...prev, num]);
       setAllPickedNumbers(prev => [...prev, num]);
       socket.emit('select_number', { numberChosen: num, userId, userName });
     }
-  }, [phase, isBanned, myPickedSet, mainWallet, playWallet, stake, socket, userId, userName]);
+  }, [phase, isBanned, myPickedSet, socket, userId, userName]);
 
   const handleDeposit = async () => {
     if (!depAmount || Number(depAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
