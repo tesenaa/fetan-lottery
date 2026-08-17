@@ -92,14 +92,16 @@ export default function App() {
   const [gameHistory, setGameHistory] = useState([]);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // ADMIN STATES (1-8)
+  // ADMIN STATES
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminSearch, setAdminSearch] = useState('');
   const [editingUser, setEditingUser] = useState(null);
   const [editMain, setEditMain] = useState(0);
   const [editPlay, setEditPlay] = useState(0);
-  const [adminTab, setAdminTab] = useState('users');
-  const [pendingTx, setPendingTx] = useState([]);
+  const [adminTab, setAdminTab] = useState('requests');
+  const [txFilter, setTxFilter] = useState('pending');
+  const [allTx, setAllTx] = useState([]);
+  const [selectedProofModal, setSelectedProofModal] = useState(null);
   const [financialStats, setFinancialStats] = useState(null);
   const [broadcastText, setBroadcastText] = useState('');
 
@@ -166,7 +168,7 @@ export default function App() {
       const sData = await sRes.json();
 
       if (uData.success) setAdminUsers(uData.users);
-      if (tData.success) setPendingTx(tData.transactions);
+      if (tData.success) setAllTx(tData.transactions);
       if (fData.success) setFinancialStats(fData.stats);
       if (sData.success) {
         setSysSettings(sData.settings);
@@ -257,6 +259,7 @@ export default function App() {
       const data = await res.json();
       if (data.success) {
         alert(data.message);
+        setSelectedProofModal(null);
         fetchAdminData();
       }
     } catch (e) {
@@ -515,6 +518,11 @@ export default function App() {
     );
   }, [adminUsers, adminSearch]);
 
+  const filteredTransactions = useMemo(() => {
+    if (txFilter === 'all') return allTx;
+    return allTx.filter(t => t.status === txFilter);
+  }, [allTx, txFilter]);
+
   return (
     <div style={{
       maxWidth: '500px',
@@ -745,7 +753,7 @@ export default function App() {
           </>
         )}
 
-        {/* 4. Game History */}
+        {/* Game History */}
         {currentTab === 'history' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px', textAlign: 'center' }}>📜 Game History</h1>
@@ -880,24 +888,147 @@ export default function App() {
           </div>
         )}
 
-        {/* --- FULL ADMIN PANEL (Items 1 to 8) --- */}
+        {/* --- FULL ADMIN PANEL --- */}
         {isAdmin && currentTab === 'admin' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#f59e0b' }}>⚙️ Admin Control Panel</h1>
-              <button onClick={fetchAdminData} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}>🔄 Refresh Data</button>
+              <button onClick={fetchAdminData} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}>🔄 Refresh</button>
             </div>
 
             <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              <button onClick={() => setAdminTab('requests')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'requests' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>💳 Transactions</button>
+              <button onClick={() => setAdminTab('reports')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'reports' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>📊 Financial Dashboard</button>
               <button onClick={() => setAdminTab('users')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'users' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Users</button>
-              <button onClick={() => setAdminTab('requests')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'requests' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Requests ({pendingTx.length})</button>
               <button onClick={() => setAdminTab('game_control')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'game_control' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Draw Control</button>
               <button onClick={() => setAdminTab('settings')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'settings' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Settings</button>
-              <button onClick={() => setAdminTab('reports')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'reports' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Reports</button>
               <button onClick={() => setAdminTab('broadcast')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'broadcast' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Broadcast</button>
             </div>
 
-            {/* 1, 2. USER & WALLET MANAGEMENT + BAN */}
+            {/* 1. TRANSACTION MANAGEMENT */}
+            {adminTab === 'requests' && (
+              <div>
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                  {['pending', 'approved', 'rejected', 'all'].map(status => (
+                    <button
+                      key={status}
+                      onClick={() => setTxFilter(status)}
+                      style={{
+                        flex: 1,
+                        padding: '6px',
+                        fontSize: '10px',
+                        borderRadius: '4px',
+                        border: '1px solid #334155',
+                        backgroundColor: txFilter === status ? '#0284c7' : '#0f172a',
+                        color: '#fff',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        textTransform: 'capitalize'
+                      }}
+                    >
+                      {status} ({allTx.filter(t => status === 'all' ? true : t.status === status).length})
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {filteredTransactions.length > 0 ? (
+                    filteredTransactions.map((tx) => (
+                      <div key={tx._id} style={{ backgroundColor: '#181830', border: '1px solid #2a2a4a', borderRadius: '10px', padding: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '12px', color: tx.type === 'deposit' ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>
+                            {tx.type.toUpperCase()} REQUEST
+                          </span>
+                          <span style={{
+                            fontSize: '11px',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            backgroundColor: tx.status === 'pending' ? '#eab308' : (tx.status === 'approved' ? '#22c55e' : '#ef4444'),
+                            color: '#000',
+                            fontWeight: 'bold'
+                          }}>
+                            {tx.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#facc15', marginBottom: '4px' }}>{tx.amount} ETB</div>
+                        <div style={{ fontSize: '11px', color: '#9ca3af' }}>👤 User: {tx.userName} (ID: {tx.userId})</div>
+                        <div style={{ fontSize: '11px', color: '#9ca3af' }}>📱 Phone: {tx.phone || 'N/A'}</div>
+                        <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>⏱️ Time: {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}</div>
+                        
+                        {tx.proof && (
+                          <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#0f172a', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                            <div style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 'bold', marginBottom: '2px' }}>📄 የክፍያ ማረጋገጫ / Receipt:</div>
+                            <div style={{ fontSize: '11px', color: '#fff', wordBreak: 'break-all' }}>{tx.proof}</div>
+                            {tx.proof.startsWith('http') && (
+                              <button onClick={() => setSelectedProofModal(tx.proof)} style={{ marginTop: '6px', padding: '4px 8px', fontSize: '10px', backgroundColor: '#38bdf8', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                👁️ ምስል/ፎቶ ይመልከቱ
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {tx.status === 'pending' && (
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                            <button onClick={() => handleProcessTransaction(tx._id, 'approve')} style={{ flex: 1, padding: '8px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Approve ✅</button>
+                            <button onClick={() => handleProcessTransaction(tx._id, 'reject')} style={{ flex: 1, padding: '8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Reject ❌</button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ textAlign: 'center', color: '#9ca3af', padding: '20px' }}>ምንም የዝውውር መረጃ አልተገኘም።</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 2. FINANCIAL DASHBOARD & REPORTS */}
+            {adminTab === 'reports' && financialStats && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h3 style={{ fontSize: '15px', color: '#f59e0b', margin: '0 0 4px 0' }}>📊 Financial Dashboard</h3>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ backgroundColor: '#181830', padding: '14px', borderRadius: '10px', border: '1px solid #22c55e', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>አጠቃላይ ገቢ (Approved Deposit)</div>
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#22c55e', marginTop: '4px' }}>{financialStats.totalDeposit} ETB</div>
+                  </div>
+                  <div style={{ backgroundColor: '#181830', padding: '14px', borderRadius: '10px', border: '1px solid #ef4444', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>አጠቃላይ ወጪ (Approved Withdrawal)</div>
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#ef4444', marginTop: '4px' }}>{financialStats.totalWithdrawal} ETB</div>
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '10px', border: '1px solid #facc15', textAlign: 'center' }}>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>የቤት የተጣራ ትርፍ (House Net Commission)</div>
+                  <div style={{ fontSize: '26px', fontWeight: 'bold', color: '#facc15', marginTop: '4px' }}>{financialStats.houseProfit} ETB</div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ backgroundColor: '#181830', padding: '12px', borderRadius: '10px', border: '1px solid #2a2a4a' }}>
+                    <div style={{ fontSize: '11px', color: '#eab308' }}>ሚጠበቅ የገቢ ጥያቄ</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '2px' }}>{financialStats.pendingDepositCount} ጥያቄዎች ({financialStats.pendingDepositAmount} ETB)</div>
+                  </div>
+                  <div style={{ backgroundColor: '#181830', padding: '12px', borderRadius: '10px', border: '1px solid #2a2a4a' }}>
+                    <div style={{ fontSize: '11px', color: '#eab308' }}>ሚጠበቅ የወጪ ጥያቄ</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '2px' }}>{financialStats.pendingWithdrawalCount} ጥያቄዎች ({financialStats.pendingWithdrawalAmount} ETB)</div>
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#181830', padding: '14px', borderRadius: '10px', border: '1px solid #2a2a4a' }}>
+                  <div style={{ fontSize: '12px', color: '#38bdf8', fontWeight: 'bold', marginBottom: '6px' }}>🎮 የጨዋታዎች እንቅስቃሴ ሪፖርት:</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span>የተጫወቱት አጠቃላይ ጨዋታዎች:</span>
+                    <strong style={{ color: '#fff' }}>{financialStats.totalGamesCount}</strong>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>በጨዋታ የተሰበሰበ አጠቃላይ ገንዘብ:</span>
+                    <strong style={{ color: '#fff' }}>{financialStats.totalGamesPlayedAmount} ETB</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* USERS */}
             {adminTab === 'users' && (
               <>
                 <input type="text" placeholder="በተጠቃሚ ID ወይም ስልክ ፈልግ..." value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '16px', boxSizing: 'border-box' }} />
@@ -943,34 +1074,7 @@ export default function App() {
               </>
             )}
 
-            {/* 5. DEPOSIT / WITHDRAWAL REQUESTS */}
-            {adminTab === 'requests' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {pendingTx.length > 0 ? (
-                  pendingTx.map((tx) => (
-                    <div key={tx._id} style={{ backgroundColor: '#181830', border: '1px solid #2a2a4a', borderRadius: '10px', padding: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '12px', color: tx.type === 'deposit' ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>
-                          {tx.type.toUpperCase()} REQUEST
-                        </span>
-                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#facc15' }}>{tx.amount} ETB</span>
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>User: {tx.userName} (ID: {tx.userId})</div>
-                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>Phone: {tx.phone || 'N/A'}</div>
-                      {tx.proof && <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '4px', wordBreak: 'break-all' }}>Proof: {tx.proof}</div>}
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                        <button onClick={() => handleProcessTransaction(tx._id, 'approve')} style={{ flex: 1, padding: '8px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Approve ✅</button>
-                        <button onClick={() => handleProcessTransaction(tx._id, 'reject')} style={{ flex: 1, padding: '8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Reject ❌</button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div style={{ textAlign: 'center', color: '#9ca3af', padding: '20px' }}>ምንም የሚጠበቅ የክፍያ ጥያቄ የለም።</div>
-                )}
-              </div>
-            )}
-
-            {/* 3. DRAW CONTROL */}
+            {/* DRAW CONTROL */}
             {adminTab === 'game_control' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>🎯 የዕጣ ቁጥር ማውጣት መቆጣጠሪያ (Draw Control)</h3>
@@ -994,7 +1098,7 @@ export default function App() {
               </div>
             )}
 
-            {/* 7. SYSTEM SETTINGS */}
+            {/* SYSTEM SETTINGS */}
             {adminTab === 'settings' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>⚙️ የሲስተም አጠቃላይ ሶፍትዌር ማስተካከያ</h3>
@@ -1013,25 +1117,7 @@ export default function App() {
               </div>
             )}
 
-            {/* 6. FINANCIAL DASHBOARD */}
-            {adminTab === 'reports' && financialStats && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '10px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>Total Deposits Approved</div>
-                  <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#22c55e' }}>{financialStats.totalDeposit} ETB</div>
-                </div>
-                <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '10px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>Total Withdrawals Approved</div>
-                  <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#ef4444' }}>{financialStats.totalWithdrawal} ETB</div>
-                </div>
-                <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '10px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>House Revenue / Net Profit</div>
-                  <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#facc15' }}>{financialStats.houseProfit} ETB</div>
-                </div>
-              </div>
-            )}
-
-            {/* 8. BROADCAST MESSAGE */}
+            {/* BROADCAST MESSAGE */}
             {adminTab === 'broadcast' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>📢 Broadcast Message to Users</h3>
@@ -1044,6 +1130,26 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* PROOF IMAGE PREVIEW MODAL */}
+      {selectedProofModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <img src={selectedProofModal} alt="Receipt Proof" style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: '8px', border: '2px solid #38bdf8' }} />
+          <button onClick={() => setSelectedProofModal(null)} style={{ marginTop: '16px', padding: '10px 24px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+            ዝጋ (Close)
+          </button>
+        </div>
+      )}
 
       {/* BOTTOM NAVIGATION */}
       {currentScreen !== 'board' && (

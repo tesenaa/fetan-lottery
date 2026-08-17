@@ -154,9 +154,8 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
   return dbUser;
 }
 
-// --- ADMIN API ENDPOINTS (1 - 8) ---
+// --- ADMIN API ENDPOINTS ---
 
-// 1, 7. Settings
 app.get('/api/admin/settings', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -192,7 +191,6 @@ app.post('/api/admin/settings', async (req, res) => {
   }
 });
 
-// 1. Get Users
 app.get('/api/admin/users', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -205,7 +203,6 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
-// 2. Block / Ban User
 app.post('/api/admin/toggle-ban', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -224,7 +221,6 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
   }
 });
 
-// 1. Manually Deposit / Withdraw / Adjust Balance
 app.post('/api/admin/update-balance', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -243,13 +239,13 @@ app.post('/api/admin/update-balance', async (req, res) => {
   }
 });
 
-// 5. Transaction Requests (Approve/Reject)
+// 1. Transaction Requests (Approve/Reject)
 app.get('/api/admin/transactions', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
 
   try {
-    const transactions = await Transaction.find({ status: 'pending' }).sort({ createdAt: -1 });
+    const transactions = await Transaction.find().sort({ createdAt: -1 });
     res.json({ success: true, transactions });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -304,7 +300,7 @@ app.post('/api/admin/process-transaction', async (req, res) => {
   }
 });
 
-// 6. Financial Dashboard / Reports
+// 2. Financial Dashboard / Reports
 app.get('/api/admin/financial-stats', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -320,8 +316,18 @@ app.get('/api/admin/financial-stats', async (req, res) => {
       { $group: { _id: null, total: { $sum: "$amount" } } }
     ]);
 
+    const pendingDeposits = await Transaction.aggregate([
+      { $match: { type: 'deposit', status: 'pending' } },
+      { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
+    ]);
+
+    const pendingWithdrawals = await Transaction.aggregate([
+      { $match: { type: 'withdrawal', status: 'pending' } },
+      { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
+    ]);
+
     const gameStats = await GameHistory.aggregate([
-      { $group: { _id: null, totalProfit: { $sum: "$houseProfit" }, totalPlayed: { $sum: "$totalCollected" } } }
+      { $group: { _id: null, totalProfit: { $sum: "$houseProfit" }, totalPlayed: { $sum: "$totalCollected" }, totalGames: { $sum: 1 } } }
     ]);
 
     res.json({
@@ -329,8 +335,13 @@ app.get('/api/admin/financial-stats', async (req, res) => {
       stats: {
         totalDeposit: totalDeposits[0]?.total || 0,
         totalWithdrawal: totalWithdrawals[0]?.total || 0,
+        pendingDepositCount: pendingDeposits[0]?.count || 0,
+        pendingDepositAmount: pendingDeposits[0]?.total || 0,
+        pendingWithdrawalCount: pendingWithdrawals[0]?.count || 0,
+        pendingWithdrawalAmount: pendingWithdrawals[0]?.total || 0,
         houseProfit: gameStats[0]?.totalProfit || 0,
-        totalGamesPlayedAmount: gameStats[0]?.totalPlayed || 0
+        totalGamesPlayedAmount: gameStats[0]?.totalPlayed || 0,
+        totalGamesCount: gameStats[0]?.totalGames || 0
       }
     });
   } catch (err) {
@@ -338,7 +349,6 @@ app.get('/api/admin/financial-stats', async (req, res) => {
   }
 });
 
-// 8. Broadcast Messages
 app.post('/api/admin/broadcast', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -454,7 +464,6 @@ app.get('/api/user', async (req, res) => {
 
   if (uid && uid !== 'GUEST_USER' && uid !== 'undefined') {
     const user = await getOrInitUser(uid);
-    // 4. User Game History
     const history = await GameHistory.find({ winnerUserId: uid }).sort({ createdAt: -1 }).limit(10);
     return res.json({ ...user.toObject(), history });
   }
@@ -610,7 +619,7 @@ io.on('connection', async (socket) => {
   });
 });
 
-// --- 3. TIMER & DRAW CONTROL LOGIC ---
+// --- TIMER & DRAW CONTROL LOGIC ---
 setInterval(async () => {
   if (gamePhase === 'selecting') {
     if (timeLeft > 0) {
@@ -622,7 +631,6 @@ setInterval(async () => {
         
         let winner = null;
         
-        // አድሚን በእጅ የመረጠው ቁጥር ካለ ማረጋገጥ
         if (settings.manualWinningNumber !== null) {
           const manualMatch = selectedNumbers.find(n => Number(n.number) === Number(settings.manualWinningNumber));
           if (manualMatch) {
@@ -630,7 +638,6 @@ setInterval(async () => {
           }
         }
 
-        // አድሚን ካልመረጠ ወይም የመረጠው ቁጥር በምርጫዎች ውስጥ ከሌለ በራሱ Random ይመረጣል
         if (!winner) {
           const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
           winner = selectedNumbers[randomIndex];
