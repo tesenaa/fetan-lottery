@@ -60,9 +60,18 @@ const gameHistorySchema = new mongoose.Schema({
   playersCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
+// --- NEW SYSTEM SETTINGS SCHEMA ---
+const systemSettingsSchema = new mongoose.Schema({
+  ticketPrice: { type: Number, default: 10 },
+  winnerPercentage: { type: Number, default: 80 }, // የደራሽ መቶኛ (%)
+  houseCommissionPercentage: { type: Number, default: 20 }, // የቤት ኮሚሽን (%)
+  manualWinningNumber: { type: Number, default: null } // አድሚኑ በእጅ መምረጥ ከፈለገ (null = በራስ-ሰር)
+}, { timestamps: true });
+
 const User = mongoose.model('User', userSchema);
 const Transaction = mongoose.model('Transaction', transactionSchema);
 const GameHistory = mongoose.model('GameHistory', gameHistorySchema);
+const SystemSettings = mongoose.model('SystemSettings', systemSettingsSchema);
 
 // Server Ping Check Route
 app.get('/', (req, res) => {
@@ -83,7 +92,6 @@ let selectedNumbers = [];
 let timeLeft = 50;
 let gamePhase = 'selecting';
 let winningNumber = null;
-const STAKE_PER_NUMBER = 10;
 
 const registeredUsersSet = new Set();
 const activeUsersMap = new Map();
@@ -95,6 +103,19 @@ if (process.env.NODE_ENV === 'production' && RENDER_URL) {
 }
 
 // --- HELPER FUNCTIONS ---
+async function getSettings() {
+  let settings = await SystemSettings.findOne();
+  if (!settings) {
+    settings = await SystemSettings.create({
+      ticketPrice: 10,
+      winnerPercentage: 80,
+      houseCommissionPercentage: 20,
+      manualWinningNumber: null
+    });
+  }
+  return settings;
+}
+
 function formatUserCount(num) {
   if (num >= 10000) {
     return Math.floor(num / 1000) * 1000 + '+';
@@ -104,13 +125,18 @@ function formatUserCount(num) {
   return num.toString();
 }
 
-const getGameStats = () => {
+async function getGameStats() {
+  const settings = await getSettings();
+  const stake = settings.ticketPrice;
+  const winnerPct = settings.winnerPercentage / 100;
+
   const uniquePlayers = new Set(selectedNumbers.map(n => String(n.userId))).size;
-  const totalCollected = selectedNumbers.length * STAKE_PER_NUMBER;
-  const derash = Math.floor(totalCollected * 0.8);
+  const totalCollected = selectedNumbers.length * stake;
+  const derash = Math.floor(totalCollected * winnerPct);
   const houseProfit = totalCollected - derash;
-  return { totalPlayers: uniquePlayers, totalCollected, derash, houseProfit };
-};
+  
+  return { totalPlayers: uniquePlayers, totalCollected, derash, houseProfit, stake };
+}
 
 async function getOrInitUser(userId, firstName = '', username = '', phone = '') {
   const uid = String(userId);
@@ -139,6 +165,41 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
 }
 
 // --- ADMIN API ENDPOINTS ---
+
+app.get('/api/admin/settings', async (req, res) => {
+  const adminKey = req.headers['admin-key'];
+  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+
+  try {
+    const settings = await getSettings();
+    res.json({ success: true, settings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/admin/settings', async (req, res) => {
+  const adminKey = req.headers['admin-key'];
+  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+
+  const { ticketPrice, winnerPercentage, manualWinningNumber } = req.body;
+
+  try {
+    let settings = await getSettings();
+    if (ticketPrice !== undefined) settings.ticketPrice = Number(ticketPrice);
+    if (winnerPercentage !== undefined) {
+      settings.winnerPercentage = Number(winnerPercentage);
+      settings.houseCommissionPercentage = 100 - Number(winnerPercentage);
+    }
+    if (manualWinningNumber !== undefined) {
+      settings.manualWinningNumber = manualWinningNumber !== null ? Number(manualWinningNumber) : null;
+    }
+    await settings.save();
+    res.json({ success: true, settings, message: "የሲስተም ሰቲንግ በተሳካ ሁኔታ ተስተካክሏል!" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 app.get('/api/admin/users', async (req, res) => {
   const adminKey = req.headers['admin-key'];
@@ -369,7 +430,6 @@ app.post('/api/withdraw-request', async (req, res) => {
   const uid = String(userId);
   const subAmount = Number(amount);
 
-  // Atomic Balance Check and Deduction
   const updatedUser = await User.findOneAndUpdate(
     { userId: uid, isBanned: false, mainWallet: { $gte: subAmount } },
     { $inc: { mainWallet: -subAmount } },
@@ -435,14 +495,17 @@ io.on('connection', async (socket) => {
   const activeCount = new Set(activeUsersMap.values()).size;
   const registeredCount = registeredUsersSet.size;
 
-  const stats = getGameStats();
+  const stats = await getGameStats();
+  const settings = await getSettings();
+
   socket.emit('init_state', {
     selectedNumbers,
     timeLeft,
     gamePhase,
     winningNumber,
     totalPlayers: stats.totalPlayers,
-    derash: stats.derash
+    derash: stats.derash,
+    ticketPrice: settings.ticketPrice
   });
 
   io.emit('stats_updated', {
@@ -460,27 +523,29 @@ io.on('connection', async (socket) => {
     const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
     if (exists) return;
 
-    // Atomic Deduct Check from Database directly
     const userDoc = await User.findOne({ userId: uid });
     if (!userDoc || userDoc.isBanned) {
       socket.emit('error_message', { message: 'አካውንትዎ ስለታገደ መጫወት አይችሉም!' });
       return;
     }
 
-    if ((userDoc.mainWallet + userDoc.playWallet) < STAKE_PER_NUMBER) {
+    const settings = await getSettings();
+    const STAKE = settings.ticketPrice;
+
+    if ((userDoc.mainWallet + userDoc.playWallet) < STAKE) {
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን አስቀድመው ሂሳብዎን ይሙሉ::' });
       return;
     }
 
     let updatedUser;
-    if (userDoc.playWallet >= STAKE_PER_NUMBER) {
+    if (userDoc.playWallet >= STAKE) {
       updatedUser = await User.findOneAndUpdate(
-        { userId: uid, playWallet: { $gte: STAKE_PER_NUMBER } },
-        { $inc: { playWallet: -STAKE_PER_NUMBER } },
+        { userId: uid, playWallet: { $gte: STAKE } },
+        { $inc: { playWallet: -STAKE } },
         { new: true }
       );
     } else {
-      const remaining = STAKE_PER_NUMBER - userDoc.playWallet;
+      const remaining = STAKE - userDoc.playWallet;
       updatedUser = await User.findOneAndUpdate(
         { userId: uid, mainWallet: { $gte: remaining } },
         { playWallet: 0, $inc: { mainWallet: -remaining } },
@@ -499,7 +564,7 @@ io.on('connection', async (socket) => {
       userName: userName || `ተጫዋች_${uid}`
     });
 
-    const s = getGameStats();
+    const s = await getGameStats();
     io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
     socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
   });
@@ -519,13 +584,14 @@ io.on('connection', async (socket) => {
         n => !(Number(n.number) === Number(numberChosen) && String(n.userId) === uid)
       );
 
+      const settings = await getSettings();
       const updatedUser = await User.findOneAndUpdate(
         { userId: uid },
-        { $inc: { mainWallet: STAKE_PER_NUMBER } },
+        { $inc: { mainWallet: settings.ticketPrice } },
         { new: true }
       );
 
-      const s = getGameStats();
+      const s = await getGameStats();
       io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
       if (updatedUser) {
         socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
@@ -547,7 +613,7 @@ io.on('connection', async (socket) => {
   });
 });
 
-// --- TIMER LOGIC ---
+// --- TIMER & DRAW CONTROL LOGIC ---
 setInterval(async () => {
   if (gamePhase === 'selecting') {
     if (timeLeft > 0) {
@@ -555,10 +621,26 @@ setInterval(async () => {
     } else {
       if (selectedNumbers.length > 0) {
         gamePhase = 'spinning';
-        const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
-        const winner = selectedNumbers[randomIndex];
+        const settings = await getSettings();
+        
+        let winner = null;
+        
+        // አድሚን በእጅ የመረጠው ቁጥር ካለ ማረጋገጥ
+        if (settings.manualWinningNumber !== null) {
+          const manualMatch = selectedNumbers.find(n => Number(n.number) === Number(settings.manualWinningNumber));
+          if (manualMatch) {
+            winner = manualMatch;
+          }
+        }
+
+        // አድሚን ካልመረጠ ወይም የመረጠው ቁጥር በምርጫዎች ውስጥ ከሌለ በራሱ Random ይመረጣል
+        if (!winner) {
+          const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
+          winner = selectedNumbers[randomIndex];
+        }
+
         winningNumber = winner.number;
-        const stats = getGameStats();
+        const stats = await getGameStats();
 
         if (winner && winner.userId) {
           const wUid = String(winner.userId);
@@ -585,6 +667,12 @@ setInterval(async () => {
           { userId: { $in: participantIds } },
           { $inc: { totalGames: 1 } }
         );
+
+        // በእጅ የተመረጠውን ቁጥር ለቀጣይ ጨዋታዎች Reset ማድረግ
+        if (settings.manualWinningNumber !== null) {
+          settings.manualWinningNumber = null;
+          await settings.save();
+        }
 
         io.emit('game_result', {
           winningNumber,

@@ -91,7 +91,6 @@ export default function App() {
   const [gameHistory, setGameHistory] = useState([]);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Pagination status for performance
   const [page, setPage] = useState(1);
   const itemsPerPage = 200;
 
@@ -106,7 +105,10 @@ export default function App() {
   const [financialStats, setFinancialStats] = useState(null);
   const [broadcastText, setBroadcastText] = useState('');
 
-  // 200 በ 200 ከፋፍሎ ለስልክ እንዲቀል የማድረግ Optimization
+  // SYSTEM SETTINGS & DRAW CONTROL STATES
+  const [sysSettings, setSysSettings] = useState({ ticketPrice: 10, winnerPercentage: 80, manualWinningNumber: null });
+  const [manualNumberInput, setManualNumberInput] = useState('');
+
   const visibleNumbers = useMemo(() => {
     const start = (page - 1) * itemsPerPage + 1;
     const end = page * itemsPerPage;
@@ -119,15 +121,13 @@ export default function App() {
         allSelectedList.map(item => typeof item === 'object' ? String(item.userId) : String(item))
       ).size;
       setPlayerCount(uniquePlayers);
-      setDerash(Math.floor(allSelectedList.length * stake * 0.8));
+      setDerash(Math.floor(allSelectedList.length * stake * (sysSettings.winnerPercentage / 100)));
     }
-  }, [stake]);
+  }, [stake, sysSettings.winnerPercentage]);
 
   const fetchUserData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`, {
-        headers: { 'Bypass-Tunnel-Remainder': 'true' }
-      });
+      const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
       if (res.ok) {
         const data = await res.json();
         setMainWallet(data.mainWallet || 0);
@@ -154,23 +154,59 @@ export default function App() {
     if (!isAdmin) return;
     try {
       const headers = { 'admin-key': userId };
-      const [uRes, tRes, fRes] = await Promise.all([
+      const [uRes, tRes, fRes, sRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/admin/users`, { headers }),
         fetch(`${API_BASE_URL}/api/admin/transactions`, { headers }),
-        fetch(`${API_BASE_URL}/api/admin/financial-stats`, { headers })
+        fetch(`${API_BASE_URL}/api/admin/financial-stats`, { headers }),
+        fetch(`${API_BASE_URL}/api/admin/settings`, { headers })
       ]);
 
       const uData = await uRes.json();
       const tData = await tRes.json();
       const fData = await fRes.json();
+      const sData = await sRes.json();
 
       if (uData.success) setAdminUsers(uData.users);
       if (tData.success) setPendingTx(tData.transactions);
       if (fData.success) setFinancialStats(fData.stats);
+      if (sData.success) {
+        setSysSettings(sData.settings);
+        setStake(sData.settings.ticketPrice);
+      }
     } catch (err) {
       console.error("Admin Fetch Error:", err);
     }
   }, [isAdmin, userId]);
+
+  const handleUpdateSettings = async (overrideParams = {}) => {
+    try {
+      const payload = {
+        ticketPrice: sysSettings.ticketPrice,
+        winnerPercentage: sysSettings.winnerPercentage,
+        manualWinningNumber: sysSettings.manualWinningNumber,
+        ...overrideParams
+      };
+      const res = await fetch(`${API_BASE_URL}/api/admin/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'admin-key': userId },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setSysSettings(data.settings);
+        setStake(data.settings.ticketPrice);
+      }
+    } catch (e) {
+      alert("ስህተት ተፈጥሯል!");
+    }
+  };
+
+  const handleSetManualWinner = () => {
+    if (!manualNumberInput) return alert("እባክዎን የዕጣ ቁጥር ያስገቡ!");
+    handleUpdateSettings({ manualWinningNumber: Number(manualNumberInput) });
+    setManualNumberInput('');
+  };
 
   const handleToggleBan = async (targetUserId, currentStatus) => {
     try {
@@ -181,7 +217,7 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        alert("የተጠቃሚው status ተቀይሯል!");
+        alert("የተጠቃሚው Status ተቀይሯል!");
         fetchAdminData();
       }
     } catch (e) {
@@ -258,6 +294,7 @@ export default function App() {
       setPhase(data.gamePhase || 'selecting');
       setSelectionTime(data.timeLeft !== undefined ? data.timeLeft : 50);
       setWinningNumber(data.winningNumber || '?');
+      if (data.ticketPrice) setStake(data.ticketPrice);
       if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
         const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
         setAllPickedNumbers(allPicked);
@@ -483,12 +520,9 @@ export default function App() {
                 )}
 
                 <div style={{ width: '100%', backgroundColor: '#15152a', border: '1px solid #ef4444', borderRadius: '16px', padding: '24px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)', marginBottom: '20px', boxSizing: 'border-box' }}>
-                  <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px' }}>Choose Your Stake</div>
-                  <button onClick={() => { setStake(10); setCurrentScreen('board'); }} style={{ width: '100%', backgroundColor: '#22c55e', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px' }}>
-                    ► Play 10 ETB
-                  </button>
-                  <button onClick={() => { setStake(20); setCurrentScreen('board'); }} style={{ width: '100%', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    ► Play 20 ETB
+                  <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px' }}>Current Ticket Stake: {stake} ETB</div>
+                  <button onClick={() => setCurrentScreen('board')} style={{ width: '100%', backgroundColor: '#22c55e', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    ► Play Now ({stake} ETB)
                   </button>
                 </div>
 
@@ -535,7 +569,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* የቁጥሮች ክፍል - 200 በ 200 የከፈልነው optimization */}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', padding: '4px 8px', backgroundColor: '#13132b', flexShrink: 0 }}>
                   {[1, 2, 3, 4, 5].map(p => (
                     <button key={p} onClick={() => setPage(p)} style={{ padding: '3px 8px', fontSize: '10px', borderRadius: '4px', border: 'none', backgroundColor: page === p ? '#f59e0b' : '#1e1b4b', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
@@ -761,6 +794,8 @@ export default function App() {
             <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
               <button onClick={() => setAdminTab('users')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'users' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Users</button>
               <button onClick={() => setAdminTab('requests')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'requests' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Requests ({pendingTx.length})</button>
+              <button onClick={() => setAdminTab('game_control')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'game_control' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Draw Control</button>
+              <button onClick={() => setAdminTab('settings')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'settings' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Settings</button>
               <button onClick={() => setAdminTab('reports')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'reports' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Reports</button>
               <button onClick={() => setAdminTab('broadcast')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'broadcast' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Broadcast</button>
             </div>
@@ -839,6 +874,55 @@ export default function App() {
               </div>
             )}
 
+            {/* DRAW CONTROL TAB */}
+            {adminTab === 'game_control' && (
+              <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
+                <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>🎯 የዕጣ ቁጥር ማውጣት መቆጣጠሪያ (Draw Control)</h3>
+                <p style={{ fontSize: '11px', color: '#9ca3af' }}>የሚቀጥለው የዕጣ ቁጥር በራስ-ሰር (Random) ሳይሆን እርስዎ በሚመርጡት ቁጥር እንዲወጣ ማድረግ ይችላሉ።</p>
+                
+                <div style={{ marginBottom: '12px', padding: '10px', backgroundColor: '#0f172a', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '12px', color: '#38bdf8' }}>
+                    የተያዘው Manual ቁጥር፡ {sysSettings.manualWinningNumber !== null ? `#${sysSettings.manualWinningNumber}` : 'የለም (በራስ-ሰር ይወጣል)'}
+                  </div>
+                </div>
+
+                <input type="number" placeholder="የአሸናፊ ቁጥር ያስገቡ (1-1000)" value={manualNumberInput} onChange={(e) => setManualNumberInput(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '12px', boxSizing: 'border-box' }} />
+                
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={handleSetManualWinner} style={{ flex: 1, padding: '10px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    ቁጥሩን መዝግብ (Set Manual Number)
+                  </button>
+                  {sysSettings.manualWinningNumber !== null && (
+                    <button onClick={() => handleUpdateSettings({ manualWinningNumber: null })} style={{ padding: '10px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      ወደ ራስ-ሰር ቀይር (Reset)
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SETTINGS TAB */}
+            {adminTab === 'settings' && (
+              <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
+                <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>⚙️ የሲስተም አጠቃላይ ሶፍትዌር ማስተካከያ</h3>
+                
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ fontSize: '12px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>የቲኬት ዋጋ (ETB):</label>
+                  <input type="number" value={sysSettings.ticketPrice} onChange={(e) => setSysSettings({ ...sysSettings, ticketPrice: Number(e.target.value) })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                </div>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ fontSize: '12px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>የአሸናፊዎች ድርሻ / ደራሽ የመቶኛ መጠን (%):</label>
+                  <input type="number" value={sysSettings.winnerPercentage} onChange={(e) => setSysSettings({ ...sysSettings, winnerPercentage: Number(e.target.value) })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                  <div style={{ fontSize: '10px', color: '#f59e0b', marginTop: '2px' }}>የሲስተም/ቤት ኮሚሽን መቶኛ፡ {100 - Number(sysSettings.winnerPercentage || 0)}% ይሆናል።</div>
+                </div>
+
+                <button onClick={() => handleUpdateSettings()} style={{ width: '100%', padding: '12px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  ሴቲንግ አስቀምጥ (Save Settings)
+                </button>
+              </div>
+            )}
+
             {adminTab === 'reports' && financialStats && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '10px', border: '1px solid #2a2a4a' }}>
@@ -850,7 +934,7 @@ export default function App() {
                   <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#ef4444' }}>{financialStats.totalWithdrawal} ETB</div>
                 </div>
                 <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '10px', border: '1px solid #2a2a4a' }}>
-                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>House Revenue / Net Profit (20% Cut)</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>House Revenue / Net Profit</div>
                   <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#facc15' }}>{financialStats.houseProfit} ETB</div>
                 </div>
               </div>
