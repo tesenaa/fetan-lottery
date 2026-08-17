@@ -92,9 +92,6 @@ export default function App() {
   const [gameHistory, setGameHistory] = useState([]);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const [page, setPage] = useState(1);
-  const itemsPerPage = 200;
-
   // ADMIN STATES
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminSearch, setAdminSearch] = useState('');
@@ -114,11 +111,10 @@ export default function App() {
   });
   const [manualNumberInput, setManualNumberInput] = useState('');
 
+  // 1 እስከ 1000 ያሉትን ቁጥሮች በአንድ ላይ ማመንጨት
   const visibleNumbers = useMemo(() => {
-    const start = (page - 1) * itemsPerPage + 1;
-    const end = page * itemsPerPage;
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-  }, [page]);
+    return Array.from({ length: 1000 }, (_, i) => i + 1);
+  }, []);
 
   const updateBoardStats = useCallback((allSelectedList) => {
     if (allSelectedList && Array.isArray(allSelectedList)) {
@@ -428,17 +424,20 @@ export default function App() {
     if (isBanned) return alert("አካውንትዎ የታገደ ስለሆነ መጫወት አይችሉም!");
 
     if (myPickedSet.has(num)) {
+      // ቁጥር ሲተው ብሩን ይመልሳል
       setSelectedNumbers(prev => prev.filter(n => n !== num));
       setAllPickedNumbers(prev => prev.filter(n => n !== num));
       setMainWallet(prev => prev + stake);
       socket.emit('deselect_number', { numberChosen: num, userId });
     } else {
+      // አካውንት ላይ በቂ ብር ካልኖረ ቁጥር መምረጥ አይቻልም
       const totalAvailableBalance = mainWallet + playWallet;
       if (totalAvailableBalance < stake) {
         alert("⚠️ የእርስዎ ቀሪ ሂሳብ በቂ አይደለም! እባክዎን አስቀድመው ገንዘብ ያስገቡ ።");
         return;
       }
 
+      // ብር ከዋሌት ይቀንሳል
       if (playWallet >= stake) {
         setPlayWallet(prev => prev - stake);
       } else {
@@ -622,27 +621,6 @@ export default function App() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', padding: '4px 8px', backgroundColor: '#13132b', flexShrink: 0, width: '100%' }}>
-                  {[1, 2, 3, 4, 5].map(p => (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      style={{
-                        padding: '3px 8px',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                        border: 'none',
-                        backgroundColor: page === p ? '#f59e0b' : '#1e1b4b',
-                        color: '#fff',
-                        fontWeight: 'bold',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {(p - 1) * 200 + 1}-{p * 200}
-                    </button>
-                  ))}
-                </div>
-
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
                     <div style={{
@@ -657,6 +635,7 @@ export default function App() {
                       {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
                     </div>
 
+                    {/* 1-1000 በነፃነት Scroll የሚደረግበት Grid */}
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(5, 1fr)',
