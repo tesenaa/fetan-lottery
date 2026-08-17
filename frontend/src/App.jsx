@@ -707,32 +707,37 @@ export default function App() {
                         position: 'relative'
                       }}>
                         {winningNumber === 'SPINNING' ? (
-                          <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <svg width="80" height="80" viewBox="0 0 100 100">
-                              <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="2" strokeDasharray="6 6" />
-                              <polygon points="50,15 58,45 50,40 42,45" fill="#00f2fe" />
-                              <polygon points="50,85 58,55 50,60 42,55" fill="#f59e0b" />
-                              <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
-                            </svg>
-                          </div>
-                        ) : winningNumber === 'NONE' ? (
-                          <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>አልተመረጠም</span>
-                        ) : (
-                          <span style={{
-                            fontSize: winningNumber === '?' ? '42px' : '38px',
-                            fontWeight: 'bold',
-                            color: winningNumber === '?' ? '#ffffff' : '#00ffcc',
-                            textShadow: winningNumber === '?' ? 'none' : '0 0 12px #00ffcc',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justify: 'center',
-                            width: '100%',
-                            height: '100%',
-                            lineHeight: 1
-                          }}>
-                            {winningNumber}
-                          </span>
-                        )}
+  <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <svg width="80" height="80" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="4" />
+      <polygon points="50,15 58,45 50,40 42,45" fill="#00f2fe" />
+      <polygon points="50,85 58,55 50,60 42,55" fill="#f59e0b" />
+      <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
+    </svg>
+  </div>
+) : winningNumber === 'NONE' ? (
+  <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold' }}>
+    እስካሁን ምንም አልወጣም
+  </span>
+) : (
+  <div style={{
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  }}>
+    <span style={{
+      fontSize: winningNumber === '?' ? '42px' : '38px',
+      fontWeight: 'bold',
+      color: winningNumber === '?' ? '#ffffff' : '#00ffcc',
+      textShadow: winningNumber === '?' ? 'none' : '0 0 12px #00ffcc',
+      lineHeight: '1'
+    }}>
+      {winningNumber}
+    </span>
+  </div>
+)}
                       </div>
                     </div>
 
