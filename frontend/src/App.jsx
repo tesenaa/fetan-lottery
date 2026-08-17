@@ -111,7 +111,6 @@ export default function App() {
   });
   const [manualNumberInput, setManualNumberInput] = useState('');
 
-  // 1 እስከ 1000 ያሉትን ቁጥሮች በአንድ ላይ ማመንጨት
   const visibleNumbers = useMemo(() => {
     return Array.from({ length: 1000 }, (_, i) => i + 1);
   }, []);
@@ -379,6 +378,7 @@ export default function App() {
 
         fetchUserData();
 
+        // ጥያቄ 2 ማስተካከያ፡ ለአራት (4) ሰከንድ አሳይቶ ማጥፋት
         resultTimeout = setTimeout(() => {
           setSelectedNumbers([]);
           setAllPickedNumbers([]);
@@ -419,23 +419,35 @@ export default function App() {
     };
   }, [socket, userId, updateBoardStats, fetchUserData]);
 
-  // የወለል/ዋሌት ማረጋገጫና ብር የመቀነስ/መመለስ ህግ የተወገደበት የ toggleNumber ፋንክሽን
   const toggleNumber = useCallback((num) => {
     if (phase !== 'selecting') return;
     if (isBanned) return alert("አካውንትዎ የታገደ ስለሆነ መጫወት አይችሉም!");
 
     if (myPickedSet.has(num)) {
-      // ቁጥሩን ከዝርዝር ያስወጣል (ብር መመለስ ሳይኖር)
       setSelectedNumbers(prev => prev.filter(n => n !== num));
       setAllPickedNumbers(prev => prev.filter(n => n !== num));
+      setMainWallet(prev => prev + stake);
       socket.emit('deselect_number', { numberChosen: num, userId });
     } else {
-      // ቁጥሩን ይመርጣል (ቀሪ ሂሳብ ሳይፈተሽ እና ሳይቀነስ)
+      const totalAvailableBalance = mainWallet + playWallet;
+      if (totalAvailableBalance < stake) {
+        alert("⚠️ የእርስዎ ቀሪ ሂሳብ በቂ አይደለም! እባክዎን አስቀድመው ገንዘብ ያስገቡ ።");
+        return;
+      }
+
+      if (playWallet >= stake) {
+        setPlayWallet(prev => prev - stake);
+      } else {
+        const remainingStake = stake - playWallet;
+        setPlayWallet(0);
+        setMainWallet(prev => prev - remainingStake);
+      }
+
       setSelectedNumbers(prev => [...prev, num]);
       setAllPickedNumbers(prev => [...prev, num]);
       socket.emit('select_number', { numberChosen: num, userId, userName });
     }
-  }, [phase, isBanned, myPickedSet, socket, userId, userName]);
+  }, [phase, isBanned, myPickedSet, mainWallet, playWallet, stake, socket, userId, userName]);
 
   const handleDeposit = async () => {
     if (!depAmount || Number(depAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
@@ -620,7 +632,6 @@ export default function App() {
                       {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
                     </div>
 
-                    {/* 1-1000 በነፃነት Scroll የሚደረግበት Grid */}
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(5, 1fr)',
@@ -667,6 +678,7 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* ጥያቄ 1 ማስተካከያ: የዕጣ ማውጫው ሳጥን እና የጥያቄ ምልክቱን ('?') መሀል ማድረግ */}
                     <div style={{
                       backgroundColor: '#13132b',
                       borderRadius: '12px',
@@ -710,7 +722,13 @@ export default function App() {
                             fontSize: winningNumber === '?' ? '42px' : '38px',
                             fontWeight: 'bold',
                             color: winningNumber === '?' ? '#ffffff' : '#00ffcc',
-                            textShadow: winningNumber === '?' ? 'none' : '0 0 12px #00ffcc'
+                            textShadow: winningNumber === '?' ? 'none' : '0 0 12px #00ffcc',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justify: 'center',
+                            width: '100%',
+                            height: '100%',
+                            lineHeight: 1
                           }}>
                             {winningNumber}
                           </span>
@@ -718,6 +736,7 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* ጥያቄ 2 ማስተካከያ: ከሳጥን ስር የአሸናፊውን ስም, የወጣለትን ብር እና ቁጥር ለአራት ሰከንድ አሳይቶ ማጥፋት */}
                     {winnerInfo && (
                       <div style={{
                         marginTop: '4px',
@@ -729,8 +748,9 @@ export default function App() {
                         boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)'
                       }}>
                         <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#34d399' }}> 🎉 ዕጣው ወጥቷል! </div>
-                        <div style={{ fontSize: '14px', fontWeight: '900', color: '#facc15', margin: '2px 0' }}> አሸናፊ ቁጥር: #{winnerInfo.number} </div>
-                        <div style={{ fontSize: '10px', color: '#ffffff', fontWeight: '600' }}> 👤 {winnerInfo.userName} </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '2px 0' }}> 👤 {winnerInfo.userName} </div>
+                        <div style={{ fontSize: '13px', fontWeight: '900', color: '#facc15' }}> የወጣው ቁጥር: #{winnerInfo.number} </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '2px' }}> ያሸነፈው ብር: {winnerInfo.derash} ETB </div>
                       </div>
                     )}
                   </div>
