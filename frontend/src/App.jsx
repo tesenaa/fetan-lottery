@@ -40,7 +40,7 @@ const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) =
 
 export default function App() {
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-  const userId = useMemo(() => tgUser?.id ? String(tgUser.id) : 'GUEST_USER', [tgUser]);
+  const userId = useMemo(() => (tgUser?.id ? String(tgUser.id) : 'GUEST_USER'), [tgUser]);
   const userName = useMemo(() => {
     if (!tgUser) return 'ተጫዋች';
     const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ');
@@ -423,19 +423,16 @@ export default function App() {
     };
   }, [socket, userId, updateBoardStats, fetchUserData]);
 
-  // ቁጥር ሲጫን/ሲተዉ ከአካውንት መቀነስ እና መጨመር
   const toggleNumber = useCallback((num) => {
     if (phase !== 'selecting') return;
     if (isBanned) return alert("አካውንትዎ የታገደ ስለሆነ መጫወት አይችሉም!");
 
     if (myPickedSet.has(num)) {
-      // ቁጥሩን ሲተውት ገንዘቡ ወደ አካውንቱ ይመለሳል
       setSelectedNumbers(prev => prev.filter(n => n !== num));
       setAllPickedNumbers(prev => prev.filter(n => n !== num));
       setMainWallet(prev => prev + stake);
       socket.emit('deselect_number', { numberChosen: num, userId });
     } else {
-      // ብር ከሌለ ቁጥር መምረጥ አይቻልም
       const totalAvailableBalance = mainWallet + playWallet;
       if (totalAvailableBalance < stake) {
         alert("⚠️ የእርስዎ ቀሪ ሂሳብ በቂ አይደለም! እባክዎን አስቀድመው ገንዘብ ያስገቡ ።");
@@ -526,6 +523,7 @@ export default function App() {
   return (
     <div style={{
       maxWidth: '500px',
+      width: '100%',
       margin: '0 auto',
       backgroundColor: '#0c0c1e',
       color: '#ffffff',
@@ -553,12 +551,12 @@ export default function App() {
         }
       `}} />
 
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', width: '100%' }}>
         {currentTab === 'game' && (
           <>
             {currentScreen === 'home' && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
-                <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>
+              <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center', width: '100%' }}>
                   Welcome to <span style={{ color: '#f59e0b' }}>Fetan Lottery</span>
                 </h1>
                 {isBanned && (
@@ -590,8 +588,7 @@ export default function App() {
             )}
 
             {currentScreen === 'board' && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                {/* Header buttons */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', backgroundColor: '#0a0a16', borderBottom: '1px solid #1e1b4b', flexShrink: 0 }}>
                   <button onClick={() => setCurrentScreen('home')} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>
                     ← Back
@@ -601,7 +598,6 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* Top Statistics Bar */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0 }}>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div>
@@ -621,7 +617,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Pagination Tabs */}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', padding: '4px 8px', backgroundColor: '#13132b', flexShrink: 0 }}>
                   {[1, 2, 3, 4, 5].map(p => (
                     <button
@@ -643,10 +638,7 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* MAIN BOARD LAYOUT (1st Photo Design Layout) */}
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden' }}>
-                  
-                  {/* Left Column: Number Grid ONLY (Scrollable) */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
                     <div style={{
                       backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7',
@@ -686,10 +678,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Right Column: Selected Numbers + Draw Machine (Fixed) */}
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
-                    
-                    {/* Selected Numbers Container */}
                     <div style={{
                       backgroundColor: '#1b1b32',
                       borderRadius: '8px',
@@ -709,7 +698,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Draw Wheel Machine */}
                     <div style={{
                       backgroundColor: '#13132b',
                       borderRadius: '12px',
@@ -776,17 +764,15 @@ export default function App() {
                         <div style={{ fontSize: '10px', color: '#ffffff', fontWeight: '600' }}> 👤 {winnerInfo.userName} </div>
                       </div>
                     )}
-
                   </div>
                 </div>
-
               </div>
             )}
           </>
         )}
 
         {currentTab === 'history' && (
-          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>📜 Game History</h1>
             <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '16px', marginBottom: '20px', border: '1px solid #2a2a4a' }}>
               <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '6px' }}>Total Games Played</div>
@@ -817,7 +803,7 @@ export default function App() {
         )}
 
         {currentTab === 'wallet' && (
-          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>👛 Wallet & Transactions</h1>
               <span onClick={fetchUserData} style={{ fontSize: '18px', cursor: 'pointer', color: '#9ca3af' }}>🔄</span>
@@ -871,7 +857,7 @@ export default function App() {
         )}
 
         {currentTab === 'profile' && (
-          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10px', marginBottom: '20px' }}>
               <div style={{ width: '75px', height: '75px', borderRadius: '50%', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 'bold', color: '#ffffff', marginBottom: '12px', overflow: 'hidden', border: '2px solid #60a5fa' }}>
                 {userPhoto ? (
@@ -919,7 +905,7 @@ export default function App() {
 
         {/* ADMIN TAB */}
         {isAdmin && currentTab === 'admin' && (
-          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#f59e0b' }}>⚙️ Admin Control Panel</h1>
               <button onClick={fetchAdminData} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}>🔄 Refresh Data</button>
@@ -1005,7 +991,6 @@ export default function App() {
               </div>
             )}
 
-            {/* DRAW CONTROL TAB */}
             {adminTab === 'game_control' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>🎯 የዕጣ ቁጥር ማውጣት መቆጣጠሪያ (Draw Control)</h3>
@@ -1029,7 +1014,6 @@ export default function App() {
               </div>
             )}
 
-            {/* SETTINGS TAB */}
             {adminTab === 'settings' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>⚙️ የሲስተም አጠቃላይ ሶፍትዌር ማስተካከያ</h3>
@@ -1081,13 +1065,15 @@ export default function App() {
       {currentScreen !== 'board' && (
         <div style={{
           display: 'flex',
-          justify: 'space-around',
+          justifyContent: 'space-around',
           alignItems: 'center',
           backgroundColor: '#0f0f26',
           borderTop: '1px solid #2a2a50',
           padding: '6px 4px 8px 4px',
           flexShrink: 0,
-          boxShadow: '0 -4px 12px rgba(0,0,0,0.4)'
+          boxShadow: '0 -4px 12px rgba(0,0,0,0.4)',
+          width: '100%',
+          boxSizing: 'border-box'
         }}>
           <button onClick={() => setCurrentTab('game')} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
             <span style={{ fontSize: '18px' }}>🎮</span> Game
