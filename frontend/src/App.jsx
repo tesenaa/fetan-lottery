@@ -103,7 +103,6 @@ export default function App() {
   const [adminTab, setAdminTab] = useState('requests');
   const [txFilter, setTxFilter] = useState('PENDING');
   const [allTx, setAllTx] = useState([]);
-  const [selectedProofModal, setSelectedProofModal] = useState(null);
   const [financialStats, setFinancialStats] = useState(null);
   const [broadcastText, setBroadcastText] = useState('');
 
@@ -435,7 +434,6 @@ export default function App() {
     }
   }, [phase, isBanned, myPickedSet, mainWallet, playWallet, stake, socket, userId, userName]);
 
-  // NEW TELEBIRR SMS DEPOSIT SUBMISSION HANDLER
   const handleDeposit = async () => {
     if (!depAmount || Number(depAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
     if (!pastedSMS.trim()) return alert("እባክዎን የቴሌብር SMS መልእክቱን ኮፒ አድርገው ያስገቡ!");
@@ -658,7 +656,7 @@ export default function App() {
                         📌 የተመረጡ ቁጥሮች ({selectedNumbers.length}):
                       </div>
                       <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.2', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
-                        {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
+                        {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረቱም'}
                       </div>
                     </div>
 
@@ -1161,7 +1159,7 @@ export default function App() {
             <span style={{ fontSize: '18px' }}>👤</span> Profile
           </button>
           {isAdmin && (
-            <button onClick={() => { setCurrentTab('admin'); fetchAdminData(); }} style={{ background: 'none', border: 'none', color: currentTab === 'admin' ? '#f59e0b' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
+            <button onClick={() => setCurrentTab('admin')} style={{ background: 'none', border: 'none', color: currentTab === 'admin' ? '#f59e0b' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
               <span style={{ fontSize: '18px' }}>⚙️</span> Admin
             </button>
           )}

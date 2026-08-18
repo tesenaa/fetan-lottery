@@ -9,7 +9,7 @@ import { webhookCallback, InlineKeyboard } from 'grammy';
 
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
 const ADMIN_ID = process.env.ADMIN_ID || "494653076";
-const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || "-100234567890"; // የቴሌግራም አድሚን ግሩፕ/ቻናል ID
+const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || "-100234567890"; // የቴሌግራም አድሚን ግሩፕ ID
 
 const app = express();
 app.use(cors());
@@ -47,7 +47,7 @@ const depositSchema = new mongoose.Schema({
   pastedText: { type: String, required: true },
   transactionId: { type: String, default: null, index: true },
   status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
-  telegramMessageId: { type: Number, default: null } // የአድሚን ግሩፕ መልእክትን Update ለማድረግ
+  telegramMessageId: { type: Number, default: null }
 }, { timestamps: true });
 
 const transactionSchema = new mongoose.Schema({
@@ -111,7 +111,6 @@ if (process.env.NODE_ENV === 'production' && RENDER_URL) {
 // --- HELPER FUNCTIONS ---
 function extractTransactionId(text) {
   if (!text) return null;
-  // Telebirr transaction ID pattern (e.g., Txn ID: CC12345678, or standalone 10+ character alphanumeric)
   const match = text.match(/(?:txn\s*id|transaction\s*id|ref\s*no)[\s:-]*([a-z0-9]+)/i) || text.match(/\b([A-Z0-9]{10,12})\b/);
   return match ? match[1].toUpperCase() : null;
 }
@@ -174,7 +173,7 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
   return dbUser;
 }
 
-// --- TELEGRAM BOT INLINE BUTTON ACTION HANDLERS (APPROVE / REJECT) ---
+// --- TELEGRAM BOT INLINE BUTTON ACTION HANDLERS ---
 if (bot) {
   bot.callbackQuery(/^(dep_approve|dep_reject):(.+)$/, async (ctx) => {
     const action = ctx.match[1];
@@ -201,7 +200,6 @@ if (bot) {
           await user.save();
         }
 
-        // ኖቲፊኬሽን ለተጠቃሚው
         try {
           await bot.api.sendMessage(
             deposit.userId,
@@ -210,7 +208,6 @@ if (bot) {
           );
         } catch (e) {}
 
-        // በአድሚን ግሩፕ ያለውን መልእክት መቀየር
         await ctx.editMessageText(
           `📥 *የዴፖዚት ጥያቄ (✅ Approved by Admin)*\n\n` +
           `• *User:* @${user?.username || 'N/A'} (ID: \`${deposit.userId}\`)\n` +
@@ -226,7 +223,6 @@ if (bot) {
         deposit.status = 'REJECTED';
         await deposit.save();
 
-        // ኖቲፊኬሽን ለተጠቃሚው
         try {
           await bot.api.sendMessage(
             deposit.userId,
@@ -235,7 +231,6 @@ if (bot) {
           );
         } catch (e) {}
 
-        // በአድሚን ግሩፕ ያለውን መልእክት መቀየር
         await ctx.editMessageText(
           `📥 *የዴፖዚት ጥያቄ (❌ Rejected by Admin)*\n\n` +
           `• *User:* @${user?.username || 'N/A'} (ID: \`${deposit.userId}\`)\n` +
@@ -271,7 +266,6 @@ app.post('/api/deposit-request', async (req, res) => {
       return res.status(403).json({ success: false, message: "አካውንትዎ የታገደ ስለሆነ አገልግሎቱን ማግኘት አይችሉም!" });
     }
 
-    // 1. Rate Limiting Check (Pending ጥያቄ ካለው ማገድ)
     const existingPending = await Deposit.findOne({ userId: uid, status: 'PENDING' });
     if (existingPending) {
       return res.status(400).json({
@@ -280,7 +274,6 @@ app.post('/api/deposit-request', async (req, res) => {
       });
     }
 
-    // 2. Transaction ID extraction & Duplicate check via Regex
     const txnId = extractTransactionId(pastedText);
 
     if (txnId) {
@@ -293,7 +286,6 @@ app.post('/api/deposit-request', async (req, res) => {
       }
     }
 
-    // 3. Create Deposit Document in DB
     const deposit = await Deposit.create({
       userId: uid,
       userName: userName || user.username || `User_${uid}`,
@@ -303,7 +295,6 @@ app.post('/api/deposit-request', async (req, res) => {
       status: 'PENDING'
     });
 
-    // 4. Send Message to Admin Telegram Group with Inline Keyboard Buttons
     if (bot && ADMIN_GROUP_ID) {
       try {
         const keyboard = new InlineKeyboard()
