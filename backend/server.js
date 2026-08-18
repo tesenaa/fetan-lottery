@@ -108,11 +108,23 @@ if (process.env.NODE_ENV === 'production' && RENDER_URL) {
   app.use('/webhook', webhookCallback(bot, 'express'));
 }
 
-// --- HELPER FUNCTIONS ---
+// --- HELPER FUNCTIONS & REGEX (ADVANCED SECURITY) ---
 function extractTransactionId(text) {
   if (!text) return null;
-  const match = text.match(/(?:txn\s*id|transaction\s*id|ref\s*no)[\s:-]*([a-z0-9]+)/i) || text.match(/\b([A-Z0-9]{10,12})\b/);
-  return match ? match[1].toUpperCase() : null;
+
+  // Pattern 1: explicitly captures 'Txn ID: 24A...', 'Transaction ID:', 'Ref No:'
+  const explicitMatch = text.match(/(?:txn\s*id|transaction\s*id|ref\s*no|trans\s*id)[\s:-]*([a-z0-9]+)/i);
+  if (explicitMatch && explicitMatch[1]) {
+    return explicitMatch[1].toUpperCase();
+  }
+
+  // Pattern 2: Telebirr style alphanumeric patterns (e.g., 24A1234567, TXN9876543, 10-12 chars)
+  const telebirrMatch = text.match(/\b([A-Z0-9]{10,12})\b/);
+  if (telebirrMatch && telebirrMatch[1]) {
+    return telebirrMatch[1].toUpperCase();
+  }
+
+  return null;
 }
 
 async function getSettings() {
@@ -249,7 +261,7 @@ if (bot) {
   });
 }
 
-// --- DEPOSIT REQUEST ENDPOINT WITH TELEGRAM NOTIFICATION ---
+// --- DEPOSIT REQUEST ENDPOINT WITH STRICT SECURITY RULES ---
 app.post('/api/deposit-request', async (req, res) => {
   const { userId, userName, amount, pastedText } = req.body;
 
@@ -266,6 +278,7 @@ app.post('/api/deposit-request', async (req, res) => {
       return res.status(403).json({ success: false, message: "አካውንትዎ የታገደ ስለሆነ አገልግሎቱን ማግኘት አይችሉም!" });
     }
 
+    // 🛑 RULE 1: BUTTON RATE LIMITING (PENDING Request Protection)
     const existingPending = await Deposit.findOne({ userId: uid, status: 'PENDING' });
     if (existingPending) {
       return res.status(400).json({
@@ -274,18 +287,26 @@ app.post('/api/deposit-request', async (req, res) => {
       });
     }
 
+    // 🛑 RULE 2: TRANSACTION ID EXTRACTION VIA REGEX
     const txnId = extractTransactionId(pastedText);
 
+    // 🛑 RULE 3: DUPLICATE PROTECTION (Check DB for duplicate Transaction ID regardless of status)
     if (txnId) {
       const duplicateTxn = await Deposit.findOne({ transactionId: txnId });
       if (duplicateTxn) {
         return res.status(400).json({
           success: false,
-          message: "⚠️ ይህ የትራንዛክሽን ማረጋገጫ (SMS) ቀደም ሲል ጥቅም ላይ ውሏል!"
+          message: "⚠️ ይህ የትራንዛክሽን ማረጋገጫ (SMS / Txn ID) ቀደም ሲል ጥቅም ላይ ውሏል! ደጋግመው ማስገባት አይችሉም።"
         });
       }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "⚠️ ከላኩት SMS ውስጥ ትክክለኛ Transaction ID ማግኘት አልተቻለም። እባክዎን ሙሉውን የቴሌብር SMS ኮፒ አድርገው ያስገቡ!"
+      });
     }
 
+    // CREATE DEPOSIT RECORD IN DATABASE
     const deposit = await Deposit.create({
       userId: uid,
       userName: userName || user.username || `User_${uid}`,
@@ -295,6 +316,7 @@ app.post('/api/deposit-request', async (req, res) => {
       status: 'PENDING'
     });
 
+    // SEND NOTIFICATION TO TELEGRAM ADMIN GROUP
     if (bot && ADMIN_GROUP_ID) {
       try {
         const keyboard = new InlineKeyboard()
@@ -305,7 +327,7 @@ app.post('/api/deposit-request', async (req, res) => {
           `📥 *አዲስ የዴፖዚት ጥያቄ*\n\n` +
           `• *User:* @${user.username || 'N/A'} (ID: \`${uid}\`)\n` +
           `• *Amount:* ${depAmount} ETB\n` +
-          `• *Txn ID:* \`${txnId || 'ያልተለየ'}\`\n` +
+          `• *Txn ID:* \`${txnId}\`\n` +
           `• *Pasted SMS:*\n\`${pastedText}\``;
 
         const sentMsg = await bot.api.sendMessage(ADMIN_GROUP_ID, msgText, {
@@ -819,16 +841,10 @@ server.listen(PORT, async () => {
       if (process.env.NODE_ENV === 'production' && RENDER_URL) {
         const webhookUrl = `${RENDER_URL}/webhook`;
         await bot.api.setWebhook(webhookUrl, { drop_pending_updates: true });
-        console.log(`🤖 Telegram Bot set up with Webhook: ${webhookUrl}`);
-      } else {
-        await bot.api.deleteWebhook({ drop_pending_updates: true });
-        bot.start({
-          drop_pending_updates: true,
-          onStart: (botInfo) => console.log(`🤖 Telegram Bot (@${botInfo.username}) started locally!`),
-        });
+        console.log(`WebHook Set to ${webhookUrl}`);
       }
     } catch (err) {
-      console.error('Bot start error:', err);
+      console.error('Webhook setting failed:', err.message);
     }
   }
 });

@@ -46,8 +46,8 @@ export default function App() {
     const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ');
     return fullName || 'ተጫዋች';
   }, [tgUser]);
-
   const userPhoto = tgUser?.photo_url || null;
+
   const isAdmin = useMemo(() => String(userId) === String(ADMIN_ID), [userId]);
 
   const [userPhone, setUserPhone] = useState('');
@@ -87,10 +87,11 @@ export default function App() {
   const [winnerInfo, setWinnerInfo] = useState(null);
 
   // DEPOSIT & WITHDRAW STATES
-  const [depAmount, setDepAmount] = useState('30');
+  const [depAmount, setDepAmount] = useState('200');
   const [pastedSMS, setPastedSMS] = useState('');
   const [isSubmittingDep, setIsSubmittingDep] = useState(false);
   const [withAmount, setWithAmount] = useState('');
+
   const [gameHistory, setGameHistory] = useState([]);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -100,6 +101,7 @@ export default function App() {
   const [editingUser, setEditingUser] = useState(null);
   const [editMain, setEditMain] = useState(0);
   const [editPlay, setEditPlay] = useState(0);
+
   const [adminTab, setAdminTab] = useState('requests');
   const [txFilter, setTxFilter] = useState('PENDING');
   const [allTx, setAllTx] = useState([]);
@@ -140,6 +142,7 @@ export default function App() {
         setTotalGames(data.totalGames || 0);
         setIsBanned(data.isBanned || false);
         setGameHistory(data.history || []);
+
         if (data.phone) {
           setUserPhone(data.phone);
         } else if (tgUser?.username) {
@@ -163,6 +166,7 @@ export default function App() {
         fetch(`${API_BASE_URL}/api/admin/financial-stats`, { headers }),
         fetch(`${API_BASE_URL}/api/admin/settings`, { headers })
       ]);
+
       const uData = await uRes.json();
       const tData = await tRes.json();
       const fData = await fRes.json();
@@ -190,7 +194,10 @@ export default function App() {
       };
       const res = await fetch(`${API_BASE_URL}/api/admin/settings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'admin-key': userId },
+        headers: {
+          'Content-Type': 'application/json',
+          'admin-key': userId
+        },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
@@ -205,7 +212,7 @@ export default function App() {
   };
 
   const handleSetManualWinner = () => {
-    if (!manualNumberInput) return alert("እባክዎን የዕጣ ቁጥር ያስገቡ!");
+    if (!manualNumberInput) return alert("እባክዎን የእጣ ቁጥር ያስገቡ!");
     handleUpdateSettings({ manualWinningNumber: Number(manualNumberInput) });
     setManualNumberInput('');
   };
@@ -214,7 +221,10 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/admin/toggle-ban`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'admin-key': userId },
+        headers: {
+          'Content-Type': 'application/json',
+          'admin-key': userId
+        },
         body: JSON.stringify({ targetUserId, isBanned: !currentStatus })
       });
       const data = await res.json();
@@ -232,12 +242,11 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/admin/update-balance`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'admin-key': userId },
-        body: JSON.stringify({
-          targetUserId: editingUser.userId,
-          mainWallet: editMain,
-          playWallet: editPlay
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          'admin-key': userId
+        },
+        body: JSON.stringify({ targetUserId: editingUser.userId, mainWallet: editMain, playWallet: editPlay })
       });
       const data = await res.json();
       if (data.success) {
@@ -255,7 +264,10 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/admin/broadcast`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'admin-key': userId },
+        headers: {
+          'Content-Type': 'application/json',
+          'admin-key': userId
+        },
         body: JSON.stringify({ message: broadcastText })
       });
       const data = await res.json();
@@ -284,6 +296,7 @@ export default function App() {
       setSelectionTime(data.timeLeft !== undefined ? data.timeLeft : 50);
       setWinningNumber(data.winningNumber || '?');
       if (data.ticketPrice) setStake(data.ticketPrice);
+
       if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
         const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
         setAllPickedNumbers(allPicked);
@@ -292,6 +305,7 @@ export default function App() {
           .filter(n => typeof n === 'object' && String(n.userId) === String(userId))
           .map(n => n.number);
         setSelectedNumbers(myPicked);
+
         updateBoardStats(data.selectedNumbers);
       }
     });
@@ -312,6 +326,7 @@ export default function App() {
           .filter(n => typeof n === 'object' && String(n.userId) === String(userId))
           .map(n => n.number);
         setSelectedNumbers(myPicked);
+
         updateBoardStats(data.selectedNumbers);
       } else {
         setPlayerCount(data.totalPlayers || 0);
@@ -346,6 +361,7 @@ export default function App() {
         const winItem = data.selectedNumbers?.find(
           n => typeof n === 'object' && String(n.number) === String(winNum)
         );
+
         const winAmount = data.derash !== undefined ? data.derash : derashRef.current;
 
         if (winItem) {
@@ -358,7 +374,7 @@ export default function App() {
           if (String(winItem.userId) === String(userId)) {
             setMainWallet(prev => prev + winAmount);
             setGamesWon(prev => prev + 1);
-            alert(`🎉 እንኳን ደስ አለዎት! ዕጣው በቁጥር #${winNum} ለእርስዎ ወጥቷል! ${winAmount} ETB ወደ ዋሌትዎ ገቢ ሆኗል ።`);
+            alert(`🎉 እንኳን ደስ አለዎት! እጣው በቁጥር #${winNum} ለእርስዎ ወጥቷል! ${winAmount} ETB ወደ ዋሌትዎ ገቢ ሆኗል። ✨`);
           }
         }
 
@@ -374,6 +390,7 @@ export default function App() {
           setPlayerCount(0);
           setDerash(0);
         }, 4000);
+
       }, 6000);
     });
 
@@ -416,7 +433,7 @@ export default function App() {
     } else {
       const totalAvailableBalance = mainWallet + playWallet;
       if (totalAvailableBalance < stake) {
-        alert("⚠️ የእርስዎ ቀሪ ሂሳብ በቂ አይደለም! እባክዎን አስቀድመው ገንዘብ ያስገቡ ።");
+        alert("⚠️ የእርስዎ ቀሪ ሂሳብ በቂ አይደለም! እባክዎን አስቀድመው ገንዘብ ያስገቡ ✨");
         return;
       }
 
@@ -436,14 +453,19 @@ export default function App() {
 
   const handleDeposit = async () => {
     if (!depAmount || Number(depAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
-    if (!pastedSMS.trim()) return alert("እባክዎን የቴሌብር SMS መልእክቱን ኮፒ አድርገው ያስገቡ!");
+    if (!pastedSMS.trim()) return alert("እባክዎን የቴሌብር SMS መልዕክቱን ኮፒ አድርገው ያስገቡ!");
 
     setIsSubmittingDep(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/deposit-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, userName, amount: depAmount, pastedText: pastedSMS })
+        body: JSON.stringify({
+          userId,
+          userName,
+          amount: depAmount,
+          pastedText: pastedSMS
+        })
       });
       const data = await res.json();
       alert(data.message);
@@ -459,11 +481,17 @@ export default function App() {
 
   const handleWithdraw = async () => {
     if (!withAmount || Number(withAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/withdraw-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, userName, amount: withAmount, phone: userPhone })
+        body: JSON.stringify({
+          userId,
+          userName,
+          amount: withAmount,
+          phone: userPhone
+        })
       });
       const data = await res.json();
       alert(data.message);
@@ -521,14 +549,17 @@ export default function App() {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'flex-start',
+      justify: 'flex-start',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       boxSizing: 'border-box',
       overflow: 'hidden'
     }}>
       <style dangerouslySetInnerHTML={{ __html: `
         * { box-sizing: border-box !important; }
-        @keyframes arrowSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes arrowSpin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
         .spin-arrow-container { animation: arrowSpin 0.5s linear infinite; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #312e81; border-radius: 4px; }
@@ -539,16 +570,18 @@ export default function App() {
           <>
             {currentScreen === 'home' && (
               <div style={{ flex: 1, width: '100%', maxWidth: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
-                <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center', width: '100%' }}>
+                <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center', width: '100%' }}>
                   Welcome to <span style={{ color: '#f59e0b' }}>Fetan Lottery</span>
                 </h1>
+
                 {isBanned && (
                   <div style={{ backgroundColor: '#ef4444', color: '#fff', padding: '12px', borderRadius: '8px', marginBottom: '16px', textAlign: 'center', width: '100%', fontWeight: 'bold' }}>
                     ⚠️ አካውንትዎ ህግ በመጣስ ምክንያት የታገደ ነው (Banned)!
                   </div>
                 )}
+
                 <div style={{ width: '100%', backgroundColor: '#15152a', border: '1px solid #ef4444', borderRadius: '16px', padding: '24px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)', marginBottom: '20px', boxSizing: 'border-box' }}>
-                  <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px', textAlign: 'center' }}>Current Ticket Stake: {stake} ETB</div>
+                  <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px', textAlign: 'center' }}>Choose Stake</div>
                   <button onClick={() => { setStake(10); setCurrentScreen('board'); }} style={{ width: '100%', backgroundColor: '#22c55e', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px', textAlign: 'center' }}>
                     ► Play 10 ETB
                   </button>
@@ -602,27 +635,11 @@ export default function App() {
 
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
-                    <div style={{
-                      backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7',
-                      padding: '5px',
-                      borderRadius: '6px',
-                      textAlign: 'center',
-                      fontSize: '11px',
-                      fontWeight: 'bold',
-                      flexShrink: 0
-                    }}>
-                      {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
+                    <div style={{ backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
+                      {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 እጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፡ ' + selectionTime + ' ሰከንድ'}
                     </div>
 
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(5, 1fr)',
-                      gap: '4px',
-                      overflowY: 'auto',
-                      alignContent: 'start',
-                      paddingRight: '4px',
-                      flex: 1
-                    }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
                       {visibleNumbers.map((num) => {
                         const isMine = myPickedSet.has(num);
                         const isOthers = allPickedSet.has(num) && !isMine;
@@ -641,107 +658,59 @@ export default function App() {
                   </div>
 
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
-                    <div style={{
-                      backgroundColor: '#1b1b32',
-                      borderRadius: '8px',
-                      padding: '6px 8px',
-                      minHeight: '65px',
-                      maxHeight: '90px',
-                      border: '1px solid #312e81',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      flexShrink: 0
-                    }}>
+                    <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                       <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}>
                         📌 የተመረጡ ቁጥሮች ({selectedNumbers.length}):
                       </div>
                       <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.2', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
-                        {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረቱም'}
+                        {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
                       </div>
                     </div>
 
-                    <div style={{
-                      backgroundColor: '#13132b',
-                      borderRadius: '12px',
-                      padding: '12px 6px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justify: 'center',
-                      border: '1px solid #23234d',
-                      flexShrink: 0
-                    }}>
+                    <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justify: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
                       <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}>
-                        🎰 የዕጣ ማውጫ
+                        🎰 የእጣ ማውጫ
                       </div>
-                      <div style={{
-                        width: '110px',
-                        height: '110px',
-                        borderRadius: '50%',
-                        background: '#0d0d1a',
-                        border: winningNumber === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber !== '?' && winningNumber !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justify: 'center',
-                        boxShadow: winningNumber === 'SPINNING' ? '0 0 20px rgba(0, 242, 254, 0.6)' : (winningNumber !== '?' && winningNumber !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'),
-                        transition: 'all 0.3s ease',
-                        position: 'relative'
-                      }}>
-                       {winningNumber === 'SPINNING' ? (
-  <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-    <svg width="80" height="80" viewBox="0 0 100 100">
-      <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="4" />
-      <polygon points="50,15 58,45 50,40 42,45" fill="#00f2fe" />
-      <polygon points="50,85 58,55 50,60 42,55" fill="#f59e0b" />
-      <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
-    </svg>
-  </div>
-) : winningNumber === 'NONE' ? (
-  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-    <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>
-      እስካሁን ምንም አልወጣም
-    </span>
-  </div>
-) : (
-  <div style={{
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textAlign: 'center'
-  }}>
-    <span style={{
-      fontSize: winningNumber === '?' ? '42px' : '38px',
-      fontWeight: 'bold',
-      color: winningNumber === '?' ? '#ffffff' : '#00ffcc',
-      textShadow: winningNumber === '?' ? 'none' : '0 0 12px #00ffcc',
-      lineHeight: '1',
-      display: 'inline-block',
-      margin: '0',
-      padding: '0'
-    }}>
-      {winningNumber}
-    </span>
-  </div>
-)}
+                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: '#0d0d1a', border: winningNumber === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber !== '?' && winningNumber !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'), display: 'flex', alignItems: 'center', justify: 'center', boxShadow: winningNumber === 'SPINNING' ? '0 0 20px rgba(0, 242, 254, 0.6)' : (winningNumber !== '?' && winningNumber !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'), transition: 'all 0.3s ease', position: 'relative' }}>
+                        {winningNumber === 'SPINNING' ? (
+                          <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="80" height="80" viewBox="0 0 100 100">
+                              <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="4" />
+                              <polygon points="50,15 58,45 50,40 42,45" fill="#00f2fe" />
+                              <polygon points="50,85 58,55 50,60 42,55" fill="#f59e0b" />
+                              <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
+                            </svg>
+                          </div>
+                        ) : winningNumber === 'NONE' ? (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>
+                              እስካሁን ምንም አልወጣም
+                            </span>
+                          </div>
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                            <span style={{ fontSize: winningNumber === '?' ? '42px' : '38px', fontWeight: 'bold', color: winningNumber === '?' ? '#ffffff' : '#00ffcc', textShadow: winningNumber === '?' ? 'none' : '0 0 12px #00ffcc', lineHeight: '1', display: 'inline-block', margin: '0', padding: '0' }}>
+                              {winningNumber}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {winnerInfo && (
-                      <div style={{
-                        marginTop: '4px',
-                        padding: '8px',
-                        backgroundColor: '#064e3b',
-                        border: '2px solid #10b981',
-                        borderRadius: '10px',
-                        textAlign: 'center',
-                        boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)'
-                      }}>
-                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#34d399' }}> 🎉 ዕጣው ወጥቷል! </div>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '2px 0' }}> 👤 {winnerInfo.userName} </div>
-                        <div style={{ fontSize: '13px', fontWeight: '900', color: '#facc15' }}> የወጣው ቁጥር: #{winnerInfo.number} </div>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '2px' }}> ያሸነፈው ብር: {winnerInfo.derash} ETB </div>
+                      <div style={{ marginTop: '4px', padding: '8px', backgroundColor: '#064e3b', border: '2px solid #10b981', borderRadius: '10px', textAlign: 'center', boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#34d399' }}>
+                          🎉 እጣው ወጥቷል!
+                        </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '2px 0' }}>
+                          👤 {winnerInfo.userName}
+                        </div>
+                        <div style={{ fontSize: '13px', fontWeight: '900', color: '#facc15' }}>
+                          የወጣው ቁጥር: #{winnerInfo.number}
+                        </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '2px' }}>
+                          ያሸነፈው ብር: {winnerInfo.derash} ETB
+                        </div>
                       </div>
                     )}
                   </div>
@@ -790,6 +759,7 @@ export default function App() {
               <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>👛 Wallet & Transactions</h1>
               <span onClick={fetchUserData} style={{ fontSize: '18px', cursor: 'pointer', color: '#9ca3af' }}>🔄</span>
             </div>
+
             <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', border: '1px solid #2a2a4a' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '18px' }}>👤</span>
@@ -820,25 +790,24 @@ export default function App() {
                 {/* TELEBIRR SMS DEPOSIT SECTION */}
                 <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#f59e0b' }}>📥 Deposit (በቴሌብር ብር ማስገቢያ)</h4>
-                  
                   <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '10px', lineHeight: '1.4' }}>
                     1. የሚፈልጉትን የብር መጠን ይምረጡ ወይም ያስገቡ።<br />
-                    2. የቴሌብር SMS መልእክቱን ሙሉ በሙሉ ኮፒ አድርገው ከታች ባለው ሳጥን ይልኩ።
+                    2. የቴሌብር SMS መልዕክቱን ሙሉ በሙሉ ኮፒ አድርገው ከታች ባለው ሳጥን ይላኩ።
                   </div>
 
                   <label style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>የብር መጠን (ETB):</label>
                   <input
                     type="number"
-                    placeholder="ለምሳሌ፡ 100"
+                    placeholder="ለአብነት፡ 100"
                     value={depAmount}
                     onChange={(e) => setDepAmount(e.target.value)}
                     style={{ width: '100%', padding: '10px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
                   />
 
-                  <label style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>የቴሌብር SMS መልእክት (Copy Paste):</label>
+                  <label style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>የቴሌብር SMS መልዕክት (Copy Paste):</label>
                   <textarea
                     rows="4"
-                    placeholder="የደረሰዎትን ሙሉ የቴሌብር SMS መልእክት እዚህ ጋር ፔስት (Paste) ያድርጉ..."
+                    placeholder="የደረሰዎትን ሙሉ የቴሌብር SMS መልዕክት እዚህ ጋር ፔስት (Paste) ያድርጉ..."
                     value={pastedSMS}
                     onChange={(e) => setPastedSMS(e.target.value)}
                     style={{ width: '100%', padding: '10px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box', fontSize: '12px' }}
@@ -847,7 +816,16 @@ export default function App() {
                   <button
                     onClick={handleDeposit}
                     disabled={isSubmittingDep}
-                    style={{ width: '100%', padding: '12px', backgroundColor: isSubmittingDep ? '#6b7280' : '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: isSubmittingDep ? 'not-allowed' : 'pointer' }}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      backgroundColor: isSubmittingDep ? '#6b7280' : '#22c55e',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontWeight: 'bold',
+                      cursor: isSubmittingDep ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     {isSubmittingDep ? 'እየተላከ ነው...' : 'የገቢ ጥያቄ ላክ (Submit Deposit)'}
                   </button>
@@ -855,8 +833,17 @@ export default function App() {
 
                 <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '15px' }}>📤 Withdraw (ገንዘብ ማውጫ ጥያቄ)</h4>
-                  <input type="number" placeholder="መጠን (ETB)" value={withAmount} onChange={(e) => setWithAmount(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                  <button onClick={handleWithdraw} style={{ width: '100%', padding: '12px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  <input
+                    type="number"
+                    placeholder="መጠን (ETB)"
+                    value={withAmount}
+                    onChange={(e) => setWithAmount(e.target.value)}
+                    style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
+                  />
+                  <button
+                    onClick={handleWithdraw}
+                    style={{ width: '100%', padding: '12px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
                     የወጪ ጥያቄ ላክ (Submit Withdraw)
                   </button>
                 </div>
@@ -963,14 +950,7 @@ export default function App() {
                           <span style={{ fontSize: '12px', color: '#22c55e', fontWeight: 'bold' }}>
                             DEPOSIT REQUEST
                           </span>
-                          <span style={{
-                            fontSize: '11px',
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            backgroundColor: tx.status === 'PENDING' ? '#eab308' : (tx.status === 'APPROVED' ? '#22c55e' : '#ef4444'),
-                            color: '#000',
-                            fontWeight: 'bold'
-                          }}>
+                          <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', backgroundColor: tx.status === 'PENDING' ? '#eab308' : (tx.status === 'APPROVED' ? '#22c55e' : '#ef4444'), color: '#000', fontWeight: 'bold' }}>
                             {tx.status}
                           </span>
                         </div>
@@ -978,7 +958,7 @@ export default function App() {
                         <div style={{ fontSize: '11px', color: '#9ca3af' }}>👤 User: {tx.userName} (ID: {tx.userId})</div>
                         <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>🔑 Txn ID: {tx.transactionId || 'N/A'}</div>
                         <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>⏱️ Time: {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}</div>
-                        
+
                         {tx.pastedText && (
                           <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#0f172a', borderRadius: '6px', border: '1px solid #1e293b' }}>
                             <div style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 'bold', marginBottom: '2px' }}>📄 Pasted Telebirr SMS:</div>
@@ -998,7 +978,6 @@ export default function App() {
             {adminTab === 'reports' && financialStats && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', margin: '0 0 4px 0' }}>📊 Financial Dashboard</h3>
-                
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div style={{ backgroundColor: '#181830', padding: '14px', borderRadius: '10px', border: '1px solid #22c55e', textAlign: 'center' }}>
                     <div style={{ fontSize: '11px', color: '#9ca3af' }}>አጠቃላይ ገቢ (Approved Deposit)</div>
@@ -1043,7 +1022,14 @@ export default function App() {
             {/* USERS */}
             {adminTab === 'users' && (
               <>
-                <input type="text" placeholder="በተጠቃሚ ID ወይም ስልክ ፈልግ..." value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '16px', boxSizing: 'border-box' }} />
+                <input
+                  type="text"
+                  placeholder="በተጠቃሚ ID ወይም ስልክ ፈልግ..."
+                  value={adminSearch}
+                  onChange={(e) => setAdminSearch(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '16px', boxSizing: 'border-box' }}
+                />
+
                 {editingUser && (
                   <div style={{ backgroundColor: '#1b1b38', border: '1px solid #f59e0b', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
                     <h3 style={{ fontSize: '14px', color: '#f59e0b', margin: '0 0 10px 0' }}>ወደ ሂሳብ ማስተካከያ: {editingUser.userId}</h3>
@@ -1063,6 +1049,7 @@ export default function App() {
                     </div>
                   </div>
                 )}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {filteredAdminUsers.map((u) => (
                     <div key={u.userId} style={{ backgroundColor: '#181830', border: '1px solid #2a2a4a', borderRadius: '10px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1074,7 +1061,7 @@ export default function App() {
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <button onClick={() => { setEditingUser(u); setEditMain(u.mainWallet); setEditPlay(u.playWallet); }} style={{ backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>
-                          አስተካክል
+                          አስተካክል።
                         </button>
                         <button onClick={() => handleToggleBan(u.userId, u.isBanned)} style={{ backgroundColor: u.isBanned ? '#10b981' : '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>
                           {u.isBanned ? 'Unban' : 'Ban'}
@@ -1089,14 +1076,23 @@ export default function App() {
             {/* DRAW CONTROL */}
             {adminTab === 'game_control' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
-                <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>🎯 የዕጣ ቁጥር ማውጣት መቆጣጠሪያ (Draw Control)</h3>
-                <p style={{ fontSize: '11px', color: '#9ca3af' }}>የሚቀጥለው የዕጣ ቁጥር በራስ-ሰር (Random) ሳይሆን እርስዎ በሚመርጡት ቁጥር እንዲወጣ ማድረግ ይችላሉ ።</p>
+                <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>🎯 የእጣ ቁጥር ማውጫ መቆጣጠሪያ (Draw Control)</h3>
+                <p style={{ fontSize: '11px', color: '#9ca3af' }}>የሚቀጥለው የእጣ ቁጥር በራስ-ሰር (Random) ሳይሆን እርስዎ በሚመርጡት ቁጥር እንዲወጣ ማድረግ ይችላሉ።</p>
+
                 <div style={{ marginBottom: '12px', padding: '10px', backgroundColor: '#0f172a', borderRadius: '6px' }}>
                   <div style={{ fontSize: '12px', color: '#38bdf8' }}>
                     የተያዘው Manual ቁጥር፡ {sysSettings.manualWinningNumber !== null ? `#${sysSettings.manualWinningNumber}` : 'የለም (በራስ-ሰር ይወጣል)'}
                   </div>
                 </div>
-                <input type="number" placeholder="የአሸናፊ ቁጥር ያስገቡ (1-1000)" value={manualNumberInput} onChange={(e) => setManualNumberInput(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '12px', boxSizing: 'border-box' }} />
+
+                <input
+                  type="number"
+                  placeholder="የአሸናፊ ቁጥር ያስገቡ (1-1000)"
+                  value={manualNumberInput}
+                  onChange={(e) => setManualNumberInput(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '12px', boxSizing: 'border-box' }}
+                />
+
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={handleSetManualWinner} style={{ flex: 1, padding: '10px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
                     ቁጥሩን መዝግብ (Set Manual Number)
@@ -1114,15 +1110,28 @@ export default function App() {
             {adminTab === 'settings' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>⚙️ የሲስተም አጠቃላይ ሶፍትዌር ማስተካከያ</h3>
+
                 <div style={{ marginBottom: '12px' }}>
                   <label style={{ fontSize: '12px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>የቲኬት ዋጋ (ETB):</label>
-                  <input type="number" value={sysSettings.ticketPrice} onChange={(e) => setSysSettings({ ...sysSettings, ticketPrice: Number(e.target.value) })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                  <input
+                    type="number"
+                    value={sysSettings.ticketPrice}
+                    onChange={(e) => setSysSettings({ ...sysSettings, ticketPrice: Number(e.target.value) })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
+                  />
                 </div>
+
                 <div style={{ marginBottom: '12px' }}>
                   <label style={{ fontSize: '12px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>የአሸናፊዎች ድርሻ / ደራሽ የመቶኛ መጠን (%):</label>
-                  <input type="number" value={sysSettings.winnerPercentage} onChange={(e) => setSysSettings({ ...sysSettings, winnerPercentage: Number(e.target.value) })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                  <div style={{ fontSize: '10px', color: '#f59e0b', marginTop: '2px' }}>የሲስተም/ቤት ኮሚሽን መቶኛ፡ {100 - Number(sysSettings.winnerPercentage || 0)}% ይሆናል ።</div>
+                  <input
+                    type="number"
+                    value={sysSettings.winnerPercentage}
+                    onChange={(e) => setSysSettings({ ...sysSettings, winnerPercentage: Number(e.target.value) })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
+                  />
+                  <div style={{ fontSize: '10px', color: '#f59e0b', marginTop: '2px' }}>የሲስተም/ቤት ኮሚሽን መቶኛ፡ {100 - Number(sysSettings.winnerPercentage || 0)}% ይሆናል።</div>
                 </div>
+
                 <button onClick={() => handleUpdateSettings()} style={{ width: '100%', padding: '12px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
                   ሴቲንግ አስቀምጥ (Save Settings)
                 </button>
@@ -1133,7 +1142,13 @@ export default function App() {
             {adminTab === 'broadcast' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>📢 Broadcast Message to Users</h3>
-                <textarea rows="4" placeholder="ለተጠቃሚዎች የሚላከውን መልዕክት እዚህ ይጻፉ..." value={broadcastText} onChange={(e) => setBroadcastText(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '12px', boxSizing: 'border-box' }} />
+                <textarea
+                  rows="4"
+                  placeholder="ለተጠቃሚዎች የሚላከውን መልዕክት እዚህ ይፃፉ..."
+                  value={broadcastText}
+                  onChange={(e) => setBroadcastText(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '12px', boxSizing: 'border-box' }}
+                />
                 <button onClick={handleSendBroadcast} style={{ width: '100%', padding: '12px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
                   ለማንኛውም ተጠቃሚ ላክ (Send Broadcast)
                 </button>
@@ -1145,18 +1160,7 @@ export default function App() {
 
       {/* BOTTOM NAVIGATION */}
       {currentScreen !== 'board' && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-around',
-          alignItems: 'center',
-          backgroundColor: '#0f0f26',
-          borderTop: '1px solid #2a2a50',
-          padding: '6px 4px 8px 4px',
-          flexShrink: 0,
-          boxShadow: '0 -4px 12px rgba(0,0,0,0.4)',
-          width: '100%',
-          boxSizing: 'border-box'
-        }}>
+        <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', backgroundColor: '#0f0f26', borderTop: '1px solid #2a2a50', padding: '6px 4px 8px 4px', flexShrink: 0, boxShadow: '0 -4px 12px rgba(0,0,0,0.4)', width: '100%', boxSizing: 'border-box' }}>
           <button onClick={() => setCurrentTab('game')} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', fontSize: '11px', fontWeight: '600', padding: '4px 8px', borderRadius: '8px' }}>
             <span style={{ fontSize: '18px' }}>🎮</span> Game
           </button>
