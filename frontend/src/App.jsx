@@ -818,7 +818,7 @@ export default function App() {
                   <label style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>የብር መጠን (ETB):</label>
                   <input
                     type="number"
-                    placeholder="ለምሳሌ፡ 30"
+                    placeholder="ለምሳሌ፡ 100"
                     value={depAmount}
                     onChange={(e) => setDepAmount(e.target.value)}
                     style={{ width: '100%', padding: '10px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
