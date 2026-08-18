@@ -5,10 +5,11 @@ import cors from 'cors';
 import https from 'https';
 import mongoose from 'mongoose';
 import { bot } from './bot.js';
-import { webhookCallback } from 'grammy';
+import { webhookCallback, InlineKeyboard } from 'grammy';
 
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
 const ADMIN_ID = process.env.ADMIN_ID || "494653076";
+const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || "-100234567890"; // የቴሌግራም አድሚን ግሩፕ/ቻናል ID
 
 const app = express();
 app.use(cors());
@@ -25,7 +26,7 @@ if (MONGODB_URI) {
   console.warn('⚠️ MONGODB_URI environment variable is missing!');
 }
 
-// --- MONGOOSE SCHEMAS & MODELS ---
+// --- MONGOOSE SCHEMAS ---
 const userSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true, index: true },
   firstName: { type: String, default: '' },
@@ -39,12 +40,22 @@ const userSchema = new mongoose.Schema({
   isBanned: { type: Boolean, default: false }
 }, { timestamps: true });
 
+const depositSchema = new mongoose.Schema({
+  userId: { type: String, required: true, index: true },
+  userName: { type: String, default: '' },
+  amount: { type: Number, required: true },
+  pastedText: { type: String, required: true },
+  transactionId: { type: String, default: null, index: true },
+  status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
+  telegramMessageId: { type: Number, default: null } // የአድሚን ግሩፕ መልእክትን Update ለማድረግ
+}, { timestamps: true });
+
 const transactionSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
   userName: { type: String, default: '' },
   type: { type: String, enum: ['deposit', 'withdrawal'], required: true },
   amount: { type: Number, required: true },
-  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
   proof: { type: String, default: '' },
   phone: { type: String, default: '' }
 }, { timestamps: true });
@@ -68,6 +79,7 @@ const systemSettingsSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
+const Deposit = mongoose.model('Deposit', depositSchema);
 const Transaction = mongoose.model('Transaction', transactionSchema);
 const GameHistory = mongoose.model('GameHistory', gameHistorySchema);
 const SystemSettings = mongoose.model('SystemSettings', systemSettingsSchema);
@@ -94,6 +106,14 @@ const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
 
 if (process.env.NODE_ENV === 'production' && RENDER_URL) {
   app.use('/webhook', webhookCallback(bot, 'express'));
+}
+
+// --- HELPER FUNCTIONS ---
+function extractTransactionId(text) {
+  if (!text) return null;
+  // Telebirr transaction ID pattern (e.g., Txn ID: CC12345678, or standalone 10+ character alphanumeric)
+  const match = text.match(/(?:txn\s*id|transaction\s*id|ref\s*no)[\s:-]*([a-z0-9]+)/i) || text.match(/\b([A-Z0-9]{10,12})\b/);
+  return match ? match[1].toUpperCase() : null;
 }
 
 async function getSettings() {
@@ -154,8 +174,173 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
   return dbUser;
 }
 
-// --- ADMIN API ENDPOINTS ---
+// --- TELEGRAM BOT INLINE BUTTON ACTION HANDLERS (APPROVE / REJECT) ---
+if (bot) {
+  bot.callbackQuery(/^(dep_approve|dep_reject):(.+)$/, async (ctx) => {
+    const action = ctx.match[1];
+    const depositId = ctx.match[2];
 
+    try {
+      const deposit = await Deposit.findById(depositId);
+      if (!deposit) {
+        return ctx.answerCallbackQuery({ text: '❌ ጥያቄው አልተገኘም!', show_alert: true });
+      }
+
+      if (deposit.status !== 'PENDING') {
+        return ctx.answerCallbackQuery({ text: `⚠️ ይህ ጥያቄ አስቀድሞ ${deposit.status} ሆኗል!`, show_alert: true });
+      }
+
+      const user = await User.findOne({ userId: deposit.userId });
+
+      if (action === 'dep_approve') {
+        deposit.status = 'APPROVED';
+        await deposit.save();
+
+        if (user) {
+          user.mainWallet += deposit.amount;
+          await user.save();
+        }
+
+        // ኖቲፊኬሽን ለተጠቃሚው
+        try {
+          await bot.api.sendMessage(
+            deposit.userId,
+            `✅ *ክፍያዎ ተረጋግጧል!*\n\n💰 *${deposit.amount} ETB* ወደ አካውንትዎ ገቢ ሆኗል።`,
+            { parse_mode: 'Markdown' }
+          );
+        } catch (e) {}
+
+        // በአድሚን ግሩፕ ያለውን መልእክት መቀየር
+        await ctx.editMessageText(
+          `📥 *የዴፖዚት ጥያቄ (✅ Approved by Admin)*\n\n` +
+          `• *User:* @${user?.username || 'N/A'} (ID: \`${deposit.userId}\`)\n` +
+          `• *Amount:* ${deposit.amount} ETB\n` +
+          `• *Txn ID:* \`${deposit.transactionId || 'N/A'}\`\n` +
+          `• *Pasted SMS:*\n\`${deposit.pastedText}\``,
+          { parse_mode: 'Markdown' }
+        );
+
+        ctx.answerCallbackQuery({ text: '✅ ጥያቄው ጸድቋል!' });
+
+      } else if (action === 'dep_reject') {
+        deposit.status = 'REJECTED';
+        await deposit.save();
+
+        // ኖቲፊኬሽን ለተጠቃሚው
+        try {
+          await bot.api.sendMessage(
+            deposit.userId,
+            `❌ *የተላከው የክፍያ ማረጋገጫ ውድቅ ተደርጓል!*`,
+            { parse_mode: 'Markdown' }
+          );
+        } catch (e) {}
+
+        // በአድሚን ግሩፕ ያለውን መልእክት መቀየር
+        await ctx.editMessageText(
+          `📥 *የዴፖዚት ጥያቄ (❌ Rejected by Admin)*\n\n` +
+          `• *User:* @${user?.username || 'N/A'} (ID: \`${deposit.userId}\`)\n` +
+          `• *Amount:* ${deposit.amount} ETB\n` +
+          `• *Txn ID:* \`${deposit.transactionId || 'N/A'}\`\n` +
+          `• *Pasted SMS:*\n\`${deposit.pastedText}\``,
+          { parse_mode: 'Markdown' }
+        );
+
+        ctx.answerCallbackQuery({ text: '❌ ጥያቄው ውድቅ ተደርጓል!' });
+      }
+    } catch (err) {
+      console.error('Callback handle error:', err);
+      ctx.answerCallbackQuery({ text: 'ስህተት ተፈጥሯል!', show_alert: true });
+    }
+  });
+}
+
+// --- DEPOSIT REQUEST ENDPOINT WITH TELEGRAM NOTIFICATION ---
+app.post('/api/deposit-request', async (req, res) => {
+  const { userId, userName, amount, pastedText } = req.body;
+
+  if (!userId || !amount || !pastedText) {
+    return res.status(400).json({ success: false, message: "እባክዎን ሁሉንም አስፈላጊ መረጃዎች ያስገቡ!" });
+  }
+
+  const uid = String(userId);
+  const depAmount = Number(amount);
+
+  try {
+    const user = await getOrInitUser(uid);
+    if (user.isBanned) {
+      return res.status(403).json({ success: false, message: "አካውንትዎ የታገደ ስለሆነ አገልግሎቱን ማግኘት አይችሉም!" });
+    }
+
+    // 1. Rate Limiting Check (Pending ጥያቄ ካለው ማገድ)
+    const existingPending = await Deposit.findOne({ userId: uid, status: 'PENDING' });
+    if (existingPending) {
+      return res.status(400).json({
+        success: false,
+        message: "⚠️ አስቀድሞ የቀረበ የዴፖዚት ጥያቄ አለዎት። እባክዎን አድሚኑ እስኪያፀድቀው ይታገሱ!"
+      });
+    }
+
+    // 2. Transaction ID extraction & Duplicate check via Regex
+    const txnId = extractTransactionId(pastedText);
+
+    if (txnId) {
+      const duplicateTxn = await Deposit.findOne({ transactionId: txnId });
+      if (duplicateTxn) {
+        return res.status(400).json({
+          success: false,
+          message: "⚠️ ይህ የትራንዛክሽን ማረጋገጫ (SMS) ቀደም ሲል ጥቅም ላይ ውሏል!"
+        });
+      }
+    }
+
+    // 3. Create Deposit Document in DB
+    const deposit = await Deposit.create({
+      userId: uid,
+      userName: userName || user.username || `User_${uid}`,
+      amount: depAmount,
+      pastedText: pastedText,
+      transactionId: txnId,
+      status: 'PENDING'
+    });
+
+    // 4. Send Message to Admin Telegram Group with Inline Keyboard Buttons
+    if (bot && ADMIN_GROUP_ID) {
+      try {
+        const keyboard = new InlineKeyboard()
+          .text('✅ Approve', `dep_approve:${deposit._id}`)
+          .text('❌ Reject', `dep_reject:${deposit._id}`);
+
+        const msgText = 
+          `📥 *አዲስ የዴፖዚት ጥያቄ*\n\n` +
+          `• *User:* @${user.username || 'N/A'} (ID: \`${uid}\`)\n` +
+          `• *Amount:* ${depAmount} ETB\n` +
+          `• *Txn ID:* \`${txnId || 'ያልተለየ'}\`\n` +
+          `• *Pasted SMS:*\n\`${pastedText}\``;
+
+        const sentMsg = await bot.api.sendMessage(ADMIN_GROUP_ID, msgText, {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
+        });
+
+        deposit.telegramMessageId = sentMsg.message_id;
+        await deposit.save();
+      } catch (err) {
+        console.error('የአድሚን ኖቲፊኬሽን መላክ አልተቻለም:', err.message);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: "ማረጋገጫዎ ደርሶናል፤ አድሚኑ አረጋግጦ እስኪያፀድቀው ድረስ ጥቂት ደቂቃ ይታገሱ"
+    });
+
+  } catch (err) {
+    console.error("Deposit Processing Error:", err);
+    res.status(500).json({ success: false, message: "የገንዘብ ማስገባት ስህተት አጋጥሟል!" });
+  }
+});
+
+// --- ADMIN API ENDPOINTS ---
 app.get('/api/admin/settings', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
@@ -239,90 +424,30 @@ app.post('/api/admin/update-balance', async (req, res) => {
   }
 });
 
-// 1. Transaction Requests (Approve/Reject)
 app.get('/api/admin/transactions', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
 
   try {
-    const transactions = await Transaction.find().sort({ createdAt: -1 });
-    res.json({ success: true, transactions });
+    const deposits = await Deposit.find().sort({ createdAt: -1 });
+    res.json({ success: true, transactions: deposits });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-app.post('/api/admin/process-transaction', async (req, res) => {
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
-  
-  const { transactionId, action } = req.body;
-
-  try {
-    const tx = await Transaction.findById(transactionId);
-    if (!tx || tx.status !== 'pending') {
-      return res.status(400).json({ success: false, message: "ጥያቄው አልተገኘም ወይም ቀደም ብሎ ተስተናግዷል!" });
-    }
-
-    const uid = String(tx.userId);
-
-    if (action === 'approve') {
-      tx.status = 'approved';
-      await tx.save();
-
-      if (tx.type === 'deposit') {
-        await User.updateOne({ userId: uid }, { $inc: { mainWallet: tx.amount } });
-      }
-
-      if (bot) {
-        try {
-          await bot.api.sendMessage(tx.userId, `✅ *የ${tx.type === 'deposit' ? 'ገቢ' : 'ወጪ'} ጥያቄዎ ጸድቋል!*\n💰 መጠን: ${tx.amount} ETB`, { parse_mode: 'Markdown' });
-        } catch (e) {}
-      }
-    } else {
-      tx.status = 'rejected';
-      await tx.save();
-
-      if (tx.type === 'withdrawal') {
-        await User.updateOne({ userId: uid }, { $inc: { mainWallet: tx.amount } });
-      }
-
-      if (bot) {
-        try {
-          await bot.api.sendMessage(tx.userId, `❌ *የ${tx.type === 'deposit' ? 'ገቢ' : 'ወጪ'} ጥያቄዎ ውድቅ ተደርጓል!*`, { parse_mode: 'Markdown' });
-        } catch (e) {}
-      }
-    }
-
-    res.json({ success: true, message: "በተሳካ ሁኔታ ተስተናግዷል!" });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// 2. Financial Dashboard / Reports
 app.get('/api/admin/financial-stats', async (req, res) => {
   const adminKey = req.headers['admin-key'];
   if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
 
   try {
-    const totalDeposits = await Transaction.aggregate([
-      { $match: { type: 'deposit', status: 'approved' } },
+    const totalDeposits = await Deposit.aggregate([
+      { $match: { status: 'APPROVED' } },
       { $group: { _id: null, total: { $sum: "$amount" } } }
     ]);
 
-    const totalWithdrawals = await Transaction.aggregate([
-      { $match: { type: 'withdrawal', status: 'approved' } },
-      { $group: { _id: null, total: { $sum: "$amount" } } }
-    ]);
-
-    const pendingDeposits = await Transaction.aggregate([
-      { $match: { type: 'deposit', status: 'pending' } },
-      { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
-    ]);
-
-    const pendingWithdrawals = await Transaction.aggregate([
-      { $match: { type: 'withdrawal', status: 'pending' } },
+    const pendingDeposits = await Deposit.aggregate([
+      { $match: { status: 'PENDING' } },
       { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
     ]);
 
@@ -334,11 +459,11 @@ app.get('/api/admin/financial-stats', async (req, res) => {
       success: true,
       stats: {
         totalDeposit: totalDeposits[0]?.total || 0,
-        totalWithdrawal: totalWithdrawals[0]?.total || 0,
+        totalWithdrawal: 0,
         pendingDepositCount: pendingDeposits[0]?.count || 0,
         pendingDepositAmount: pendingDeposits[0]?.total || 0,
-        pendingWithdrawalCount: pendingWithdrawals[0]?.count || 0,
-        pendingWithdrawalAmount: pendingWithdrawals[0]?.total || 0,
+        pendingWithdrawalCount: 0,
+        pendingWithdrawalAmount: 0,
         houseProfit: gameStats[0]?.totalProfit || 0,
         totalGamesPlayedAmount: gameStats[0]?.totalPlayed || 0,
         totalGamesCount: gameStats[0]?.totalGames || 0
@@ -376,7 +501,6 @@ app.post('/api/admin/broadcast', async (req, res) => {
 });
 
 // --- PUBLIC USER API ENDPOINTS ---
-
 app.post('/api/user/register', async (req, res) => {
   const { userId, firstName, username, referrerId, phone } = req.body;
   if (!userId) return res.status(400).json({ success: false, message: "User ID ያስፈልጋል።" });
@@ -403,33 +527,12 @@ app.post('/api/user/register', async (req, res) => {
             `🎉 *እንኳን ደስ አለዎት!*\n\n${firstName || 'አዲስ አባል'} የእርስዎን መጋበዣ ሊንክ ተጠቅሞ ስለገባ *10 ETB* ቦነስ በ Play Walletዎ ላይ ተጨምሯል!`,
             { parse_mode: 'Markdown' }
           );
-        } catch (err) {
-          console.error('ለጋባዡ መልዕክት መላክ አልተቻለም:', err.message);
-        }
+        } catch (err) {}
       }
     }
   }
 
   res.json({ success: true, isNew: isNewUser, user });
-});
-
-app.post('/api/deposit-request', async (req, res) => {
-  const { userId, userName, amount, proof } = req.body;
-  const uid = String(userId);
-  const user = await getOrInitUser(uid);
-
-  if (user.isBanned) return res.status(403).json({ success: false, message: "አካውንትዎ የታገደ ስለሆነ አገልግሎቱን ማግኘት አይችሉም!" });
-
-  await Transaction.create({
-    userId: uid,
-    userName: userName || `User_${uid}`,
-    type: 'deposit',
-    amount: Number(amount),
-    proof: proof || '',
-    phone: user.phone || ''
-  });
-
-  res.json({ success: true, message: "የገቢ ጥያቄዎ ተልኳል! በአድሚን ተገምግሞ ይጸድቃል።" });
 });
 
 app.post('/api/withdraw-request', async (req, res) => {
@@ -482,11 +585,7 @@ app.get('/api/user', async (req, res) => {
 
 setInterval(() => {
   const backendPingUrl = RENDER_URL || 'https://fetan-lottery-backend.onrender.com';
-  https.get(backendPingUrl, (res) => {
-    console.log('Keep-alive ping sent');
-  }).on('error', (err) => {
-    console.log('Ping error:', err.message);
-  });
+  https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
 // --- SOCKET LOGIC ---

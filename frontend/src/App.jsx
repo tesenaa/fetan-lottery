@@ -86,8 +86,10 @@ export default function App() {
   const [winningNumber, setWinningNumber] = useState('?');
   const [winnerInfo, setWinnerInfo] = useState(null);
 
-  const [depAmount, setDepAmount] = useState('');
-  const [depProof, setDepProof] = useState('');
+  // DEPOSIT & WITHDRAW STATES
+  const [depAmount, setDepAmount] = useState('30');
+  const [pastedSMS, setPastedSMS] = useState('');
+  const [isSubmittingDep, setIsSubmittingDep] = useState(false);
   const [withAmount, setWithAmount] = useState('');
   const [gameHistory, setGameHistory] = useState([]);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -99,7 +101,7 @@ export default function App() {
   const [editMain, setEditMain] = useState(0);
   const [editPlay, setEditPlay] = useState(0);
   const [adminTab, setAdminTab] = useState('requests');
-  const [txFilter, setTxFilter] = useState('pending');
+  const [txFilter, setTxFilter] = useState('PENDING');
   const [allTx, setAllTx] = useState([]);
   const [selectedProofModal, setSelectedProofModal] = useState(null);
   const [financialStats, setFinancialStats] = useState(null);
@@ -245,24 +247,6 @@ export default function App() {
         fetchAdminData();
       }
     } catch (err) {
-      alert("ስህተት ተፈጥሯል!");
-    }
-  };
-
-  const handleProcessTransaction = async (transactionId, action) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/process-transaction`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'admin-key': userId },
-        body: JSON.stringify({ transactionId, action })
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message);
-        setSelectedProofModal(null);
-        fetchAdminData();
-      }
-    } catch (e) {
       alert("ስህተት ተፈጥሯል!");
     }
   };
@@ -451,22 +435,27 @@ export default function App() {
     }
   }, [phase, isBanned, myPickedSet, mainWallet, playWallet, stake, socket, userId, userName]);
 
+  // NEW TELEBIRR SMS DEPOSIT SUBMISSION HANDLER
   const handleDeposit = async () => {
     if (!depAmount || Number(depAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
+    if (!pastedSMS.trim()) return alert("እባክዎን የቴሌብር SMS መልእክቱን ኮፒ አድርገው ያስገቡ!");
+
+    setIsSubmittingDep(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/deposit-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, userName, amount: depAmount, proof: depProof })
+        body: JSON.stringify({ userId, userName, amount: depAmount, pastedText: pastedSMS })
       });
       const data = await res.json();
       alert(data.message);
       if (data.success) {
-        setDepAmount('');
-        setDepProof('');
+        setPastedSMS('');
       }
     } catch (err) {
       alert("የገንዘብ ማስገባት ስህተት አጋጥሟል!");
+    } finally {
+      setIsSubmittingDep(false);
     }
   };
 
@@ -519,7 +508,7 @@ export default function App() {
   }, [adminUsers, adminSearch]);
 
   const filteredTransactions = useMemo(() => {
-    if (txFilter === 'all') return allTx;
+    if (txFilter === 'ALL') return allTx;
     return allTx.filter(t => t.status === txFilter);
   }, [allTx, txFilter]);
 
@@ -701,37 +690,32 @@ export default function App() {
                         position: 'relative'
                       }}>
                         {winningNumber === 'SPINNING' ? (
-  <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-    <svg width="80" height="80" viewBox="0 0 100 100">
-      <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="4" />
-      <polygon points="50,15 58,45 50,40 42,45" fill="#00f2fe" />
-      <polygon points="50,85 58,55 50,60 42,55" fill="#f59e0b" />
-      <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
-    </svg>
-  </div>
-) : winningNumber === 'NONE' ? (
-  <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold' }}>
-    እስካሁን ምንም አልወጣም
-  </span>
-) : (
-  <div style={{
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  }}>
-    <span style={{
-      fontSize: winningNumber === '?' ? '42px' : '38px',
-      fontWeight: 'bold',
-      color: winningNumber === '?' ? '#ffffff' : '#00ffcc',
-      textShadow: winningNumber === '?' ? 'none' : '0 0 12px #00ffcc',
-      lineHeight: '1'
-    }}>
-      {winningNumber}
-    </span>
-  </div>
-)}
+                          <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="80" height="80" viewBox="0 0 100 100">
+                              <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="2" strokeDasharray="6 6" />
+                              <polygon points="50,15 58,45 50,40 42,45" fill="#00f2fe" />
+                              <polygon points="50,85 58,55 50,60 42,55" fill="#f59e0b" />
+                              <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
+                            </svg>
+                          </div>
+                        ) : winningNumber === 'NONE' ? (
+                          <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>አልተመረጠም</span>
+                        ) : (
+                          <span style={{
+                            fontSize: winningNumber === '?' ? '42px' : '38px',
+                            fontWeight: 'bold',
+                            color: winningNumber === '?' ? '#ffffff' : '#00ffcc',
+                            textShadow: winningNumber === '?' ? 'none' : '0 0 12px #00ffcc',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justify: 'center',
+                            width: '100%',
+                            height: '100%',
+                            lineHeight: 1
+                          }}>
+                            {winningNumber}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -824,12 +808,39 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* TELEBIRR SMS DEPOSIT SECTION */}
                 <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '15px' }}>📥 Deposit (ገንዘብ ማስገቢያ ጥያቄ)</h4>
-                  <input type="number" placeholder="መጠን (ETB)" value={depAmount} onChange={(e) => setDepAmount(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                  <input type="text" placeholder="የክፍያ ማረጋገጫ / Transaction Ref / ፎቶ ሊንክ" value={depProof} onChange={(e) => setDepProof(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                  <button onClick={handleDeposit} style={{ width: '100%', padding: '12px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    የገቢ ጥያቄ ላክ (Submit Deposit)
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#f59e0b' }}>📥 Deposit (በቴሌብር ብር ማስገቢያ)</h4>
+                  
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '10px', lineHeight: '1.4' }}>
+                    1. የሚፈልጉትን የብር መጠን ይምረጡ ወይም ያስገቡ።<br />
+                    2. የቴሌብር SMS መልእክቱን ሙሉ በሙሉ ኮፒ አድርገው ከታች ባለው ሳጥን ይልኩ።
+                  </div>
+
+                  <label style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>የብር መጠን (ETB):</label>
+                  <input
+                    type="number"
+                    placeholder="ለምሳሌ፡ 30"
+                    value={depAmount}
+                    onChange={(e) => setDepAmount(e.target.value)}
+                    style={{ width: '100%', padding: '10px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
+                  />
+
+                  <label style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>የቴሌብር SMS መልእክት (Copy Paste):</label>
+                  <textarea
+                    rows="4"
+                    placeholder="የደረሰዎትን ሙሉ የቴሌብር SMS መልእክት እዚህ ጋር ፔስት (Paste) ያድርጉ..."
+                    value={pastedSMS}
+                    onChange={(e) => setPastedSMS(e.target.value)}
+                    style={{ width: '100%', padding: '10px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box', fontSize: '12px' }}
+                  />
+
+                  <button
+                    onClick={handleDeposit}
+                    disabled={isSubmittingDep}
+                    style={{ width: '100%', padding: '12px', backgroundColor: isSubmittingDep ? '#6b7280' : '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: isSubmittingDep ? 'not-allowed' : 'pointer' }}
+                  >
+                    {isSubmittingDep ? 'እየተላከ ነው...' : 'የገቢ ጥያቄ ላክ (Submit Deposit)'}
                   </button>
                 </div>
 
@@ -914,7 +925,7 @@ export default function App() {
             {adminTab === 'requests' && (
               <div>
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-                  {['pending', 'approved', 'rejected', 'all'].map(status => (
+                  {['PENDING', 'APPROVED', 'REJECTED', 'ALL'].map(status => (
                     <button
                       key={status}
                       onClick={() => setTxFilter(status)}
@@ -927,11 +938,10 @@ export default function App() {
                         backgroundColor: txFilter === status ? '#0284c7' : '#0f172a',
                         color: '#fff',
                         fontWeight: 'bold',
-                        cursor: 'pointer',
-                        textTransform: 'capitalize'
+                        cursor: 'pointer'
                       }}
                     >
-                      {status} ({allTx.filter(t => status === 'all' ? true : t.status === status).length})
+                      {status} ({allTx.filter(t => status === 'ALL' ? true : t.status === status).length})
                     </button>
                   ))}
                 </div>
@@ -941,41 +951,29 @@ export default function App() {
                     filteredTransactions.map((tx) => (
                       <div key={tx._id} style={{ backgroundColor: '#181830', border: '1px solid #2a2a4a', borderRadius: '10px', padding: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '12px', color: tx.type === 'deposit' ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>
-                            {tx.type.toUpperCase()} REQUEST
+                          <span style={{ fontSize: '12px', color: '#22c55e', fontWeight: 'bold' }}>
+                            DEPOSIT REQUEST
                           </span>
                           <span style={{
                             fontSize: '11px',
                             padding: '2px 8px',
                             borderRadius: '12px',
-                            backgroundColor: tx.status === 'pending' ? '#eab308' : (tx.status === 'approved' ? '#22c55e' : '#ef4444'),
+                            backgroundColor: tx.status === 'PENDING' ? '#eab308' : (tx.status === 'APPROVED' ? '#22c55e' : '#ef4444'),
                             color: '#000',
                             fontWeight: 'bold'
                           }}>
-                            {tx.status.toUpperCase()}
+                            {tx.status}
                           </span>
                         </div>
                         <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#facc15', marginBottom: '4px' }}>{tx.amount} ETB</div>
                         <div style={{ fontSize: '11px', color: '#9ca3af' }}>👤 User: {tx.userName} (ID: {tx.userId})</div>
-                        <div style={{ fontSize: '11px', color: '#9ca3af' }}>📱 Phone: {tx.phone || 'N/A'}</div>
+                        <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>🔑 Txn ID: {tx.transactionId || 'N/A'}</div>
                         <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>⏱️ Time: {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}</div>
                         
-                        {tx.proof && (
+                        {tx.pastedText && (
                           <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#0f172a', borderRadius: '6px', border: '1px solid #1e293b' }}>
-                            <div style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 'bold', marginBottom: '2px' }}>📄 የክፍያ ማረጋገጫ / Receipt:</div>
-                            <div style={{ fontSize: '11px', color: '#fff', wordBreak: 'break-all' }}>{tx.proof}</div>
-                            {tx.proof.startsWith('http') && (
-                              <button onClick={() => setSelectedProofModal(tx.proof)} style={{ marginTop: '6px', padding: '4px 8px', fontSize: '10px', backgroundColor: '#38bdf8', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                👁️ ምስል/ፎቶ ይመልከቱ
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        {tx.status === 'pending' && (
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                            <button onClick={() => handleProcessTransaction(tx._id, 'approve')} style={{ flex: 1, padding: '8px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Approve ✅</button>
-                            <button onClick={() => handleProcessTransaction(tx._id, 'reject')} style={{ flex: 1, padding: '8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Reject ❌</button>
+                            <div style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 'bold', marginBottom: '2px' }}>📄 Pasted Telebirr SMS:</div>
+                            <div style={{ fontSize: '11px', color: '#fff', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>{tx.pastedText}</div>
                           </div>
                         )}
                       </div>
@@ -1135,26 +1133,6 @@ export default function App() {
           </div>
         )}
       </div>
-
-      {/* PROOF IMAGE PREVIEW MODAL */}
-      {selectedProofModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.85)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '20px'
-        }}>
-          <img src={selectedProofModal} alt="Receipt Proof" style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: '8px', border: '2px solid #38bdf8' }} />
-          <button onClick={() => setSelectedProofModal(null)} style={{ marginTop: '16px', padding: '10px 24px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-            ዝጋ (Close)
-          </button>
-        </div>
-      )}
 
       {/* BOTTOM NAVIGATION */}
       {currentScreen !== 'board' && (
