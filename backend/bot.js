@@ -30,9 +30,9 @@ if (bot) {
     }
   }).catch(err => console.error('ChatMenuButton error:', err));
 
-  // 3. Main Inline Keyboard Menu
+  // 3. Main Inline Keyboard Menu (የ Play ቁልፍ ወደ callback 'play' ተቀይሯል)
   const mainInlineMenu = new InlineKeyboard()
-    .webApp('Play 🎮', WEB_APP_URL).text('Register 📝', 'register').row()
+    .text('Play 🎮', 'play').text('Register 📝', 'register').row()
     .text('Check Balance 💵', 'check_balance').text('Deposit 💵', 'deposit').row()
     .text('Contact Support ☎️', 'support').text('Instruction 📖', 'instruction').row()
     .text('Transfer 🎁', 'transfer').text('Withdraw 🤑', 'withdraw').row()
@@ -69,6 +69,50 @@ if (bot) {
   });
 
   // --- 5. INLINE & TEXT BUTTON HANDLERS ---
+
+  // Play 🎮 (ስልክ መመዝገቡን የማረጋገጫ Logic)
+  bot.callbackQuery('play', async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const userId = String(ctx.from?.id);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}&userId=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const userObj = data.user || data;
+
+        // ስልክ ቁጥር በዳታቤዝ ውስጥ ካለ ቀጥታ WebApp መክፈቻ ቁልፍ ይሰጠዋል
+        if (userObj && userObj.phone && userObj.phone !== "አልተመዘገበም" && String(userObj.phone).trim() !== "") {
+          const playKeyboard = new InlineKeyboard()
+            .webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
+
+          await ctx.reply("🎯 ለመጫወት ዝግጁ ነዎት! ከታች ያለውን ቁልፍ ተጭነው ይግቡ፡", {
+            reply_markup: playKeyboard
+          });
+          return;
+        }
+      }
+
+      // ስልክ ካልተመዘገበ Share Contact እንዲያደርግ ይጠይቃል
+      const contactKeyboard = new Keyboard()
+        .requestContact("📱 ስልክ ቁጥር አጋራ (Share Contact)")
+        .resized()
+        .oneTime();
+
+      await ctx.reply(
+        "⚠️ *ለመጫወት አስቀድመው መመዝገብ አለብዎት!*\n\n" +
+        "እባክዎን መጀመሪያ *'Register 📝'* በማድረግ ወይም ከታች ያለውን *'📱 ስልክ ቁጥር አጋራ (Share Contact)'* ቁልፍ ተጭነው ስልክ ቁጥርዎን ያጋሩ፡",
+        {
+          parse_mode: 'Markdown',
+          reply_markup: contactKeyboard
+        }
+      );
+
+    } catch (err) {
+      console.error('Play Validation Error:', err);
+      await ctx.reply('❌ የስህተት ምልክት አጋጥሟል። እባክዎን እንደገና ይሞክሩ።');
+    }
+  });
 
   // Check Balance 💵 (Inline Button)
   bot.callbackQuery('check_balance', async (ctx) => {
@@ -119,7 +163,7 @@ Coin:         ${coin}
   bot.callbackQuery('register', async (ctx) => {
     await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
-               try {
+    try {
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}&userId=${userId}`);
       if (res.ok) {
         const data = await res.json();
@@ -204,7 +248,7 @@ Coin:         ${coin}
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
 
       const inviteMessage = `🔗 *ለጓደኞችዎ ያጋሩ እና ነፃ ቦነስ ያግኙ!*\n\n` +
-                            `🎁 *የእርስዎ መጋበዣ ሊንክ:*\n\${inviteLink}\ \n\n` +
+                            `🎁 *የእርስዎ መጋበዣ ሊንክ:*\n${inviteLink}\n\n` +
                             `💡 *ጥቅሙ:* ጓደኛዎ በእርስዎ ሊንክ ሲመዘገብ ለእርስዎ *10 ETB* ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!`;
 
       const shareKeyboard = new InlineKeyboard()
@@ -227,6 +271,7 @@ Coin:         ${coin}
     await ctx.answerCallbackQuery();
     await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @Fetanlotterysupport');
   });
+
   // Instruction 📖
   bot.callbackQuery('instruction', async (ctx) => {
     await ctx.answerCallbackQuery();
@@ -361,7 +406,7 @@ Coin:         ${coin}
       const paymentKeyboard = new InlineKeyboard()
         .text("Telebirr", `pay_telebirr_${amount}`).row()
         .text("❌ Cancel", "cancel_deposit");
-         await ctx.reply(paymentOptionMessage, {
+      await ctx.reply(paymentOptionMessage, {
         reply_markup: paymentKeyboard
       });
       return;
