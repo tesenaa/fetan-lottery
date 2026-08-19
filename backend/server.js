@@ -8,8 +8,10 @@ import { bot } from './bot.js';
 import { webhookCallback, InlineKeyboard } from 'grammy';
 
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
-const ADMIN_ID = process.env.ADMIN_ID || "494653076";
-const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || "-100234567890"; // የቴሌግራም አድሚን ግሩፕ ID
+const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_ID || process.env.ADMIN_ID || "494653076";
+const ASSISTANT_ADMIN_1 = process.env.ASSISTANT_ADMIN_1 || "111111111"; // የረዳት አድሚን 1 Telegram ID
+const ASSISTANT_ADMIN_2 = process.env.ASSISTANT_ADMIN_2 || "222222222"; // የረዳት አድሚን 2 Telegram ID
+const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || "-100234567890";
 
 const app = express();
 app.use(cors());
@@ -47,6 +49,7 @@ const depositSchema = new mongoose.Schema({
   pastedText: { type: String, required: true },
   transactionId: { type: String, default: null, index: true },
   status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
+  processedBy: { type: String, default: null }, // የትኛው አድሚን እንዳጸደቀው
   telegramMessageId: { type: Number, default: null }
 }, { timestamps: true });
 
@@ -56,6 +59,7 @@ const transactionSchema = new mongoose.Schema({
   type: { type: String, enum: ['deposit', 'withdrawal'], required: true },
   amount: { type: Number, required: true },
   status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
+  processedBy: { type: String, default: null },
   proof: { type: String, default: '' },
   phone: { type: String, default: '' }
 }, { timestamps: true });
@@ -75,7 +79,11 @@ const systemSettingsSchema = new mongoose.Schema({
   ticketPrice: { type: Number, default: 10 },
   winnerPercentage: { type: Number, default: 80 }, 
   houseCommissionPercentage: { type: Number, default: 20 }, 
-  manualWinningNumber: { type: Number, default: null } 
+  manualWinningNumber: { type: Number, default: null },
+  activeAdmins: {
+    admin1: { type: Boolean, default: true },
+    admin2: { type: Boolean, default: true }
+  }
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
@@ -108,22 +116,17 @@ if (process.env.NODE_ENV === 'production' && RENDER_URL) {
   app.use('/webhook', webhookCallback(bot, 'express'));
 }
 
-// --- HELPER FUNCTIONS & REGEX (ADVANCED SECURITY) ---
+// --- HELPER FUNCTIONS & MIDDLEWARE ---
 function extractTransactionId(text) {
   if (!text) return null;
-
-  // Pattern 1: explicitly captures 'Txn ID: 24A...', 'Transaction ID:', 'Ref No:'
   const explicitMatch = text.match(/(?:txn\s*id|transaction\s*id|ref\s*no|trans\s*id)[\s:-]*([a-z0-9]+)/i);
   if (explicitMatch && explicitMatch[1]) {
     return explicitMatch[1].toUpperCase();
   }
-
-  // Pattern 2: Telebirr style alphanumeric patterns (e.g., 24A1234567, TXN9876543, 10-12 chars)
   const telebirrMatch = text.match(/\b([A-Z0-9]{10,12})\b/);
   if (telebirrMatch && telebirrMatch[1]) {
     return telebirrMatch[1].toUpperCase();
   }
-
   return null;
 }
 
@@ -134,10 +137,29 @@ async function getSettings() {
       ticketPrice: 10,
       winnerPercentage: 80,
       houseCommissionPercentage: 20,
-      manualWinningNumber: null
+      manualWinningNumber: null,
+      activeAdmins: { admin1: true, admin2: true }
     });
   }
   return settings;
+}
+
+async function checkAdminAuth(req, res, next) {
+  const adminKey = req.headers['admin-key'];
+  const settings = await getSettings();
+
+  if (adminKey === SUPER_ADMIN_ID) {
+    req.adminRole = 'SUPER';
+    return next();
+  } else if (adminKey === ASSISTANT_ADMIN_1 && settings.activeAdmins?.admin1) {
+    req.adminRole = 'ADMIN_1';
+    return next();
+  } else if (adminKey === ASSISTANT_ADMIN_2 && settings.activeAdmins?.admin2) {
+    req.adminRole = 'ADMIN_2';
+    return next();
+  }
+
+  return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም ወይም አድሚንነትዎ ታግዷል!" });
 }
 
 function formatUserCount(num) {
@@ -190,6 +212,7 @@ if (bot) {
   bot.callbackQuery(/^(dep_approve|dep_reject):(.+)$/, async (ctx) => {
     const action = ctx.match[1];
     const depositId = ctx.match[2];
+    const adminTgId = String(ctx.from.id);
 
     try {
       const deposit = await Deposit.findById(depositId);
@@ -205,6 +228,7 @@ if (bot) {
 
       if (action === 'dep_approve') {
         deposit.status = 'APPROVED';
+        deposit.processedBy = adminTgId;
         await deposit.save();
 
         if (user) {
@@ -221,7 +245,7 @@ if (bot) {
         } catch (e) {}
 
         await ctx.editMessageText(
-          `📥 *የዴፖዚት ጥያቄ (✅ Approved by Admin)*\n\n` +
+          `📥 *የዴፖዚት ጥያቄ (✅ Approved by Admin: ${adminTgId})*\n\n` +
           `• *User:* @${user?.username || 'N/A'} (ID: \`${deposit.userId}\`)\n` +
           `• *Amount:* ${deposit.amount} ETB\n` +
           `• *Txn ID:* \`${deposit.transactionId || 'N/A'}\`\n` +
@@ -233,6 +257,7 @@ if (bot) {
 
       } else if (action === 'dep_reject') {
         deposit.status = 'REJECTED';
+        deposit.processedBy = adminTgId;
         await deposit.save();
 
         try {
@@ -244,7 +269,7 @@ if (bot) {
         } catch (e) {}
 
         await ctx.editMessageText(
-          `📥 *የዴፖዚት ጥያቄ (❌ Rejected by Admin)*\n\n` +
+          `📥 *የዴፖዚት ጥያቄ (❌ Rejected by Admin: ${adminTgId})*\n\n` +
           `• *User:* @${user?.username || 'N/A'} (ID: \`${deposit.userId}\`)\n` +
           `• *Amount:* ${deposit.amount} ETB\n` +
           `• *Txn ID:* \`${deposit.transactionId || 'N/A'}\`\n` +
@@ -261,7 +286,7 @@ if (bot) {
   });
 }
 
-// --- DEPOSIT REQUEST ENDPOINT WITH STRICT SECURITY RULES ---
+// --- DEPOSIT REQUEST ENDPOINT ---
 app.post('/api/deposit-request', async (req, res) => {
   const { userId, userName, amount, pastedText } = req.body;
 
@@ -278,7 +303,6 @@ app.post('/api/deposit-request', async (req, res) => {
       return res.status(403).json({ success: false, message: "አካውንትዎ የታገደ ስለሆነ አገልግሎቱን ማግኘት አይችሉም!" });
     }
 
-    // 🛑 RULE 1: BUTTON RATE LIMITING (PENDING Request Protection)
     const existingPending = await Deposit.findOne({ userId: uid, status: 'PENDING' });
     if (existingPending) {
       return res.status(400).json({
@@ -287,10 +311,8 @@ app.post('/api/deposit-request', async (req, res) => {
       });
     }
 
-    // 🛑 RULE 2: TRANSACTION ID EXTRACTION VIA REGEX
     const txnId = extractTransactionId(pastedText);
 
-    // 🛑 RULE 3: DUPLICATE PROTECTION (Check DB for duplicate Transaction ID regardless of status)
     if (txnId) {
       const duplicateTxn = await Deposit.findOne({ transactionId: txnId });
       if (duplicateTxn) {
@@ -306,7 +328,6 @@ app.post('/api/deposit-request', async (req, res) => {
       });
     }
 
-    // CREATE DEPOSIT RECORD IN DATABASE
     const deposit = await Deposit.create({
       userId: uid,
       userName: userName || user.username || `User_${uid}`,
@@ -316,7 +337,6 @@ app.post('/api/deposit-request', async (req, res) => {
       status: 'PENDING'
     });
 
-    // SEND NOTIFICATION TO TELEGRAM ADMIN GROUP
     if (bot && ADMIN_GROUP_ID) {
       try {
         const keyboard = new InlineKeyboard()
@@ -353,11 +373,8 @@ app.post('/api/deposit-request', async (req, res) => {
   }
 });
 
-// --- ADMIN API ENDPOINTS ---
-app.get('/api/admin/settings', async (req, res) => {
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
-
+// --- ADMIN API ENDPOINTS (PROTECTED WITH MULTI-ROLE SECURITY) ---
+app.get('/api/admin/settings', checkAdminAuth, async (req, res) => {
   try {
     const settings = await getSettings();
     res.json({ success: true, settings });
@@ -366,11 +383,12 @@ app.get('/api/admin/settings', async (req, res) => {
   }
 });
 
-app.post('/api/admin/settings', async (req, res) => {
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
+  if (req.adminRole !== 'SUPER') {
+    return res.status(403).json({ success: false, message: "ይህንን ለማድረግ የሱፐር አድሚን ስልጣን ያስፈልጋል!" });
+  }
 
-  const { ticketPrice, winnerPercentage, manualWinningNumber } = req.body;
+  const { ticketPrice, winnerPercentage, manualWinningNumber, activeAdmins } = req.body;
 
   try {
     let settings = await getSettings();
@@ -382,6 +400,9 @@ app.post('/api/admin/settings', async (req, res) => {
     if (manualWinningNumber !== undefined) {
       settings.manualWinningNumber = manualWinningNumber !== null ? Number(manualWinningNumber) : null;
     }
+    if (activeAdmins !== undefined) {
+      settings.activeAdmins = activeAdmins;
+    }
     await settings.save();
     res.json({ success: true, settings, message: "የሲስተም ሰቲንግ በተሳካ ሁኔታ ተስተካክሏል!" });
   } catch (err) {
@@ -389,10 +410,10 @@ app.post('/api/admin/settings', async (req, res) => {
   }
 });
 
-app.get('/api/admin/users', async (req, res) => {
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
-
+app.get('/api/admin/users', checkAdminAuth, async (req, res) => {
+  if (req.adminRole !== 'SUPER') {
+    return res.status(403).json({ success: false, message: "የተከለከለ ክፍል!" });
+  }
   try {
     const users = await User.find().sort({ createdAt: -1 });
     res.json({ success: true, users });
@@ -401,9 +422,10 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
-app.post('/api/admin/toggle-ban', async (req, res) => {
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+app.post('/api/admin/toggle-ban', checkAdminAuth, async (req, res) => {
+  if (req.adminRole !== 'SUPER') {
+    return res.status(403).json({ success: false, message: "የተከለከለ ክፍል!" });
+  }
   const { targetUserId, isBanned } = req.body;
   const uid = String(targetUserId);
 
@@ -419,9 +441,10 @@ app.post('/api/admin/toggle-ban', async (req, res) => {
   }
 });
 
-app.post('/api/admin/update-balance', async (req, res) => {
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+app.post('/api/admin/update-balance', checkAdminAuth, async (req, res) => {
+  if (req.adminRole !== 'SUPER') {
+    return res.status(403).json({ success: false, message: "የተከለከለ ክፍል!" });
+  }
   const { targetUserId, mainWallet, playWallet } = req.body;
   const uid = String(targetUserId);
 
@@ -437,21 +460,48 @@ app.post('/api/admin/update-balance', async (req, res) => {
   }
 });
 
-app.get('/api/admin/transactions', async (req, res) => {
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
-
+// Transactions - Accessible by ALL Admins
+app.get('/api/admin/transactions', checkAdminAuth, async (req, res) => {
   try {
     const deposits = await Deposit.find().sort({ createdAt: -1 });
-    res.json({ success: true, transactions: deposits });
+    res.json({ success: true, transactions: deposits, role: req.adminRole });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-app.get('/api/admin/financial-stats', async (req, res) => {
+// Action to approve/reject deposit directly from Web Admin
+app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
+  const { txId, action } = req.body; // action: 'APPROVED' or 'REJECTED'
   const adminKey = req.headers['admin-key'];
-  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+
+  try {
+    const deposit = await Deposit.findById(txId);
+    if (!deposit) return res.status(404).json({ success: false, message: "ትራንዛክሽን አልተገኘም!" });
+
+    if (deposit.status !== 'PENDING') {
+      return res.status(400).json({ success: false, message: "ይህ ጥያቄ አስቀድሞ ምላሽ አግኝቷል!" });
+    }
+
+    deposit.status = action;
+    deposit.processedBy = adminKey;
+    await deposit.save();
+
+    if (action === 'APPROVED') {
+      await User.updateOne({ userId: deposit.userId }, { $inc: { mainWallet: deposit.amount } });
+    }
+
+    res.json({ success: true, deposit, message: `ትራንዛክሽኑ ${action} ሆኗል!` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Financial Stats with Per-Admin Breakdown - ONLY Super Admin
+app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
+  if (req.adminRole !== 'SUPER') {
+    return res.status(403).json({ success: false, message: "የተከለከለ ክፍል!" });
+  }
 
   try {
     const totalDeposits = await Deposit.aggregate([
@@ -468,6 +518,37 @@ app.get('/api/admin/financial-stats', async (req, res) => {
       { $group: { _id: null, totalProfit: { $sum: "$houseProfit" }, totalPlayed: { $sum: "$totalCollected" }, totalGames: { $sum: 1 } } }
     ]);
 
+    // Breakdown per admin (Super, Admin 1, Admin 2)
+    const adminBreakdown = await Deposit.aggregate([
+      { $match: { status: 'APPROVED' } },
+      { $group: { 
+          _id: "$processedBy", 
+          totalAmount: { $sum: "$amount" },
+          count: { $sum: 1 }
+        } 
+      }
+    ]);
+
+    const adminStatsFormatted = {
+      superAdmin: { amount: 0, count: 0 },
+      admin1: { amount: 0, count: 0 },
+      admin2: { amount: 0, count: 0 },
+      others: { amount: 0, count: 0 }
+    };
+
+    adminBreakdown.forEach(item => {
+      if (item._id === SUPER_ADMIN_ID) {
+        adminStatsFormatted.superAdmin = { amount: item.totalAmount, count: item.count };
+      } else if (item._id === ASSISTANT_ADMIN_1) {
+        adminStatsFormatted.admin1 = { amount: item.totalAmount, count: item.count };
+      } else if (item._id === ASSISTANT_ADMIN_2) {
+        adminStatsFormatted.admin2 = { amount: item.totalAmount, count: item.count };
+      } else {
+        adminStatsFormatted.others.amount += item.totalAmount;
+        adminStatsFormatted.others.count += item.count;
+      }
+    });
+
     res.json({
       success: true,
       stats: {
@@ -479,7 +560,8 @@ app.get('/api/admin/financial-stats', async (req, res) => {
         pendingWithdrawalAmount: 0,
         houseProfit: gameStats[0]?.totalProfit || 0,
         totalGamesPlayedAmount: gameStats[0]?.totalPlayed || 0,
-        totalGamesCount: gameStats[0]?.totalGames || 0
+        totalGamesCount: gameStats[0]?.totalGames || 0,
+        adminBreakdown: adminStatsFormatted
       }
     });
   } catch (err) {
@@ -487,9 +569,10 @@ app.get('/api/admin/financial-stats', async (req, res) => {
   }
 });
 
-app.post('/api/admin/broadcast', async (req, res) => {
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== ADMIN_ID) return res.status(403).json({ success: false, message: "ባለስልጣን አይደሉም!" });
+app.post('/api/admin/broadcast', checkAdminAuth, async (req, res) => {
+  if (req.adminRole !== 'SUPER') {
+    return res.status(403).json({ success: false, message: "የተከለከለ ክፍል!" });
+  }
 
   const { message } = req.body;
   if (!message) return res.status(400).json({ success: false, message: "መልዕክት አልተጻፈም!" });
@@ -507,7 +590,7 @@ app.post('/api/admin/broadcast', async (req, res) => {
       }
     }
 
-    res.json({ success: true, message: `መልዕክቱ ለ ${sentCount} ተጠቃሚዎች ተልኳል!` });
+    res.json({ success: true, message: `መልዕክቱ ለ ${sentCount} ተጠቃሚዎች ተልቋል!` });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
