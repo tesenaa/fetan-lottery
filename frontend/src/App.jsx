@@ -109,6 +109,8 @@ export default function App() {
   const [adminTab, setAdminTab] = useState('requests');
   const [txFilter, setTxFilter] = useState('PENDING');
   const [allTx, setAllTx] = useState([]);
+  const [allWithdrawals, setAllWithdrawals] = useState([]);
+  const [txTypeView, setTxTypeView] = useState('deposit'); // 'deposit' or 'withdrawal'
   const [financialStats, setFinancialStats] = useState(null);
   const [broadcastText, setBroadcastText] = useState('');
 
@@ -167,7 +169,10 @@ export default function App() {
 
       const tRes = await fetch(`${API_BASE_URL}/api/admin/transactions`, { headers });
       const tData = await tRes.json();
-      if (tData.success) setAllTx(tData.transactions);
+      if (tData.success) {
+        setAllTx(tData.transactions || []);
+        setAllWithdrawals(tData.withdrawals || []);
+      }
 
       if (isSuperAdmin) {
         const [uRes, fRes, sRes] = await Promise.all([
@@ -192,12 +197,12 @@ export default function App() {
     }
   }, [isAdmin, isSuperAdmin, userId]);
 
-  const handleProcessTx = async (txId, action) => {
+  const handleProcessTx = async (txId, action, type = 'deposit') => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/admin/process-transaction`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'admin-key': userId },
-        body: JSON.stringify({ txId, action })
+        body: JSON.stringify({ txId, action, type })
       });
       const data = await res.json();
       alert(data.message);
@@ -529,10 +534,12 @@ export default function App() {
     );
   }, [adminUsers, adminSearch]);
 
+  const activeTxList = txTypeView === 'deposit' ? allTx : allWithdrawals;
+
   const filteredTransactions = useMemo(() => {
-    if (txFilter === 'ALL') return allTx;
-    return allTx.filter(t => t.status === txFilter);
-  }, [allTx, txFilter]);
+    if (txFilter === 'ALL') return activeTxList;
+    return activeTxList.filter(t => t.status === txFilter);
+  }, [activeTxList, txFilter]);
 
   return (
     <div style={{
@@ -659,7 +666,7 @@ export default function App() {
                         📌 የተመረጡ ቁጥሮች ({selectedNumbers.length}):
                       </div>
                       <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.2', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
-                        {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረቱም'}
+                        {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
                       </div>
                     </div>
 
@@ -879,7 +886,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ADMIN PANEL */}
+        {/* --- DYNAMIC ADMIN PANEL (SUPER & ASSISTANT ADMINS) --- */}
         {isAdmin && currentTab === 'admin' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -889,6 +896,7 @@ export default function App() {
               <button onClick={fetchAdminData} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}>🔄 Refresh</button>
             </div>
 
+            {/* Admin Tabs Filter */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
               <button onClick={() => setAdminTab('requests')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'requests' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>💳 Transactions</button>
               
@@ -903,12 +911,22 @@ export default function App() {
               )}
             </div>
 
+            {/* 1. TRANSACTION MANAGEMENT (ACCESSIBLE TO ALL ADMINS) */}
             {adminTab === 'requests' && (
               <div>
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                  <button onClick={() => setTxTypeView('deposit')} style={{ flex: 1, padding: '8px', fontSize: '11px', borderRadius: '6px', border: 'none', backgroundColor: txTypeView === 'deposit' ? '#0284c7' : '#1e1b4b', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
+                    📥 የገቢ ጥያቄዎች (Deposit)
+                  </button>
+                  <button onClick={() => setTxTypeView('withdrawal')} style={{ flex: 1, padding: '8px', fontSize: '11px', borderRadius: '6px', border: 'none', backgroundColor: txTypeView === 'withdrawal' ? '#0284c7' : '#1e1b4b', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
+                    📤 የወጪ ጥያቄዎች (Withdrawal)
+                  </button>
+                </div>
+
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                   {['PENDING', 'APPROVED', 'REJECTED', 'ALL'].map(status => (
-                    <button key={status} onClick={() => setTxFilter(status)} style={{ flex: 1, padding: '6px', fontSize: '10px', borderRadius: '4px', border: '1px solid #334155', backgroundColor: txFilter === status ? '#0284c7' : '#0f172a', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
-                      {status} ({allTx.filter(t => status === 'ALL' ? true : t.status === status).length})
+                    <button key={status} onClick={() => setTxFilter(status)} style={{ flex: 1, padding: '6px', fontSize: '10px', borderRadius: '4px', border: '1px solid #334155', backgroundColor: txFilter === status ? '#f59e0b' : '#0f172a', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
+                      {status} ({activeTxList.filter(t => status === 'ALL' ? true : t.status === status).length})
                     </button>
                   ))}
                 </div>
@@ -918,15 +936,18 @@ export default function App() {
                     filteredTransactions.map((tx) => (
                       <div key={tx._id} style={{ backgroundColor: '#181830', border: '1px solid #2a2a4a', borderRadius: '10px', padding: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '12px', color: '#22c55e', fontWeight: 'bold' }}>DEPOSIT REQUEST</span>
+                          <span style={{ fontSize: '12px', color: txTypeView === 'deposit' ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>
+                            {txTypeView === 'deposit' ? 'DEPOSIT REQUEST' : 'WITHDRAWAL REQUEST'}
+                          </span>
                           <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', backgroundColor: tx.status === 'PENDING' ? '#eab308' : (tx.status === 'APPROVED' ? '#22c55e' : '#ef4444'), color: '#000', fontWeight: 'bold' }}>
                             {tx.status}
                           </span>
                         </div>
                         <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#facc15', marginBottom: '4px' }}>{tx.amount} ETB</div>
                         <div style={{ fontSize: '11px', color: '#9ca3af' }}>👤 User: {tx.userName} (ID: {tx.userId})</div>
-                        <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>🔑 Txn ID: {tx.transactionId || 'N/A'}</div>
-                        {tx.processedBy && <div style={{ fontSize: '10px', color: '#a7f3d0', marginTop: '2px' }}>👨‍💼 Processed By: {tx.processedBy}</div>}
+                        {tx.phone && <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>📱 Phone: {tx.phone}</div>}
+                        {tx.transactionId && <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>🔑 Txn ID: {tx.transactionId}</div>}
+                        {tx.processedBy && <div style={{ fontSize: '10px', color: '#a7f3d0', marginTop: '2px' }}>👨‍💼 Processed By Admin: {tx.processedBy}</div>}
                         <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>⏱️ Time: {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}</div>
 
                         {tx.pastedText && (
@@ -938,10 +959,10 @@ export default function App() {
 
                         {tx.status === 'PENDING' && (
                           <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                            <button onClick={() => handleProcessTx(tx._id, 'APPROVED')} style={{ flex: 1, padding: '8px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                            <button onClick={() => handleProcessTx(tx._id, 'APPROVED', txTypeView)} style={{ flex: 1, padding: '8px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
                               ✅ Approve
                             </button>
-                            <button onClick={() => handleProcessTx(tx._id, 'REJECTED')} style={{ flex: 1, padding: '8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                            <button onClick={() => handleProcessTx(tx._id, 'REJECTED', txTypeView)} style={{ flex: 1, padding: '8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
                               ❌ Reject
                             </button>
                           </div>
@@ -955,6 +976,7 @@ export default function App() {
               </div>
             )}
 
+            {/* 2. SUPER ADMIN ONLY - FINANCIAL DASHBOARD & PER-ADMIN BREAKDOWN */}
             {isSuperAdmin && adminTab === 'reports' && financialStats && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', margin: '0 0 4px 0' }}>📊 Financial Dashboard</h3>
@@ -975,6 +997,7 @@ export default function App() {
                   <div style={{ fontSize: '26px', fontWeight: 'bold', color: '#facc15', marginTop: '4px' }}>{financialStats.houseProfit} ETB</div>
                 </div>
 
+                {/* ADMIN BREAKDOWN REPORT */}
                 <div style={{ backgroundColor: '#13132b', padding: '14px', borderRadius: '10px', border: '1px solid #38bdf8' }}>
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#38bdf8' }}>👨‍💼 የአድሚኖች የስራ/የገንዘብ እንቅስቃሴ ሪፖርት</h4>
                   
@@ -995,9 +1018,27 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* 🗓️ DAILY STATS LOGS */}
+                <div style={{ backgroundColor: '#13132b', padding: '14px', borderRadius: '10px', border: '1px solid #a855f7' }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#a855f7' }}>📅 በየ 24 ሰዓቱ በቀኑ የተመዘገበ የትርፍ ሪፖርት</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {financialStats.dailyStats && financialStats.dailyStats.length > 0 ? (
+                      financialStats.dailyStats.map((ds) => (
+                        <div key={ds.dateStr} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', padding: '6px', backgroundColor: '#1c1c3d', borderRadius: '4px' }}>
+                          <span><strong>{ds.dateStr}:</strong></span>
+                          <span>ገቢ: <strong style={{ color: '#22c55e' }}>{ds.totalDeposit} ETB</strong> | ወጪ: <strong style={{ color: '#ef4444' }}>{ds.totalWithdrawal} ETB</strong> | ትርፍ: <strong style={{ color: '#facc15' }}>{ds.houseProfit} ETB</strong></span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center' }}>የቀን መዝገብ አልተገኘም።</div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
+            {/* 3. SUPER ADMIN ONLY - USER MANAGEMENT */}
             {isSuperAdmin && adminTab === 'users' && (
               <>
                 <input type="text" placeholder="በተጠቃሚ ID ወይም ስልክ ፈልግ..." value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '16px', boxSizing: 'border-box' }} />
@@ -1046,6 +1087,7 @@ export default function App() {
               </>
             )}
 
+            {/* 4. SUPER ADMIN ONLY - DRAW CONTROL */}
             {isSuperAdmin && adminTab === 'game_control' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>🎯 የእጣ ቁጥር ማውጫ መቆጣጠሪያ (Draw Control)</h3>
@@ -1072,6 +1114,7 @@ export default function App() {
               </div>
             )}
 
+            {/* 5. SUPER ADMIN ONLY - SETTINGS & ADMIN ON/OFF SWITCH */}
             {isSuperAdmin && adminTab === 'settings' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>⚙️ የሲስተም አጠቃላይ ሶፍትዌር ማስተካከያ</h3>
@@ -1087,6 +1130,7 @@ export default function App() {
                   <div style={{ fontSize: '10px', color: '#f59e0b', marginTop: '2px' }}>የሲስተም/ቤት ኮሚሽን መቶኛ፤ {100 - Number(sysSettings.winnerPercentage || 0)}% ይሆናል።</div>
                 </div>
 
+                {/* ASSISTANT ADMINS ON / OFF SWITCH */}
                 <div style={{ borderTop: '1px solid #334155', paddingTop: '12px', marginBottom: '16px' }}>
                   <h4 style={{ fontSize: '13px', color: '#38bdf8', margin: '0 0 10px 0' }}>🔘 ረዳት አድሚኖችን ማገጃ/ማስጀመሪያ (ON / OFF)</h4>
 
@@ -1111,6 +1155,7 @@ export default function App() {
               </div>
             )}
 
+            {/* 6. BROADCAST MESSAGE */}
             {isSuperAdmin && adminTab === 'broadcast' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>📢 Broadcast Message to Users</h3>
