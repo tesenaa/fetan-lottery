@@ -373,7 +373,7 @@ app.post('/api/deposit-request', async (req, res) => {
   }
 });
 
-// --- ADMIN API ENDPOINTS (PROTECTED WITH MULTI-ROLE SECURITY) ---
+// --- ADMIN API ENDPOINTS ---
 app.get('/api/admin/settings', checkAdminAuth, async (req, res) => {
   try {
     const settings = await getSettings();
@@ -460,7 +460,6 @@ app.post('/api/admin/update-balance', checkAdminAuth, async (req, res) => {
   }
 });
 
-// Transactions - Accessible by ALL Admins
 app.get('/api/admin/transactions', checkAdminAuth, async (req, res) => {
   try {
     const deposits = await Deposit.find().sort({ createdAt: -1 });
@@ -470,9 +469,8 @@ app.get('/api/admin/transactions', checkAdminAuth, async (req, res) => {
   }
 });
 
-// Action to approve/reject deposit directly from Web Admin
 app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
-  const { txId, action } = req.body; // action: 'APPROVED' or 'REJECTED'
+  const { txId, action } = req.body;
   const adminKey = req.headers['admin-key'];
 
   try {
@@ -497,7 +495,6 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
   }
 });
 
-// Financial Stats with Per-Admin Breakdown - ONLY Super Admin
 app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
   if (req.adminRole !== 'SUPER') {
     return res.status(403).json({ success: false, message: "የተከለከለ ክፍል!" });
@@ -518,7 +515,6 @@ app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
       { $group: { _id: null, totalProfit: { $sum: "$houseProfit" }, totalPlayed: { $sum: "$totalCollected" }, totalGames: { $sum: 1 } } }
     ]);
 
-    // Breakdown per admin (Super, Admin 1, Admin 2)
     const adminBreakdown = await Deposit.aggregate([
       { $match: { status: 'APPROVED' } },
       { $group: { 
@@ -772,19 +768,15 @@ io.on('connection', async (socket) => {
 
   socket.on('deselect_number', async (data) => {
     if (gamePhase !== 'selecting') return;
-
     const { numberChosen, userId } = data;
     const uid = String(userId);
 
-    const isSelected = selectedNumbers.some(
+    const index = selectedNumbers.findIndex(
       n => Number(n.number) === Number(numberChosen) && String(n.userId) === uid
     );
 
-    if (isSelected) {
-      selectedNumbers = selectedNumbers.filter(
-        n => !(Number(n.number) === Number(numberChosen) && String(n.userId) === uid)
-      );
-
+    if (index !== -1) {
+      selectedNumbers.splice(index, 1);
       const settings = await getSettings();
       const updatedUser = await User.findOneAndUpdate(
         { userId: uid },
@@ -802,132 +794,75 @@ io.on('connection', async (socket) => {
 
   socket.on('disconnect', () => {
     activeUsersMap.delete(socket.id);
-    const updatedActiveCount = new Set(activeUsersMap.values()).size;
-    const currentRegisteredCount = registeredUsersSet.size;
-
+    const activeCount = new Set(activeUsersMap.values()).size;
     io.emit('stats_updated', {
-      activePlayers: updatedActiveCount,
-      activePlayersFormatted: formatUserCount(updatedActiveCount),
-      totalRegistered: currentRegisteredCount,
-      totalRegisteredFormatted: formatUserCount(currentRegisteredCount)
+      activePlayers: activeCount,
+      activePlayersFormatted: formatUserCount(activeCount),
+      totalRegistered: registeredUsersSet.size,
+      totalRegisteredFormatted: formatUserCount(registeredUsersSet.size)
     });
   });
 });
 
-// --- TIMER & DRAW CONTROL LOGIC ---
+// --- GAME LOOP TIMER ---
 setInterval(async () => {
   if (gamePhase === 'selecting') {
-    if (timeLeft > 0) {
-      timeLeft--;
-    } else {
-      if (selectedNumbers.length > 0) {
-        gamePhase = 'spinning';
-        const settings = await getSettings();
-        
-        let winner = null;
-        
-        if (settings.manualWinningNumber !== null) {
-          const manualMatch = selectedNumbers.find(n => Number(n.number) === Number(settings.manualWinningNumber));
-          if (manualMatch) {
-            winner = manualMatch;
-          }
-        }
+    timeLeft--;
+    if (timeLeft <= 0) {
+      gamePhase = 'spinning';
+      const settings = await getSettings();
 
-        if (!winner) {
-          const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
-          winner = selectedNumbers[randomIndex];
-        }
+      if (selectedNumbers.length === 0) {
+        winningNumber = 'NONE';
+      } else if (settings.manualWinningNumber !== null) {
+        winningNumber = settings.manualWinningNumber;
+      } else {
+        const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
+        winningNumber = selectedNumbers[randomIndex].number;
+      }
 
-        winningNumber = winner.number;
-        const stats = await getGameStats();
+      const stats = await getGameStats();
 
-        if (winner && winner.userId) {
-          const wUid = String(winner.userId);
-          
-          await User.updateOne(
-            { userId: wUid },
-            { $inc: { mainWallet: stats.derash, gamesWon: 1 } }
-          );
-
+      if (winningNumber !== 'NONE') {
+        const winnerObj = selectedNumbers.find(n => Number(n.number) === Number(winningNumber));
+        if (winnerObj) {
+          await User.updateOne({ userId: winnerObj.userId }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
           await GameHistory.create({
-            gameId: `GAME_${Date.now()}`,
-            winningNumber: winner.number,
-            winnerUserId: wUid,
-            winnerName: winner.userName,
+            gameId: `Fetan-${Date.now()}`,
+            winningNumber: Number(winningNumber),
+            winnerUserId: winnerObj.userId,
+            winnerName: winnerObj.userName,
             totalCollected: stats.totalCollected,
             derash: stats.derash,
             houseProfit: stats.houseProfit,
             playersCount: stats.totalPlayers
           });
         }
-
-        const participantIds = [...new Set(selectedNumbers.map(n => String(n.userId)))];
-        await User.updateMany(
-          { userId: { $in: participantIds } },
-          { $inc: { totalGames: 1 } }
-        );
-
-        if (settings.manualWinningNumber !== null) {
-          settings.manualWinningNumber = null;
-          await settings.save();
-        }
-
-        io.emit('game_result', {
-          winningNumber,
-          gamePhase: 'spinning',
-          selectedNumbers,
-          ...stats
-        });
-
-        setTimeout(() => {
-          selectedNumbers = [];
-          winningNumber = null;
-          gamePhase = 'selecting';
-          timeLeft = 50;
-          io.emit('reset_game', {
-            selectedNumbers: [],
-            totalPlayers: 0,
-            derash: 0,
-            timeLeft: 50,
-            gamePhase: 'selecting',
-            winningNumber: null
-          });
-        }, 10000);
-      } else {
-        timeLeft = 50;
-        winningNumber = 'NONE';
-        io.emit('reset_game', {
-          selectedNumbers: [],
-          totalPlayers: 0,
-          derash: 0,
-          timeLeft: 50,
-          gamePhase: 'selecting',
-          winningNumber: null
-        });
       }
+
+      if (settings.manualWinningNumber !== null) {
+        settings.manualWinningNumber = null;
+        await settings.save();
+      }
+
+      io.emit('game_result', {
+        winningNumber,
+        selectedNumbers,
+        derash: stats.derash
+      });
+
+      setTimeout(() => {
+        selectedNumbers = [];
+        winningNumber = null;
+        gamePhase = 'selecting';
+        timeLeft = 50;
+        io.emit('reset_game', { gamePhase, timeLeft });
+      }, 10000);
+    } else {
+      io.emit('timer_tick', { timeLeft, gamePhase });
     }
   }
-  io.emit('timer_tick', { timeLeft, gamePhase });
 }, 1000);
 
-const PORT = process.env.PORT || 10000;
-
-server.listen(PORT, async () => {
-  console.log(`Server is running on port ${PORT}`);
-
-  if (bot) {
-    bot.catch((err) => {
-      console.error('Bot Error:', err.message);
-    });
-
-    try {
-      if (process.env.NODE_ENV === 'production' && RENDER_URL) {
-        const webhookUrl = `${RENDER_URL}/webhook`;
-        await bot.api.setWebhook(webhookUrl, { drop_pending_updates: true });
-        console.log(`WebHook Set to ${webhookUrl}`);
-      }
-    } catch (err) {
-      console.error('Webhook setting failed:', err.message);
-    }
-  }
-});
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

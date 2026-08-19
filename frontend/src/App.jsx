@@ -165,12 +165,10 @@ export default function App() {
     try {
       const headers = { 'admin-key': userId };
 
-      // Transactions GET endpoints accessible for all admins
       const tRes = await fetch(`${API_BASE_URL}/api/admin/transactions`, { headers });
       const tData = await tRes.json();
       if (tData.success) setAllTx(tData.transactions);
 
-      // Extra endpoints only if Super Admin
       if (isSuperAdmin) {
         const [uRes, fRes, sRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/admin/users`, { headers }),
@@ -661,7 +659,7 @@ export default function App() {
                         📌 የተመረጡ ቁጥሮች ({selectedNumbers.length}):
                       </div>
                       <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.2', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
-                        {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረጡም'}
+                        {selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልመረቱም'}
                       </div>
                     </div>
 
@@ -881,7 +879,7 @@ export default function App() {
           </div>
         )}
 
-        {/* --- DYNAMIC ADMIN PANEL (SUPER & ASSISTANT ADMINS) --- */}
+        {/* ADMIN PANEL */}
         {isAdmin && currentTab === 'admin' && (
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -891,7 +889,6 @@ export default function App() {
               <button onClick={fetchAdminData} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}>🔄 Refresh</button>
             </div>
 
-            {/* Admin Tabs Filter (Hidden sensitive tabs for Assistant Admins) */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
               <button onClick={() => setAdminTab('requests')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'requests' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>💳 Transactions</button>
               
@@ -906,7 +903,6 @@ export default function App() {
               )}
             </div>
 
-            {/* 1. TRANSACTION MANAGEMENT (ACCESSIBLE TO ALL ADMINS) */}
             {adminTab === 'requests' && (
               <div>
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
@@ -959,7 +955,6 @@ export default function App() {
               </div>
             )}
 
-            {/* 2. SUPER ADMIN ONLY - FINANCIAL DASHBOARD & PER-ADMIN BREAKDOWN */}
             {isSuperAdmin && adminTab === 'reports' && financialStats && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', margin: '0 0 4px 0' }}>📊 Financial Dashboard</h3>
@@ -980,7 +975,6 @@ export default function App() {
                   <div style={{ fontSize: '26px', fontWeight: 'bold', color: '#facc15', marginTop: '4px' }}>{financialStats.houseProfit} ETB</div>
                 </div>
 
-                {/* 🌟 ADMIN BREAKDOWN REPORT */}
                 <div style={{ backgroundColor: '#13132b', padding: '14px', borderRadius: '10px', border: '1px solid #38bdf8' }}>
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#38bdf8' }}>👨‍💼 የአድሚኖች የስራ/የገንዘብ እንቅስቃሴ ሪፖርት</h4>
                   
@@ -1004,7 +998,6 @@ export default function App() {
               </div>
             )}
 
-            {/* 3. SUPER ADMIN ONLY - USER MANAGEMENT */}
             {isSuperAdmin && adminTab === 'users' && (
               <>
                 <input type="text" placeholder="በተጠቃሚ ID ወይም ስልክ ፈልግ..." value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '16px', boxSizing: 'border-box' }} />
@@ -1053,7 +1046,6 @@ export default function App() {
               </>
             )}
 
-            {/* 4. SUPER ADMIN ONLY - DRAW CONTROL */}
             {isSuperAdmin && adminTab === 'game_control' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>🎯 የእጣ ቁጥር ማውጫ መቆጣጠሪያ (Draw Control)</h3>
@@ -1080,7 +1072,6 @@ export default function App() {
               </div>
             )}
 
-            {/* 5. SUPER ADMIN ONLY - SETTINGS & ADMIN ON/OFF SWITCH */}
             {isSuperAdmin && adminTab === 'settings' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>⚙️ የሲስተም አጠቃላይ ሶፍትዌር ማስተካከያ</h3>
@@ -1096,7 +1087,6 @@ export default function App() {
                   <div style={{ fontSize: '10px', color: '#f59e0b', marginTop: '2px' }}>የሲስተም/ቤት ኮሚሽን መቶኛ፤ {100 - Number(sysSettings.winnerPercentage || 0)}% ይሆናል።</div>
                 </div>
 
-                {/* 🟢/🔴 ASSISTANT ADMINS ON / OFF SWITCH */}
                 <div style={{ borderTop: '1px solid #334155', paddingTop: '12px', marginBottom: '16px' }}>
                   <h4 style={{ fontSize: '13px', color: '#38bdf8', margin: '0 0 10px 0' }}>🔘 ረዳት አድሚኖችን ማገጃ/ማስጀመሪያ (ON / OFF)</h4>
 
@@ -1121,7 +1111,6 @@ export default function App() {
               </div>
             )}
 
-            {/* 6. BROADCAST MESSAGE */}
             {isSuperAdmin && adminTab === 'broadcast' && (
               <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
                 <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>📢 Broadcast Message to Users</h3>
