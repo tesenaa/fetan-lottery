@@ -9,9 +9,9 @@ import { webhookCallback, InlineKeyboard } from 'grammy';
 
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
 const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_ID || process.env.ADMIN_ID || "494653076";
-const ASSISTANT_ADMIN_1 = process.env.ASSISTANT_ADMIN_1 || "111111111"; // የረዳት አድሚን 1 Telegram ID
-const ASSISTANT_ADMIN_2 = process.env.ASSISTANT_ADMIN_2 || "222222222"; // የረዳት አድሚን 2 Telegram ID
-const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || "-100234567890";
+const ASSISTANT_ADMIN_1 = process.env.ASSISTANT_ADMIN_1 || "6557480753"; // የረዳት አድሚን 1 Telegram ID
+const ASSISTANT_ADMIN_2 = process.env.ASSISTANT_ADMIN_2 || "6660106172"; // የረዳት አድሚን 2 Telegram ID
+const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || "-1003928734889";
 
 const app = express();
 app.use(cors());
@@ -49,7 +49,7 @@ const depositSchema = new mongoose.Schema({
   pastedText: { type: String, required: true },
   transactionId: { type: String, default: null, index: true },
   status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
-  processedBy: { type: String, default: null }, // ጥያቄውን ያፀደቀው/ውድቅ ያደረገው አድሚን ID
+  processedBy: { type: String, default: null },
   telegramMessageId: { type: Number, default: null }
 }, { timestamps: true });
 
@@ -74,9 +74,8 @@ const gameHistorySchema = new mongoose.Schema({
   playersCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
-// በየ24 ሰዓቱ በቀኑ የሚመዘገብ የትርፍ መዝገብ
 const dailyStatSchema = new mongoose.Schema({
-  dateStr: { type: String, required: true, unique: true }, // format: YYYY-MM-DD
+  dateStr: { type: String, required: true, unique: true },
   totalDeposit: { type: Number, default: 0 },
   totalWithdrawal: { type: Number, default: 0 },
   houseProfit: { type: Number, default: 0 },
@@ -85,8 +84,8 @@ const dailyStatSchema = new mongoose.Schema({
 
 const systemSettingsSchema = new mongoose.Schema({
   ticketPrice: { type: Number, default: 10 },
-  winnerPercentage: { type: Number, default: 80 }, 
-  houseCommissionPercentage: { type: Number, default: 20 }, 
+  winnerPercentage: { type: Number, default: 80 },
+  houseCommissionPercentage: { type: Number, default: 20 },
   manualWinningNumber: { type: Number, default: null },
   activeAdmins: {
     admin1: { type: Boolean, default: true },
@@ -111,6 +110,13 @@ const io = new Server(server, {
   transports: ['polling', 'websocket']
 });
 
+// --- HELPER FUNCTION: RANDOM GAME ID GENERATOR ---
+function generateGameId() {
+  const randomNum = Math.floor(100000 + Math.random() * 900000);
+  return `FL-${randomNum}`;
+}
+
+let currentGameId = generateGameId();
 let selectedNumbers = [];
 let timeLeft = 50;
 let gamePhase = 'selecting';
@@ -186,14 +192,14 @@ async function getGameStats() {
   const totalCollected = selectedNumbers.length * stake;
   const derash = Math.floor(totalCollected * winnerPct);
   const houseProfit = totalCollected - derash;
-  
+ 
   return { totalPlayers: uniquePlayers, totalCollected, derash, houseProfit, stake };
 }
 
 async function getOrInitUser(userId, firstName = '', username = '', phone = '') {
   const uid = String(userId);
   let dbUser = await User.findOne({ userId: uid });
-  
+ 
   if (!dbUser) {
     dbUser = await User.create({
       userId: uid,
@@ -216,18 +222,17 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
   return dbUser;
 }
 
-// የቀኑን የትርፍ መዝገብ ማዘመኛ
 async function updateDailyStats(depositAmount = 0, withdrawalAmount = 0, houseProfit = 0, gameCount = 0) {
   const today = new Date().toISOString().split('T')[0];
   await DailyStat.findOneAndUpdate(
     { dateStr: today },
-    { 
-      $inc: { 
-        totalDeposit: depositAmount, 
-        totalWithdrawal: withdrawalAmount, 
+    {
+      $inc: {
+        totalDeposit: depositAmount,
+        totalWithdrawal: withdrawalAmount,
         houseProfit: houseProfit,
         totalGamesCount: gameCount
-      } 
+      }
     },
     { upsert: true, new: true }
   );
@@ -371,7 +376,7 @@ app.post('/api/deposit-request', async (req, res) => {
           .text('✅ Approve', `dep_approve:${deposit._id}`)
           .text('❌ Reject', `dep_reject:${deposit._id}`);
 
-        const msgText = 
+        const msgText =
           `📥 *አዲስ የዴፖዚት ጥያቄ*\n\n` +
           `• *User:* @${user.username || 'N/A'} (ID: \`${uid}\`)\n` +
           `• *Amount:* ${depAmount} ETB\n` +
@@ -486,7 +491,6 @@ app.post('/api/admin/update-balance', checkAdminAuth, async (req, res) => {
   }
 });
 
-// Transactions - Accessible by ALL Admins
 app.get('/api/admin/transactions', checkAdminAuth, async (req, res) => {
   try {
     const deposits = await Deposit.find().sort({ createdAt: -1 });
@@ -497,9 +501,8 @@ app.get('/api/admin/transactions', checkAdminAuth, async (req, res) => {
   }
 });
 
-// Action to approve/reject deposit or withdrawal
 app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
-  const { txId, action, type } = req.body; // type: 'deposit' or 'withdrawal'
+  const { txId, action, type } = req.body;
   const adminKey = req.headers['admin-key'];
 
   try {
@@ -513,7 +516,6 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
       await tx.save();
 
       if (action === 'REJECTED') {
-        // መልሶ ሂሳቡን ለተጠቃሚው መመለስ
         await User.updateOne({ userId: tx.userId }, { $inc: { mainWallet: tx.amount } });
       } else if (action === 'APPROVED') {
         await updateDailyStats(0, tx.amount, 0, 0);
@@ -541,7 +543,6 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
   }
 });
 
-// Financial Stats with Per-Admin Breakdown & Daily History
 app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
   if (req.adminRole !== 'SUPER') {
     return res.status(403).json({ success: false, message: "የተከለከለ ክፍል!" });
@@ -572,7 +573,6 @@ app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
       { $group: { _id: null, totalProfit: { $sum: "$houseProfit" }, totalPlayed: { $sum: "$totalCollected" }, totalGames: { $sum: 1 } } }
     ]);
 
-    // Breakdown per admin for Deposits
     const adminBreakdown = await Deposit.aggregate([
       { $match: { status: 'APPROVED' } },
       { $group: { _id: "$processedBy", totalAmount: { $sum: "$amount" }, count: { $sum: 1 } } }
@@ -747,7 +747,7 @@ setInterval(async () => {
         let winNum;
         if (settings.manualWinningNumber !== null) {
           winNum = settings.manualWinningNumber;
-          settings.manualWinningNumber = null; // አንዴ ከተጠቀመ በኋላ ሪሴት ያደርጋል
+          settings.manualWinningNumber = null;
           await settings.save();
         } else {
           const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
@@ -760,7 +760,7 @@ setInterval(async () => {
         if (winItem) {
           await User.updateOne({ userId: winItem.userId }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
           await GameHistory.create({
-            gameId: `Fetan-${Date.now()}`,
+            gameId: currentGameId,
             winningNumber: winNum,
             winnerUserId: winItem.userId,
             winnerName: winItem.userName,
@@ -773,10 +773,10 @@ setInterval(async () => {
           await updateDailyStats(0, 0, stats.houseProfit, 1);
         }
 
-        io.emit('game_result', { winningNumber: winNum, selectedNumbers, derash: stats.derash });
+        io.emit('game_result', { winningNumber: winNum, selectedNumbers, derash: stats.derash, gameId: currentGameId });
       } else {
         winningNumber = 'NONE';
-        io.emit('game_result', { winningNumber: 'NONE', selectedNumbers: [] });
+        io.emit('game_result', { winningNumber: 'NONE', selectedNumbers: [], gameId: currentGameId });
       }
 
       setTimeout(() => {
@@ -784,10 +784,11 @@ setInterval(async () => {
         timeLeft = 50;
         gamePhase = 'selecting';
         winningNumber = '?';
-        io.emit('reset_game', { timeLeft: 50, gamePhase: 'selecting' });
+        currentGameId = generateGameId();
+        io.emit('reset_game', { timeLeft: 50, gamePhase: 'selecting', gameId: currentGameId });
       }, 10000);
     }
-    io.emit('timer_tick', { timeLeft, gamePhase });
+    io.emit('timer_tick', { timeLeft, gamePhase, gameId: currentGameId });
   }
 }, 1000);
 
@@ -806,6 +807,7 @@ io.on('connection', async (socket) => {
   const settings = await getSettings();
 
   socket.emit('init_state', {
+    gameId: currentGameId,
     selectedNumbers,
     timeLeft,
     gamePhase,
