@@ -9,8 +9,8 @@ import { webhookCallback, InlineKeyboard } from 'grammy';
 
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
 const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_ID || process.env.ADMIN_ID || "494653076";
-const ASSISTANT_ADMIN_1 = process.env.ASSISTANT_ADMIN_1 || "6557480753"; // የረዳት አድሚን 1 Telegram ID
-const ASSISTANT_ADMIN_2 = process.env.ASSISTANT_ADMIN_2 || "6660106172"; // የረዳት አድሚን 2 Telegram ID
+const ASSISTANT_ADMIN_1 = process.env.ASSISTANT_ADMIN_1 || "6557480753"; 
+const ASSISTANT_ADMIN_2 = process.env.ASSISTANT_ADMIN_2 || "6660106172"; 
 const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || "-1003928734889";
 
 const app = express();
@@ -60,7 +60,8 @@ const transactionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
   processedBy: { type: String, default: null },
-  phone: { type: String, default: '' }
+  phone: { type: String, default: '' },
+  telegramMessageId: { type: Number, default: null }
 }, { timestamps: true });
 
 const gameHistorySchema = new mongoose.Schema({
@@ -110,7 +111,6 @@ const io = new Server(server, {
   transports: ['polling', 'websocket']
 });
 
-// --- HELPER FUNCTION: RANDOM GAME ID GENERATOR ---
 function generateGameId() {
   const randomNum = Math.floor(100000 + Math.random() * 900000);
   return `FL-${randomNum}`;
@@ -131,7 +131,6 @@ if (process.env.NODE_ENV === 'production' && RENDER_URL) {
   app.use('/webhook', webhookCallback(bot, 'express'));
 }
 
-// --- HELPER FUNCTIONS & MIDDLEWARE ---
 function extractTransactionId(text) {
   if (!text) return null;
   const explicitMatch = text.match(/(?:txn\s*id|transaction\s*id|ref\s*no|trans\s*id)[\s:-]*([a-z0-9]+)/i);
@@ -238,7 +237,6 @@ async function updateDailyStats(depositAmount = 0, withdrawalAmount = 0, housePr
   );
 }
 
-// Helper to notify active socket connection when balance changes
 async function notifyUserBalanceUpdate(targetUid) {
   const updatedUser = await User.findOne({ userId: targetUid });
   if (!updatedUser) return;
@@ -255,6 +253,7 @@ async function notifyUserBalanceUpdate(targetUid) {
 
 // --- TELEGRAM BOT INLINE BUTTON ACTION HANDLERS ---
 if (bot) {
+  // Deposit Approval Handlers
   bot.callbackQuery(/^(dep_approve|dep_reject):(.+)$/, async (ctx) => {
     const action = ctx.match[1];
     const depositId = ctx.match[2];
@@ -277,14 +276,13 @@ if (bot) {
         deposit.processedBy = adminTgId;
         await deposit.save();
 
-        // Main Wallet balance ማስተካከያ
         await User.updateOne(
           { userId: targetUid },
           { $inc: { mainWallet: deposit.amount } }
         );
 
         await updateDailyStats(deposit.amount, 0, 0, 0);
-        await notifyUserBalanceUpdate(targetUid); // Send Realtime Balance to Frontend
+        await notifyUserBalanceUpdate(targetUid);
 
         try {
           await bot.api.sendMessage(
@@ -335,6 +333,86 @@ if (bot) {
       }
     } catch (err) {
       console.error('Callback handle error:', err);
+      ctx.answerCallbackQuery({ text: 'ስህተት ተፈጥሯል!', show_alert: true });
+    }
+  });
+
+  // Withdrawal Approval Handlers
+  bot.callbackQuery(/^(wit_approve|wit_reject):(.+)$/, async (ctx) => {
+    const action = ctx.match[1];
+    const txId = ctx.match[2];
+    const adminTgId = String(ctx.from.id);
+
+    try {
+      const tx = await Transaction.findById(txId);
+      if (!tx) {
+        return ctx.answerCallbackQuery({ text: '❌ የወጪ ጥያቄው አልተገኘም!', show_alert: true });
+      }
+
+      if (tx.status !== 'PENDING') {
+        return ctx.answerCallbackQuery({ text: `⚠️ ይህ ጥያቄ አስቀድሞ ${tx.status} ሆኗል!`, show_alert: true });
+      }
+
+      const targetUid = String(tx.userId);
+      const user = await User.findOne({ userId: targetUid });
+
+      if (action === 'wit_approve') {
+        tx.status = 'APPROVED';
+        tx.processedBy = adminTgId;
+        await tx.save();
+
+        await updateDailyStats(0, tx.amount, 0, 0);
+
+        try {
+          await bot.api.sendMessage(
+            targetUid,
+            `✅ *የወጪ ጥያቄዎ ጸድቆ ተልኳል!*\n\n💸 *${tx.amount} ETB* ወደ ስልክ ቁጥርዎ (${tx.phone}) ተላልፏል።`,
+            { parse_mode: 'Markdown' }
+          );
+        } catch (e) {}
+
+        await ctx.editMessageText(
+          `📤 *የወጪ (Withdrawal) ጥያቄ (✅ Approved by Admin: ${adminTgId})*\n\n` +
+          `• *User:* @${user?.username || 'N/A'} (ID: \`${targetUid}\`)\n` +
+          `• *Amount:* ${tx.amount} ETB\n` +
+          `• *Phone:* \`${tx.phone}\``,
+          { parse_mode: 'Markdown' }
+        );
+
+        ctx.answerCallbackQuery({ text: '✅ የወጪ ጥያቄው ጸድቋል!' });
+
+      } else if (action === 'wit_reject') {
+        tx.status = 'REJECTED';
+        tx.processedBy = adminTgId;
+        await tx.save();
+
+        // ጥያቄው ሲቀለበስ (REJECT ሲደረግ) የተጠቃሚውን ገንዘብ መልሶ ይጨምርለት
+        await User.updateOne(
+          { userId: targetUid },
+          { $inc: { mainWallet: tx.amount } }
+        );
+        await notifyUserBalanceUpdate(targetUid);
+
+        try {
+          await bot.api.sendMessage(
+            targetUid,
+            `❌ *የወጪ ጥያቄዎ ውድቅ ተደርጓል!*\n\n💰 *${tx.amount} ETB* ወደ ዋና አካውንትዎ ተመልሷል።`,
+            { parse_mode: 'Markdown' }
+          );
+        } catch (e) {}
+
+        await ctx.editMessageText(
+          `📤 *የወጪ (Withdrawal) ጥያቄ (❌ Rejected by Admin: ${adminTgId})*\n\n` +
+          `• *User:* @${user?.username || 'N/A'} (ID: \`${targetUid}\`)\n` +
+          `• *Amount:* ${tx.amount} ETB\n` +
+          `• *Phone:* \`${tx.phone}\``,
+          { parse_mode: 'Markdown' }
+        );
+
+        ctx.answerCallbackQuery({ text: '❌ የወጪ ጥያቄው ውድቅ ተደርጓል እና ገንዘቡ ተመልሷል!' });
+      }
+    } catch (err) {
+      console.error('Withdrawal Callback error:', err);
       ctx.answerCallbackQuery({ text: 'ስህተት ተፈጥሯል!', show_alert: true });
     }
   });
@@ -542,6 +620,7 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
       await tx.save();
 
       if (action === 'REJECTED') {
+        // አድሚኑ ውድቅ ሲያደርገው (REJECT) ገንዘቡን መልሶ ለአካውንቱ ይጨምርልናል
         await User.updateOne({ userId: String(tx.userId) }, { $inc: { mainWallet: tx.amount } });
         await notifyUserBalanceUpdate(String(tx.userId));
       } else if (action === 'APPROVED') {
@@ -709,11 +788,17 @@ app.post('/api/user/register', async (req, res) => {
   res.json({ success: true, isNew: isNewUser, user });
 });
 
+// --- WITHDRAWAL REQUEST ENDPOINT (Updated) ---
 app.post('/api/withdraw-request', async (req, res) => {
   const { userId, userName, amount, phone } = req.body;
   const uid = String(userId);
   const subAmount = Number(amount);
 
+  if (!subAmount || subAmount <= 0) {
+    return res.status(400).json({ success: false, message: "እባክዎን ትክክለኛ መጠን ያስገቡ!" });
+  }
+
+  // ተጠቃሚው ጥያቄ ሲያቀርብ ወዲያውኑ ከዋና አካውንቱ ገንዘቡ ይቀነሳል
   const updatedUser = await User.findOneAndUpdate(
     { userId: uid, isBanned: false, mainWallet: { $gte: subAmount } },
     { $inc: { mainWallet: -subAmount } },
@@ -724,9 +809,11 @@ app.post('/api/withdraw-request', async (req, res) => {
     return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም ወይም አካውንትዎ የታገደ ነው!" });
   }
 
+  // የተጠቃሚውን ቀሪ ሂሳብ በሶኬት እናሳውቃለን
   await notifyUserBalanceUpdate(uid);
 
-  await Transaction.create({
+  // ትራንዛክሽኑን በ PENDING ሁኔታ እንፈጥራለን
+  const tx = await Transaction.create({
     userId: uid,
     userName: userName || `User_${uid}`,
     type: 'withdrawal',
@@ -735,7 +822,32 @@ app.post('/api/withdraw-request', async (req, res) => {
     status: 'PENDING'
   });
 
-  res.json({ success: true, balance: updatedUser.mainWallet, message: "የወጪ ጥያቄዎ ተልኳል! በቅርቡ ይስተናገዳል።" });
+  // ወደ አድሚን ግሩፕ የኢንላይን አዝራር (Approve / Reject) ያለው መልዕክት እንልካለን
+  if (bot && ADMIN_GROUP_ID) {
+    try {
+      const keyboard = new InlineKeyboard()
+        .text('✅ Approve', `wit_approve:${tx._id}`)
+        .text('❌ Reject', `wit_reject:${tx._id}`);
+
+      const msgText =
+        `📤 *አዲስ የወጪ (Withdrawal) ጥያቄ*\n\n` +
+        `• *User:* @${updatedUser.username || 'N/A'} (ID: \`${uid}\`)\n` +
+        `• *Amount:* ${subAmount} ETB\n` +
+        `• *Phone:* \`${phone || updatedUser.phone || 'N/A'}\``;
+
+      const sentMsg = await bot.api.sendMessage(ADMIN_GROUP_ID, msgText, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      });
+
+      tx.telegramMessageId = sentMsg.message_id;
+      await tx.save();
+    } catch (err) {
+      console.error('የወጪ አድሚን ኖቲፊኬሽን መላክ አልተቻለም:', err.message);
+    }
+  }
+
+  res.json({ success: true, balance: updatedUser.mainWallet, message: "የወጪ ጥያቄዎ ተልኳል! አድሚኑ እስኪያጸድቀው ይታገሱ።" });
 });
 
 app.get('/api/user', async (req, res) => {
@@ -774,8 +886,10 @@ setInterval(async () => {
       const stats = await getGameStats();
       const settings = await getSettings();
 
+      let winNum = 'NONE';
+      let winnerUser = null;
+
       if (selectedNumbers.length > 0) {
-        let winNum;
         if (settings.manualWinningNumber !== null) {
           winNum = settings.manualWinningNumber;
           settings.manualWinningNumber = null;
@@ -789,6 +903,7 @@ setInterval(async () => {
         const winItem = selectedNumbers.find(n => Number(n.number) === Number(winNum));
 
         if (winItem) {
+          winnerUser = winItem;
           await User.updateOne({ userId: String(winItem.userId) }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
           await notifyUserBalanceUpdate(String(winItem.userId));
 
@@ -805,12 +920,27 @@ setInterval(async () => {
 
           await updateDailyStats(0, 0, stats.houseProfit, 1);
         }
-
-        io.emit('game_result', { winningNumber: winNum, selectedNumbers, derash: stats.derash, gameId: currentGameId });
       } else {
         winningNumber = 'NONE';
-        io.emit('game_result', { winningNumber: 'NONE', selectedNumbers: [], gameId: currentGameId });
       }
+
+      io.emit('game_result', { 
+        winningNumber: winNum, 
+        selectedNumbers, 
+        derash: stats.derash, 
+        gameId: currentGameId,
+        winnerName: winnerUser ? winnerUser.userName : null,
+        winnerUserId: winnerUser ? winnerUser.userId : null
+      });
+
+      setTimeout(() => {
+        gamePhase = 'result';
+        io.emit('show_winner_box', {
+          winningNumber: winNum,
+          winnerName: winnerUser ? winnerUser.userName : 'የለም',
+          derash: stats.derash
+        });
+      }, 6000);
 
       setTimeout(() => {
         selectedNumbers = [];
