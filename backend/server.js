@@ -319,8 +319,8 @@ if (bot) {
   });
 }
 
-// --- DEPOSIT REQUEST ENDPOINT ---
-app.post('/api/deposit-request', async (req, res) => {
+// --- DEPOSIT REQUEST ENDPOINT HANDLER ---
+const handleDepositRequest = async (req, res) => {
   const { userId, userName, amount, pastedText } = req.body;
 
   if (!userId || !amount || !pastedText) {
@@ -404,7 +404,11 @@ app.post('/api/deposit-request', async (req, res) => {
     console.error("Deposit Processing Error:", err);
     res.status(500).json({ success: false, message: "የገንዘብ ማስገባት ስህተት አጋጥሟል!" });
   }
-});
+};
+
+// ሁለቱንም Endpoints ማስተናገድ እንዲችል ተደርጓል
+app.post('/api/deposit', handleDepositRequest);
+app.post('/api/deposit-request', handleDepositRequest);
 
 // --- ADMIN API ENDPOINTS ---
 app.get('/api/admin/settings', checkAdminAuth, async (req, res) => {

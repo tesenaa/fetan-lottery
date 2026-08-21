@@ -30,7 +30,7 @@ if (bot) {
     }
   }).catch(err => console.error('ChatMenuButton error:', err));
 
-  // 3. Main Inline Keyboard Menu (የ Play ቁልፍ ወደ callback 'play' ተቀይሯል)
+  // 3. Main Inline Keyboard Menu
   const mainInlineMenu = new InlineKeyboard()
     .text('Play 🎮', 'play').text('Register 📝', 'register').row()
     .text('Check Balance 💵', 'check_balance').text('Deposit 💵', 'deposit').row()
@@ -70,7 +70,6 @@ if (bot) {
 
   // --- 5. INLINE & TEXT BUTTON HANDLERS ---
 
-  // Play 🎮 (ስልክ መመዝገቡን የማረጋገጫ Logic)
   bot.callbackQuery('play', async (ctx) => {
     await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
@@ -81,7 +80,6 @@ if (bot) {
         const data = await res.json();
         const userObj = data.user || data;
 
-        // ስልክ ቁጥር በዳታቤዝ ውስጥ ካለ ቀጥታ WebApp መክፈቻ ቁልፍ ይሰጠዋል
         if (userObj && userObj.phone && userObj.phone !== "አልተመዘገበም" && String(userObj.phone).trim() !== "") {
           const playKeyboard = new InlineKeyboard()
             .webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
@@ -93,7 +91,6 @@ if (bot) {
         }
       }
 
-      // ስልክ ካልተመዘገበ Share Contact እንዲያደርግ ይጠይቃል
       const contactKeyboard = new Keyboard()
         .requestContact("📱 ስልክ ቁጥር አጋራ (Share Contact)")
         .resized()
@@ -107,14 +104,12 @@ if (bot) {
           reply_markup: contactKeyboard
         }
       );
-
     } catch (err) {
       console.error('Play Validation Error:', err);
       await ctx.reply('❌ የስህተት ምልክት አጋጥሟል። እባክዎን እንደገና ይሞክሩ።');
     }
   });
 
-  // Check Balance 💵 (Inline Button)
   bot.callbackQuery('check_balance', async (ctx) => {
     await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
@@ -159,7 +154,6 @@ Coin:         ${coin}
     });
   });
 
-  // Register 📝 (Inline Button)
   bot.callbackQuery('register', async (ctx) => {
     await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
@@ -169,7 +163,6 @@ Coin:         ${coin}
         const data = await res.json();
         const userObj = data.user || data;
         
-        // ስልክ ቁጥሩ በዳታቤዝ ውስጥ መኖር አለመኖሩን ማረጋገጥ
         if (userObj && userObj.phone && userObj.phone !== "አልተመዘገበም" && String(userObj.phone).trim() !== "") {
           await ctx.reply(
             "ℹ️ *ቀደም ሲል ተመዝግበዋል!*\n\n" +
@@ -183,7 +176,6 @@ Coin:         ${coin}
         }
       }
 
-      // ስልክ ካልተመዘገበ ብቻ Share Contact መጠየቅ
       const contactKeyboard = new Keyboard()
         .requestContact("📱 ስልክ ቁጥር አጋራ (Share Contact)")
         .resized()
@@ -192,14 +184,12 @@ Coin:         ${coin}
       await ctx.reply("እባክዎን ምዝገባዎን ለማጠናቀቅ ከታች ያለውን 'Share Contact' ቁልፍ ይጫኑ፡", {
         reply_markup: contactKeyboard
       });
-
     } catch (err) {
       console.error('Registration Error:', err);
       await ctx.reply('❌ የምዝገባ ስህተት አጋጥሟል። እባክዎን እንደገና ይሞክሩ።');
     }
   });
 
-  // Deposit 💵 (Inline Button)
   bot.callbackQuery('deposit', async (ctx) => {
     await ctx.answerCallbackQuery();
     const chatId = ctx.chat.id;
@@ -207,7 +197,6 @@ Coin:         ${coin}
     await ctx.reply("💰 ማስገባት የሚፈልጉትን መጠን ከ10 ብር ጀምሮ ያስገቡ::");
   });
 
-  // Withdraw 🤑 (Inline & Text Handler)
   const handleWithdraw = async (ctx) => {
     if (ctx.callbackQuery) await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
@@ -236,7 +225,6 @@ Coin:         ${coin}
   bot.callbackQuery('withdraw', handleWithdraw);
   bot.hears(['Withdraw 🤑', 'Withdraw', '/withdraw'], handleWithdraw);
 
-  // Invite 🔗 (Inline & Text Handler)
   const handleInvite = async (ctx) => {
     if (ctx.callbackQuery) await ctx.answerCallbackQuery();
     try {
@@ -266,19 +254,17 @@ Coin:         ${coin}
   bot.callbackQuery('invite', handleInvite);
   bot.hears([/Invite/i, '/invite'], handleInvite);
 
-  // Support ☎️
   bot.callbackQuery('support', async (ctx) => {
     await ctx.answerCallbackQuery();
     await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @Fetanlotterysupport');
   });
 
-  // Instruction 📖
   bot.callbackQuery('instruction', async (ctx) => {
     await ctx.answerCallbackQuery();
     await ctx.reply(
       `📖 *የጨዋታው መመሪያ*:\n\n` +
-      `1."Register 📝" የሚለውን ተጭነው ይመዝገቡ።\n` +
-      `2."Deposit 💵" የሚለውን ተጭነው ወደ ዋሌት ብር ያስቀምጡ።\n` +
+      `1. "Register 📝" የሚለውን ተጭነው ይመዝገቡ።\n` +
+      `2. "Deposit 💵" የሚለውን ተጭነው ወደ ዋሌት ብር ያስቀምጡ።\n` +
       `3. "Play 🎮" የሚለውን ተጭነው WebApp ይክፈቱ።\n` +
       `4. የሚወዱትን የሎተሪ ቁጥር ይምረጡ።\n` +
       `5. ሰዓቱ ሲያልቅ እጣው በቀጥታ ይወጣል፤ ካሸነፉ ገንዘቡ ወዲያውኑ ወደ Main Walletዎ ገቢ ይሆናል።`,
@@ -286,24 +272,20 @@ Coin:         ${coin}
     );
   });
 
-  // Transfer 🎁
   bot.callbackQuery('transfer', async (ctx) => {
     await ctx.answerCallbackQuery();
     await ctx.reply('🎁 ለሌላ ተጫዋች ገንዘብ ለማስተላለፍ በ WebApp ውስጥ ያለውን Transfer ገፅ ይጠቀሙ።');
   });
 
-  // Convert Bonus 💱
   bot.callbackQuery('convert', async (ctx) => {
     await ctx.answerCallbackQuery();
     await ctx.reply('💱 Play Wallet ቦነስን ወደ Main Wallet ለመቀየር አነስተኛው መጠን 100 ETB መሆን አለበት።');
   });
 
-  // Copy Code Callback Handler
   bot.callbackQuery(/^copy_/, async (ctx) => {
     await ctx.answerCallbackQuery({ text: "Code Copied!", show_alert: false });
   });
 
-  // Telebirr / Cancel Payment Callbacks
   bot.callbackQuery(/^pay_telebirr_/, async (ctx) => {
     await ctx.answerCallbackQuery();
     const chatId = ctx.chat.id;
@@ -314,7 +296,7 @@ Coin:         ${coin}
 
 1. ከታች ባለው የቴሌብር አካውንት ${amount} ብር ያስገቡ
 
- Phone: ${TELEBIRR_NUMBER}
+Phone: ${TELEBIRR_NUMBER}
 
 2. የከፈሉበትን አጭር የፅሁፍ መልዕክት(message) copy በማድረግ እዚ ላይ Past አድርገው ይላኩና ይላኩ👇👇👇`;
 
@@ -337,7 +319,6 @@ Coin:         ${coin}
 
   // --- 6. EVENT LISTENERS ---
 
-  // 📱 Contact Listener (ስልክ ቁጥር ሲላክ)
   bot.on(':contact', async (ctx) => {
     const userId = String(ctx.from?.id);
     let phoneNumber = ctx.message.contact.phone_number;
@@ -347,7 +328,7 @@ Coin:         ${coin}
     }
 
     try {
-      const updateRes = await fetch(`${API_BASE_URL}/api/user/update-phone`, {
+      await fetch(`${API_BASE_URL}/api/user/update-phone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -358,9 +339,6 @@ Coin:         ${coin}
         })
       });
 
-      const updateData = await updateRes.json().catch(() => ({}));
-      console.log('Update Phone Response:', updateData);
-
       await ctx.reply(
         "🎉 *ምዝገባዎ በስኬት ተጠናቋል!*\n\n📱 ስልክ ቁጥርዎ፦ " + phoneNumber + " ተመዝግቧል።",
         {
@@ -368,7 +346,6 @@ Coin:         ${coin}
           reply_markup: { remove_keyboard: true }
         }
       );
-
     } catch (err) {
       console.error('Phone update fetch error:', err);
       await ctx.reply(
@@ -412,10 +389,41 @@ Coin:         ${coin}
       return;
     }
 
-    // AWAITING SMS (የቴሌብር SMS መቀበያ)
+    // AWAITING SMS (የቴሌብር SMS መቀበያ እና ወደ ባክኤንድ መላኪያ)
     if (userStates[chatId] && userStates[chatId].step === 'AWAITING_SMS') {
+      const depositData = userStates[chatId];
+      const amount = depositData.amount;
       delete userStates[chatId];
-      await ctx.reply("✅ ጥያቄዎ ደርሶናል! የላኩት የክፍያ ማረጋገጫ ተመርምሮ በአጭር ጊዜ ውስጥ ሂሳብዎ ላይ ገቢ ይደረጋል።");
+
+      const userId = String(ctx.from?.id);
+      const userName = ctx.from?.first_name || `User_${userId}`;
+
+      try {
+        // ወደ አድሚን ፓነል እንዲደርስ የ API route ወደ /api/deposit ተቀይሯል
+        const response = await fetch(`${API_BASE_URL}/api/deposit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: userId,
+            userName: userName,
+            amount: Number(amount),
+            pastedText: text,
+            paymentMethod: 'Telebirr',
+            status: 'pending'
+          })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && (result.success || result._id || result.id)) {
+          await ctx.reply("✅ ጥያቄዎ ደርሶናል! የላኩት የክፍያ ማረጋገጫ ተመርምሮ በአጭር ጊዜ ውስጥ ሂሳብዎ ላይ ገቢ ይደረጋል።");
+        } else {
+          await ctx.reply(`⚠️ ${result.message || 'ማረጋገጫውን መመዝገብ አልተቻለም። እባክዎን እንደገና ይሞክሩ።'}`);
+        }
+      } catch (err) {
+        console.error('Deposit request API error:', err);
+        await ctx.reply("❌ የኔትወርክ ስህተት አጋጥሟል። እባክዎን ቆይተው እንደገና ይሞክሩ።");
+      }
       return;
     }
   });
