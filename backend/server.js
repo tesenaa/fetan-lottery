@@ -253,7 +253,6 @@ async function notifyUserBalanceUpdate(targetUid) {
 
 // --- TELEGRAM BOT INLINE BUTTON ACTION HANDLERS ---
 if (bot) {
-  // Deposit Approval Handlers
   bot.callbackQuery(/^(dep_approve|dep_reject):(.+)$/, async (ctx) => {
     const action = ctx.match[1];
     const depositId = ctx.match[2];
@@ -337,7 +336,6 @@ if (bot) {
     }
   });
 
-  // Withdrawal Approval Handlers
   bot.callbackQuery(/^(wit_approve|wit_reject):(.+)$/, async (ctx) => {
     const action = ctx.match[1];
     const txId = ctx.match[2];
@@ -386,7 +384,6 @@ if (bot) {
         tx.processedBy = adminTgId;
         await tx.save();
 
-        // ጥያቄው ሲቀለበስ (REJECT ሲደረግ) የተጠቃሚውን ገንዘብ መልሶ ይጨምርለት
         await User.updateOne(
           { userId: targetUid },
           { $inc: { mainWallet: tx.amount } }
@@ -418,7 +415,6 @@ if (bot) {
   });
 }
 
-// --- DEPOSIT REQUEST ENDPOINT HANDLER ---
 const handleDepositRequest = async (req, res) => {
   const { userId, userName, amount, pastedText } = req.body;
 
@@ -445,18 +441,24 @@ const handleDepositRequest = async (req, res) => {
 
     const txnId = extractTransactionId(pastedText);
 
-    if (txnId) {
-      const duplicateTxn = await Deposit.findOne({ transactionId: txnId });
-      if (duplicateTxn) {
-        return res.status(400).json({
-          success: false,
-          message: "⚠️ ይህ የትራንዛክሽን ማረጋገጫ (SMS / Txn ID) ቀደም ሲል ጥቅም ላይ ውሏል!"
-        });
-      }
-    } else {
+    if (!txnId) {
       return res.status(400).json({
         success: false,
         message: "⚠️ ከላኩት SMS ውስጥ ትክክለኛ Transaction ID ማግኘት አልተቻለም።"
+      });
+    }
+
+    // --- የትራንዛክሽን ቁጥር መደገሙን ማረጋገጫ (Duplicate Check) ---
+    // ከዚህ በፊት በPENDING ወይም APPROVED (እንዲሁም በREJECTED ጭምር እንዲጠብቅ ከፈለጉ ማካተት ይቻላል) የገባበትን እንፈትሻለን
+    const duplicateTxn = await Deposit.findOne({ 
+      transactionId: txnId, 
+      status: { $in: ['PENDING', 'APPROVED'] } 
+    });
+
+    if (duplicateTxn) {
+      return res.status(400).json({
+        success: false,
+        message: "⚠️ ይህ የትራንዛክሽን ማረጋገጫ (SMS / Txn ID) ቀደም ሲል ጥቅም ላይ ውሏል!"
       });
     }
 
@@ -508,7 +510,6 @@ const handleDepositRequest = async (req, res) => {
 app.post('/api/deposit', handleDepositRequest);
 app.post('/api/deposit-request', handleDepositRequest);
 
-// --- ADMIN API ENDPOINTS ---
 app.get('/api/admin/settings', checkAdminAuth, async (req, res) => {
   try {
     const settings = await getSettings();
@@ -620,7 +621,6 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
       await tx.save();
 
       if (action === 'REJECTED') {
-        // አድሚኑ ውድቅ ሲያደርገው (REJECT) ገንዘቡን መልሶ ለአካውንቱ ይጨምርልናል
         await User.updateOne({ userId: String(tx.userId) }, { $inc: { mainWallet: tx.amount } });
         await notifyUserBalanceUpdate(String(tx.userId));
       } else if (action === 'APPROVED') {
@@ -752,7 +752,6 @@ app.post('/api/admin/broadcast', checkAdminAuth, async (req, res) => {
   }
 });
 
-// --- PUBLIC USER API ENDPOINTS ---
 app.post('/api/user/register', async (req, res) => {
   const { userId, firstName, username, referrerId, phone } = req.body;
   if (!userId) return res.status(400).json({ success: false, message: "User ID ያስፈልጋል።" });
@@ -788,7 +787,6 @@ app.post('/api/user/register', async (req, res) => {
   res.json({ success: true, isNew: isNewUser, user });
 });
 
-// --- WITHDRAWAL REQUEST ENDPOINT (Updated) ---
 app.post('/api/withdraw-request', async (req, res) => {
   const { userId, userName, amount, phone } = req.body;
   const uid = String(userId);
@@ -798,7 +796,6 @@ app.post('/api/withdraw-request', async (req, res) => {
     return res.status(400).json({ success: false, message: "እባክዎን ትክክለኛ መጠን ያስገቡ!" });
   }
 
-  // ተጠቃሚው ጥያቄ ሲያቀርብ ወዲያውኑ ከዋና አካውንቱ ገንዘቡ ይቀነሳል
   const updatedUser = await User.findOneAndUpdate(
     { userId: uid, isBanned: false, mainWallet: { $gte: subAmount } },
     { $inc: { mainWallet: -subAmount } },
@@ -809,10 +806,8 @@ app.post('/api/withdraw-request', async (req, res) => {
     return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም ወይም አካውንትዎ የታገደ ነው!" });
   }
 
-  // የተጠቃሚውን ቀሪ ሂሳብ በሶኬት እናሳውቃለን
   await notifyUserBalanceUpdate(uid);
 
-  // ትራንዛክሽኑን በ PENDING ሁኔታ እንፈጥራለን
   const tx = await Transaction.create({
     userId: uid,
     userName: userName || `User_${uid}`,
@@ -822,7 +817,6 @@ app.post('/api/withdraw-request', async (req, res) => {
     status: 'PENDING'
   });
 
-  // ወደ አድሚን ግሩፕ የኢንላይን አዝራር (Approve / Reject) ያለው መልዕክት እንልካለን
   if (bot && ADMIN_GROUP_ID) {
     try {
       const keyboard = new InlineKeyboard()
@@ -877,7 +871,6 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- SOCKET GAME TIMER LOOP & LOGIC ---
 setInterval(async () => {
   if (gamePhase === 'selecting') {
     timeLeft--;
@@ -924,7 +917,14 @@ setInterval(async () => {
         winningNumber = 'NONE';
       }
 
-      io.emit('game_result', { 
+      io.io.emit ? io.emit('game_result', { 
+        winningNumber: winNum, 
+        selectedNumbers, 
+        derash: stats.derash, 
+        gameId: currentGameId,
+        winnerName: winnerUser ? winnerUser.userName : null,
+        winnerUserId: winnerUser ? winnerUser.userId : null
+      }) : io.emit('game_result', { 
         winningNumber: winNum, 
         selectedNumbers, 
         derash: stats.derash, 
@@ -987,6 +987,7 @@ io.on('connection', async (socket) => {
     totalRegisteredFormatted: formatUserCount(registeredCount)
   });
 
+  // --- የተስተካከለው የቁጥር መረጣ (Atomic & Safe Deduction) ሎጂክ ---
   socket.on('select_number', async (data) => {
     if (gamePhase !== 'selecting') return;
     const { numberChosen, userId, userName } = data;
@@ -1009,7 +1010,7 @@ io.on('connection', async (socket) => {
       return;
     }
 
-    let updatedUser;
+    let updatedUser = null;
     if (userDoc.playWallet >= STAKE) {
       updatedUser = await User.findOneAndUpdate(
         { userId: uid, playWallet: { $gte: STAKE } },
@@ -1019,14 +1020,14 @@ io.on('connection', async (socket) => {
     } else {
       const remaining = STAKE - userDoc.playWallet;
       updatedUser = await User.findOneAndUpdate(
-        { userId: uid, mainWallet: { $gte: remaining } },
-        { playWallet: 0, $inc: { mainWallet: -remaining } },
+        { userId: uid, playWallet: 0, mainWallet: { $gte: remaining } },
+        { $inc: { mainWallet: -remaining } },
         { new: true }
       );
     }
 
     if (!updatedUser) {
-      socket.emit('error_message', { message: 'ክፍያው አልተሳካም። እባክዎን ድጋሚ ይሞክሩ።' });
+      socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! ክፍያው አልተሳካም።' });
       return;
     }
 

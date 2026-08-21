@@ -219,7 +219,7 @@ export default function App() {
       alert(data.message);
       if (data.success) {
         fetchAdminData();
-        fetchUserData(); // Balance update check after approval
+        fetchUserData();
       }
     } catch (e) {
       alert("ስህተት ተፈጽሟል!");
@@ -534,6 +534,8 @@ export default function App() {
         })
       });
       const data = await res.json();
+      
+      // ትራንዛክሽኑ የተደገመ (Duplicate) ከሆነ ሰርቨሩ የሚመልሰውን መልዕክት እዚህ ያሳያል
       alert(data.message);
       if (data.success) {
         setPastedSMS('');
@@ -548,7 +550,6 @@ export default function App() {
   const handleWithdraw = async () => {
     if (!withAmount || Number(withAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
     
-    // በቂ ሂሳብ እንዳለው ማረጋገጥ
     if (Number(withAmount) > mainWallet) {
       return alert("⚠️ በቂ ዋና ሂሳብ (Main Wallet) የለዎትም!");
     }
@@ -567,7 +568,6 @@ export default function App() {
       const data = await res.json();
       alert(data.message);
       if (data.success) {
-        // ጥያቄው ሲሳካ ቀሪ ሂሳብን ከፍላጎትዎ ጋር እንዲቀንስ (ወይም ሰርቨሩ በሰጠው balance እንዲስተካከል)
         if (data.balance !== undefined) {
           setMainWallet(data.balance);
         } else {
@@ -909,7 +909,8 @@ export default function App() {
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#f59e0b' }}>📥 Deposit (በቴሌብር ብር ማስገቢያ)</h4>
                   <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '10px', lineHeight: '1.4' }}>
                     1. የሚፈልጉትን የብር መጠን ይምረጡ ወይም ያስገቡ።<br />
-                    2. የቴሌብር SMS መልዕክቱን ሙሉ በሙሉ ኮፒ በማድረግ ከታች ባለው ሳጥን ይላኩ።
+                    2. የቴሌብር SMS መልዕክቱን ሙሉ በሙሉ ኮፒ በማድረግ ከታች ባለው ሳጥን ይላኩ።<br />
+                    <strong style={{ color: '#ef4444' }}>ማስታወሻ፦</strong> የተደገመ የትራንዛክሽን ቁጥር ካለ አድሚን ጋር ሳይደርስ በራስ-ሰር ውድቅ ይደረጋል።
                   </div>
 
                   <label style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>የብር መጠን (ETB):</label>
@@ -940,7 +941,7 @@ export default function App() {
                 </div>
 
                 <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '15px' }}>📤 Withdraw (ገንዘብ ማውጫ ጥያቄ)</h4>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '15px' }}>📤 Withdraw (ገንዘብ ማውጣት ጥያቄ)</h4>
                   <input
                     type="number"
                     placeholder="መጠን (ETB)"

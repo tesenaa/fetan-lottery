@@ -414,10 +414,13 @@ Phone: ${TELEBIRR_NUMBER}
 
         const result = await response.json();
 
+        // እዚህ ጋር ባክኤንዱ ትራንዛክሽኑ የተደገመ መሆኑን (Duplicate) ሲያመለክት አድሚኑ ጋር ሳይደርስ እንዲመለስ ተደረገ
         if (response.ok && (result.success || result._id || result.id)) {
           await ctx.reply("✅ ጥያቄዎ ደርሶናል! የላኩት የክፍያ ማረጋገጫ ተመርምሮ በአጭር ጊዜ ውስጥ ሂሳብዎ ላይ ገቢ ይደረጋል።");
         } else {
-          await ctx.reply(`⚠️ ${result.message || 'ማረጋገጫውን መመዝገብ አልተቻለም። እባክዎን እንደገና ይሞክሩ።'}`);
+          // የትራንዛክሽን ቁጥር መደገሙን ወይም ስህተት መኖሩን ከባክኤንድ በመጣው መልዕክት (result.message) ያሳያል
+          const errorMsg = result.message || 'ይህ የትራንዛክሽን ቁጥር ቀደም ሲል ጥቅም ላይ ውሏል ወይም ትክክለኛ አይደለም።';
+          await ctx.reply(`⚠️ ${errorMsg}`);
         }
       } catch (err) {
         console.error('Deposit request API error:', err);
