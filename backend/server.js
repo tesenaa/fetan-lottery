@@ -34,9 +34,12 @@ const userSchema = new mongoose.Schema({
   firstName: { type: String, default: '' },
   username: { type: String, default: '' },
   phone: { type: String, default: '' },
+  phoneBonusReceived: { type: Boolean, default: false },
   mainWallet: { type: Number, default: 0, min: 0 },
   playWallet: { type: Number, default: 0, min: 0 },
   totalInvite: { type: Number, default: 0 },
+  invitedCount: { type: Number, default: 0 }, // ትክክለኛ የተጋበዙ ሰዎች ብዛት
+  hasReceivedInviteBonus: { type: Boolean, default: false }, // 20 ሰው ሞልቶ የ100 ብር ቦነስ መወሰዱን ማረጋገጫ
   gamesWon: { type: Number, default: 0 },
   totalGames: { type: Number, default: 0 },
   isBanned: { type: Boolean, default: false }
@@ -200,18 +203,39 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
   let dbUser = await User.findOne({ userId: uid });
   
   if (!dbUser) {
+    const isPhoneProvided = Boolean(phone);
     dbUser = await User.create({
       userId: uid,
       firstName: firstName || '',
       username: username || '',
       phone: phone || '',
+      phoneBonusReceived: isPhoneProvided,
       mainWallet: 0,
-      playWallet: 0,
+      playWallet: isPhoneProvided ? 10 : 0,
       totalInvite: 0,
+      invitedCount: 0,
+      hasReceivedInviteBonus: false,
       gamesWon: 0,
       totalGames: 0,
       isBanned: false
     });
+
+    if (isPhoneProvided && bot) {
+      try {
+        await bot.api.sendMessage(uid, `🎉 *እንኳን ደስ አለዎት!*\n\nስልክ ቁጥርዎን ስላጋሩ *10 ETB* ቦነስ በ Play Walletዎ ላይ ተጨምሯል!`, { parse_mode: 'Markdown' });
+      } catch (err) {}
+    }
+  } else if (phone && !dbUser.phoneBonusReceived) {
+    dbUser.phone = phone;
+    dbUser.playWallet += 10;
+    dbUser.phoneBonusReceived = true;
+    await dbUser.save();
+
+    if (bot) {
+      try {
+        await bot.api.sendMessage(uid, `🎉 *እንኳን ደስ አለዎት!*\n\nስልክ ቁጥርዎን ስላጋሩ *10 ETB* ቦነስ በ Play Walletዎ ላይ ተጨምሯል!`, { parse_mode: 'Markdown' });
+      } catch (err) {}
+    }
   } else if (phone && !dbUser.phone) {
     dbUser.phone = phone;
     await dbUser.save();
@@ -760,25 +784,47 @@ app.post('/api/user/register', async (req, res) => {
 
   const user = await getOrInitUser(uid, firstName, username, phone);
 
+  // አዲስ ተጠቃሚ ሆኖ በሪፈራል ሲገባ እና ራሱን ራሱ እንዳጋበዘ ካልተደረገ
   if (isNewUser && referrerId && String(referrerId) !== uid) {
     const refUid = String(referrerId);
     const refUser = await getOrInitUser(refUid);
+    
     if (refUser) {
-      await User.updateOne(
-        { userId: refUid },
-        { $inc: { totalInvite: 1, playWallet: 10 } }
-      );
-      await notifyUserBalanceUpdate(refUid);
+      // totalInvite በ 1 ይጨምራል (ለስታቲስቲክስ)
+      refUser.totalInvite += 1;
+      
+      // invitedCount በ 1 ይጨምራል (ለቦነስ ቆጠራ)
+      refUser.invitedCount += 1;
 
-      if (bot) {
-        try {
-          await bot.api.sendMessage(
-            refUid,
-            `🎉 *እንኳን ደስ አለዎት!*\n\n${firstName || 'አዲስ አባል'} የእርስዎን መጋበዣ ሊንክ ተጠቅሞ ስለገባ *10 ETB* ቦነስ በ Play Walletዎ ላይ ተጨምሯል!`,
-            { parse_mode: 'Markdown' }
-          );
-        } catch (err) {}
+      // 20 ሰው ሲሞላ እና ገና ቦነሱን ያልወሰደ ከሆነ (1 ሰው = 5 ብር ስለሆነ 20 * 5 = 100 ብር)
+      if (refUser.invitedCount >= 20 && !refUser.hasReceivedInviteBonus) {
+        refUser.mainWallet += 100; // 20 ሰው ሲሞላ 100 ብር ወደ ዋናው ዋሌታ ይገባል
+        refUser.hasReceivedInviteBonus = true; // ሁለተኛ እንዳይወስድ ይዘጋል
+
+        if (bot) {
+          try {
+            await bot.api.sendMessage(
+              refUid,
+              `🎉 *እንኳን ደስ አለዎት!*\n\n20 ሰዎችን በመጋበዝዎ *100 ETB* ቦነስ (በእያንዳንዱ ሰው 5 ETB) ወደ ዋናው ዋሌታዎ (Main Wallet) ገቢ ሆኗል!`,
+              { parse_mode: 'Markdown' }
+            );
+          } catch (err) {}
+        }
+      } else {
+        // 20 ካልሞላ በቴሌግራም ማሳወቂያ ብቻ ማሳየት ይቻላል (ከተፈለገ)
+        if (bot) {
+          try {
+            await bot.api.sendMessage(
+              refUid,
+              `👤 *አዲስ ሰው ተጋብዟል!*\n\n${firstName || 'አዲስ አባል'} ሊንክዎን ተጠቅሞ ገብቷል። (ጠቅላላ የተጋበዙ: ${refUser.invitedCount}/20)`,
+              { parse_mode: 'Markdown' }
+            );
+          } catch (err) {}
+        }
       }
+
+      await refUser.save();
+      await notifyUserBalanceUpdate(refUid);
     }
   }
 
@@ -825,7 +871,7 @@ app.post('/api/withdraw-request', async (req, res) => {
         `📤 *አዲስ የወጪ (Withdrawal) ጥያቄ*\n\n` +
         `• *User:* @${updatedUser.username || 'N/A'} (ID: \`${uid}\`)\n` +
         `• *Amount:* ${subAmount} ETB\n` +
-        `• *Phone:* \`${phone || updatedUser.phone || 'N/A'}\``;
+        `• *Phone:* ${phone || updatedUser.phone || 'N/A'}`;
 
       const sentMsg = await bot.api.sendMessage(ADMIN_GROUP_ID, msgText, {
         parse_mode: 'Markdown',
@@ -857,6 +903,7 @@ app.get('/api/user', async (req, res) => {
     playWallet: 0,
     gamesWon: 0,
     totalInvite: 0,
+    invitedCount: 0,
     totalGames: 0,
     phone: "",
     isBanned: false,
@@ -915,7 +962,6 @@ setInterval(async () => {
         winningNumber = 'NONE';
       }
 
-      // --- የተስተካከለው የ Socket Event መላኪያ ---
       io.emit('game_result', { 
         winningNumber: winNum, 
         selectedNumbers, 
@@ -981,11 +1027,25 @@ io.on('connection', async (socket) => {
 
   socket.on('select_number', async (data) => {
     if (gamePhase !== 'selecting') return;
-    const { numberChosen, userId, userName } = data;
+    const { numbersChosen, numberChosen, userId, userName } = data;
     const uid = String(userId);
 
-    const exists = selectedNumbers.some(n => Number(n.number) === Number(numberChosen));
-    if (exists) return;
+    let chosenList = [];
+    if (Array.isArray(numbersChosen)) {
+      chosenList = numbersChosen;
+    } else if (numberChosen !== undefined) {
+      chosenList = [numberChosen];
+    } else {
+      return;
+    }
+
+    if (chosenList.length === 0) return;
+
+    const uniqueNewNumbers = chosenList.filter(num => 
+      !selectedNumbers.some(n => Number(n.number) === Number(num))
+    );
+
+    if (uniqueNewNumbers.length === 0) return;
 
     const userDoc = await User.findOne({ userId: uid });
     if (!userDoc || userDoc.isBanned) {
@@ -994,25 +1054,26 @@ io.on('connection', async (socket) => {
     }
 
     const settings = await getSettings();
-    const STAKE = settings.ticketPrice;
+    const STAKE_PER_TICKET = settings.ticketPrice;
+    const TOTAL_COST = STAKE_PER_TICKET * uniqueNewNumbers.length;
 
-    if ((userDoc.mainWallet + userDoc.playWallet) < STAKE) {
+    if ((userDoc.mainWallet + userDoc.playWallet) < TOTAL_COST) {
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን አስቀድመው ሂሳብዎን ይሙሉ::' });
       return;
     }
 
     let updatedUser = null;
-    if (userDoc.playWallet >= STAKE) {
+    if (userDoc.playWallet >= TOTAL_COST) {
       updatedUser = await User.findOneAndUpdate(
-        { userId: uid, playWallet: { $gte: STAKE } },
-        { $inc: { playWallet: -STAKE } },
+        { userId: uid, playWallet: { $gte: TOTAL_COST } },
+        { $inc: { playWallet: -TOTAL_COST } },
         { new: true }
       );
     } else {
-      const remaining = STAKE - userDoc.playWallet;
+      const remainingFromMain = TOTAL_COST - userDoc.playWallet;
       updatedUser = await User.findOneAndUpdate(
-        { userId: uid, playWallet: 0, mainWallet: { $gte: remaining } },
-        { $inc: { mainWallet: -remaining } },
+        { userId: uid, playWallet: userDoc.playWallet, mainWallet: { $gte: remainingFromMain } },
+        { $set: { playWallet: 0 }, $inc: { mainWallet: -remainingFromMain } },
         { new: true }
       );
     }
@@ -1022,10 +1083,12 @@ io.on('connection', async (socket) => {
       return;
     }
 
-    selectedNumbers.push({
-      number: Number(numberChosen),
-      userId: uid,
-      userName: userName || `ተጫዋች_${uid}`
+    uniqueNewNumbers.forEach(num => {
+      selectedNumbers.push({
+        number: Number(num),
+        userId: uid,
+        userName: userName || `ተጫዋች_${uid}`
+      });
     });
 
     const s = await getGameStats();
