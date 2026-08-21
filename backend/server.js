@@ -448,8 +448,6 @@ const handleDepositRequest = async (req, res) => {
       });
     }
 
-    // --- የትራንዛክሽን ቁጥር መደገሙን ማረጋገጫ (Duplicate Check) ---
-    // ከዚህ በፊት በPENDING ወይም APPROVED (እንዲሁም በREJECTED ጭምር እንዲጠብቅ ከፈለጉ ማካተት ይቻላል) የገባበትን እንፈትሻለን
     const duplicateTxn = await Deposit.findOne({ 
       transactionId: txnId, 
       status: { $in: ['PENDING', 'APPROVED'] } 
@@ -917,14 +915,8 @@ setInterval(async () => {
         winningNumber = 'NONE';
       }
 
-      io.io.emit ? io.emit('game_result', { 
-        winningNumber: winNum, 
-        selectedNumbers, 
-        derash: stats.derash, 
-        gameId: currentGameId,
-        winnerName: winnerUser ? winnerUser.userName : null,
-        winnerUserId: winnerUser ? winnerUser.userId : null
-      }) : io.emit('game_result', { 
+      // እዚህ ላይ የነበረው io.io.emit ስህተት ተስተካክሏል
+      io.emit('game_result', { 
         winningNumber: winNum, 
         selectedNumbers, 
         derash: stats.derash, 
@@ -987,7 +979,6 @@ io.on('connection', async (socket) => {
     totalRegisteredFormatted: formatUserCount(registeredCount)
   });
 
-  // --- የተስተካከለው የቁጥር መረጣ (Atomic & Safe Deduction) ሎጂክ ---
   socket.on('select_number', async (data) => {
     if (gamePhase !== 'selecting') return;
     const { numberChosen, userId, userName } = data;
