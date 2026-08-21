@@ -487,9 +487,12 @@ export default function App() {
     };
   }, [socket, userId, updateBoardStats, fetchUserData, fetchAdminData, isAdmin]);
 
+  // የተስተካከለው የቁጥር ምርጫ ሎጂክ (በቂ ብር ከሌለ መምረጥ እንዳይቻል በትክክል ይቆጣጠራል)
   const toggleNumber = useCallback((num) => {
     if (phase !== 'selecting') return;
     if (isBanned) return alert("አካውንትዎ የታገደ ስለሆነ መጫወት አይችሉም!");
+
+    const totalAvailableBalance = mainWallet + playWallet;
 
     if (myPickedSet.has(num)) {
       setSelectedNumbers(prev => prev.filter(n => n !== num));
@@ -497,12 +500,8 @@ export default function App() {
       setMainWallet(prev => prev + stake);
       socket.emit('deselect_number', { numberChosen: num, userId });
     } else {
-      // የተስተካከለ የሂሳብ ማረጋገጫ (Balance & Total Cost Validation)
-      const totalAvailableBalance = mainWallet + playWallet;
-      const requiredBalance = (selectedNumbers.length + 1) * stake;
-
-      if (totalAvailableBalance < requiredBalance) {
-        alert("⚠️ የእርስዎ ቀሪ ሂሳብ በቂ አይደለም! እባክዎን አስቀድመው ገንዘብ ያስገቡ ✨");
+      if (totalAvailableBalance < stake) {
+        alert("⚠️ የእርስዎ ቀሪ ሂሳብ በቂ አይደለም! በቂ ሂሳብ የለዎትም (Insufficient Balance) ✨");
         return;
       }
 
@@ -518,7 +517,7 @@ export default function App() {
       setAllPickedNumbers(prev => [...prev, num]);
       socket.emit('select_number', { numberChosen: num, userId, userName });
     }
-  }, [phase, isBanned, myPickedSet, mainWallet, playWallet, stake, socket, userId, userName, selectedNumbers.length]);
+  }, [phase, isBanned, myPickedSet, mainWallet, playWallet, stake, socket, userId, userName]);
 
   const handleDeposit = async () => {
     if (!depAmount || Number(depAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
@@ -737,11 +736,14 @@ export default function App() {
                       {visibleNumbers.map((num) => {
                         const isMine = myPickedSet.has(num);
                         const isOthers = allPickedSet.has(num) && !isMine;
+                        const hasEnoughMoney = (mainWallet + playWallet) >= stake;
+                        const isDisabled = phase !== 'selecting' || isBanned || (!hasEnoughMoney && !isMine);
+
                         return (
                           <NumberButton
                             key={num}
                             num={num}
-                            disabled={phase !== 'selecting' || isBanned}
+                            disabled={isDisabled}
                             isMine={isMine}
                             isOthers={isOthers}
                             onClick={() => toggleNumber(num)}
@@ -1408,6 +1410,7 @@ export default function App() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
+              zIndex: 1,
               justify: 'center',
               gap: '4px',
               fontSize: '11px',

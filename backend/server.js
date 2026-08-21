@@ -1035,7 +1035,7 @@ io.on('connection', async (socket) => {
 
     if (chosenList.length === 0) return;
 
-    // ቀድሞ የተመረጡትን ቁጥሮች ከዚህ ጨዋታ ማጣራት
+    // ቀድሞ የተመረጡትን ቁጥሮች ማጣራት
     const uniqueNewNumbers = chosenList.filter(num => 
       !selectedNumbers.some(n => Number(n.number) === Number(num))
     );
@@ -1052,7 +1052,7 @@ io.on('connection', async (socket) => {
     const STAKE_PER_TICKET = settings.ticketPrice;
     const TOTAL_COST = STAKE_PER_TICKET * uniqueNewNumbers.length;
 
-    // **ስተካከል 1: በቂ ሂሳብ (playWallet + mainWallet) መኖሩን ማረጋገጥ**
+    // 1. መጀመሪያ በቂ ሂሳብ (mainWallet + playWallet) መኖሩን ማረጋገጥ
     if ((userDoc.mainWallet + userDoc.playWallet) < TOTAL_COST) {
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን ሂሳብዎን ይሙሉ::' });
       return;
@@ -1060,7 +1060,7 @@ io.on('connection', async (socket) => {
 
     let updatedUser = null;
     
-    // **ስተካከል 2: ሂሳቡ ከ playWallet እና ከ mainWallet በትክክል መቀነሱን ማረጋገጥ**
+    // 2. ከ playWallet እና mainWallet ላይ ገንዘቡን በአቶሚክ (Atomic) መንገድ መቀነስ
     if (userDoc.playWallet >= TOTAL_COST) {
       updatedUser = await User.findOneAndUpdate(
         { userId: uid, playWallet: { $gte: TOTAL_COST } },
@@ -1076,11 +1076,13 @@ io.on('connection', async (socket) => {
       );
     }
 
+    // ከላይ ያለው የማሻሻያ ትዕዛዝ ካልተሳካ (ገንዘቡ በቂ ካልሆነ) ጨዋታውን ማቋረጥ
     if (!updatedUser) {
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! ክፍያው አልተሳካም።' });
       return;
     }
 
+    // 3. ሂሳቡ በትክክል ከተቀነሰ በኋላ ብቻ ቁጥሮቹን ወደ ጨዋታው ሰሌዳ መጨመር
     uniqueNewNumbers.forEach(num => {
       selectedNumbers.push({
         number: Number(num),
@@ -1106,7 +1108,7 @@ io.on('connection', async (socket) => {
       const updatedUser = await User.findOneAndUpdate(
         { userId: uid },
         { $inc: { mainWallet: settings.ticketPrice } },
-        { new: true }
+        { new: `true` }
       );
 
       const s = await getGameStats();
