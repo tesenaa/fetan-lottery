@@ -192,14 +192,14 @@ async function getGameStats() {
   const totalCollected = selectedNumbers.length * stake;
   const derash = Math.floor(totalCollected * winnerPct);
   const houseProfit = totalCollected - derash;
- 
+  
   return { totalPlayers: uniquePlayers, totalCollected, derash, houseProfit, stake };
 }
 
 async function getOrInitUser(userId, firstName = '', username = '', phone = '') {
   const uid = String(userId);
   let dbUser = await User.findOne({ userId: uid });
- 
+  
   if (!dbUser) {
     dbUser = await User.create({
       userId: uid,
@@ -238,6 +238,21 @@ async function updateDailyStats(depositAmount = 0, withdrawalAmount = 0, housePr
   );
 }
 
+// Helper to notify active socket connection when balance changes
+async function notifyUserBalanceUpdate(targetUid) {
+  const updatedUser = await User.findOne({ userId: targetUid });
+  if (!updatedUser) return;
+
+  for (let [socketId, userId] of activeUsersMap.entries()) {
+    if (userId === targetUid) {
+      io.to(socketId).emit('balance_updated', {
+        balance: updatedUser.mainWallet,
+        playWallet: updatedUser.playWallet
+      });
+    }
+  }
+}
+
 // --- TELEGRAM BOT INLINE BUTTON ACTION HANDLERS ---
 if (bot) {
   bot.callbackQuery(/^(dep_approve|dep_reject):(.+)$/, async (ctx) => {
@@ -269,6 +284,7 @@ if (bot) {
         );
 
         await updateDailyStats(deposit.amount, 0, 0, 0);
+        await notifyUserBalanceUpdate(targetUid); // Send Realtime Balance to Frontend
 
         try {
           await bot.api.sendMessage(
@@ -493,6 +509,8 @@ app.post('/api/admin/update-balance', checkAdminAuth, async (req, res) => {
       { $set: { mainWallet: Math.max(0, Number(mainWallet)), playWallet: Math.max(0, Number(playWallet)) } },
       { new: true }
     );
+
+    await notifyUserBalanceUpdate(String(targetUserId));
     res.json({ success: true, user: updatedUser });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -525,6 +543,7 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
 
       if (action === 'REJECTED') {
         await User.updateOne({ userId: String(tx.userId) }, { $inc: { mainWallet: tx.amount } });
+        await notifyUserBalanceUpdate(String(tx.userId));
       } else if (action === 'APPROVED') {
         await updateDailyStats(0, tx.amount, 0, 0);
       }
@@ -542,6 +561,7 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
       if (action === 'APPROVED') {
         await User.updateOne({ userId: String(deposit.userId) }, { $inc: { mainWallet: deposit.amount } });
         await updateDailyStats(deposit.amount, 0, 0, 0);
+        await notifyUserBalanceUpdate(String(deposit.userId));
       }
 
       return res.json({ success: true, deposit, message: `የገቢ ትራንዛክሽኑ ${action} ሆኗል!` });
@@ -672,6 +692,7 @@ app.post('/api/user/register', async (req, res) => {
         { userId: refUid },
         { $inc: { totalInvite: 1, playWallet: 10 } }
       );
+      await notifyUserBalanceUpdate(refUid);
 
       if (bot) {
         try {
@@ -702,6 +723,8 @@ app.post('/api/withdraw-request', async (req, res) => {
   if (!updatedUser) {
     return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም ወይም አካውንትዎ የታገደ ነው!" });
   }
+
+  await notifyUserBalanceUpdate(uid);
 
   await Transaction.create({
     userId: uid,
@@ -767,6 +790,8 @@ setInterval(async () => {
 
         if (winItem) {
           await User.updateOne({ userId: String(winItem.userId) }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
+          await notifyUserBalanceUpdate(String(winItem.userId));
+
           await GameHistory.create({
             gameId: currentGameId,
             winningNumber: winNum,

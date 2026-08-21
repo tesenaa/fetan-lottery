@@ -387,8 +387,9 @@ export default function App() {
 
     socket.on('error_message', (data) => alert(data.message));
 
+    // አድሚኑ አፕሩቭ ሲያደርግ የቀሪ ሂሳብ ማሻሻያ Event
     socket.on('balance_updated', (data) => {
-      setMainWallet(data.balance);
+      if (data.balance !== undefined) setMainWallet(data.balance);
       if (data.playWallet !== undefined) setPlayWallet(data.playWallet);
     });
 
