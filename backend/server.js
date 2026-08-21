@@ -255,31 +255,34 @@ if (bot) {
         return ctx.answerCallbackQuery({ text: `⚠️ ይህ ጥያቄ አስቀድሞ ${deposit.status} ሆኗል!`, show_alert: true });
       }
 
-      const user = await User.findOne({ userId: deposit.userId });
+      const targetUid = String(deposit.userId);
 
       if (action === 'dep_approve') {
         deposit.status = 'APPROVED';
         deposit.processedBy = adminTgId;
         await deposit.save();
 
-        if (user) {
-          user.mainWallet += deposit.amount;
-          await user.save();
-        }
+        // Main Wallet balance ማስተካከያ
+        await User.updateOne(
+          { userId: targetUid },
+          { $inc: { mainWallet: deposit.amount } }
+        );
 
         await updateDailyStats(deposit.amount, 0, 0, 0);
 
         try {
           await bot.api.sendMessage(
-            deposit.userId,
+            targetUid,
             `✅ *ክፍያዎ ተረጋግጧል!*\n\n💰 *${deposit.amount} ETB* ወደ አካውንትዎ ገቢ ሆኗል።`,
             { parse_mode: 'Markdown' }
           );
         } catch (e) {}
 
+        const user = await User.findOne({ userId: targetUid });
+
         await ctx.editMessageText(
           `📥 *የዴፖዚት ጥያቄ (✅ Approved by Admin: ${adminTgId})*\n\n` +
-          `• *User:* @${user?.username || 'N/A'} (ID: \`${deposit.userId}\`)\n` +
+          `• *User:* @${user?.username || 'N/A'} (ID: \`${targetUid}\`)\n` +
           `• *Amount:* ${deposit.amount} ETB\n` +
           `• *Txn ID:* \`${deposit.transactionId || 'N/A'}\`\n` +
           `• *Pasted SMS:*\n\`${deposit.pastedText}\``,
@@ -295,15 +298,17 @@ if (bot) {
 
         try {
           await bot.api.sendMessage(
-            deposit.userId,
+            targetUid,
             `❌ *የተላከው የክፍያ ማረጋገጫ ውድቅ ተደርጓል!*`,
             { parse_mode: 'Markdown' }
           );
         } catch (e) {}
 
+        const user = await User.findOne({ userId: targetUid });
+
         await ctx.editMessageText(
           `📥 *የዴፖዚት ጥያቄ (❌ Rejected by Admin: ${adminTgId})*\n\n` +
-          `• *User:* @${user?.username || 'N/A'} (ID: \`${deposit.userId}\`)\n` +
+          `• *User:* @${user?.username || 'N/A'} (ID: \`${targetUid}\`)\n` +
           `• *Amount:* ${deposit.amount} ETB\n` +
           `• *Txn ID:* \`${deposit.transactionId || 'N/A'}\`\n` +
           `• *Pasted SMS:*\n\`${deposit.pastedText}\``,
@@ -406,7 +411,6 @@ const handleDepositRequest = async (req, res) => {
   }
 };
 
-// ሁለቱንም Endpoints ማስተናገድ እንዲችል ተደርጓል
 app.post('/api/deposit', handleDepositRequest);
 app.post('/api/deposit-request', handleDepositRequest);
 
@@ -520,7 +524,7 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
       await tx.save();
 
       if (action === 'REJECTED') {
-        await User.updateOne({ userId: tx.userId }, { $inc: { mainWallet: tx.amount } });
+        await User.updateOne({ userId: String(tx.userId) }, { $inc: { mainWallet: tx.amount } });
       } else if (action === 'APPROVED') {
         await updateDailyStats(0, tx.amount, 0, 0);
       }
@@ -536,7 +540,7 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
       await deposit.save();
 
       if (action === 'APPROVED') {
-        await User.updateOne({ userId: deposit.userId }, { $inc: { mainWallet: deposit.amount } });
+        await User.updateOne({ userId: String(deposit.userId) }, { $inc: { mainWallet: deposit.amount } });
         await updateDailyStats(deposit.amount, 0, 0, 0);
       }
 
@@ -762,11 +766,11 @@ setInterval(async () => {
         const winItem = selectedNumbers.find(n => Number(n.number) === Number(winNum));
 
         if (winItem) {
-          await User.updateOne({ userId: winItem.userId }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
+          await User.updateOne({ userId: String(winItem.userId) }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
           await GameHistory.create({
             gameId: currentGameId,
             winningNumber: winNum,
-            winnerUserId: winItem.userId,
+            winnerUserId: String(winItem.userId),
             winnerName: winItem.userName,
             totalCollected: stats.totalCollected,
             derash: stats.derash,

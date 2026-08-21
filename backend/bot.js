@@ -124,7 +124,7 @@ if (bot) {
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
       if (res.ok) {
         const data = await res.json();
-        phone = data.phone || phone;
+        phone = data.phone || "አልተመዘገበም";
         mainWallet = data.mainWallet || 0;
         playWallet = data.playWallet || 0.0;
         coin = data.coin || 0;
@@ -399,7 +399,6 @@ Phone: ${TELEBIRR_NUMBER}
       const userName = ctx.from?.first_name || `User_${userId}`;
 
       try {
-        // ወደ አድሚን ፓነል እንዲደርስ የ API route ወደ /api/deposit ተቀይሯል
         const response = await fetch(`${API_BASE_URL}/api/deposit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -428,9 +427,16 @@ Phone: ${TELEBIRR_NUMBER}
     }
   });
 
+  // 7. Error Handler (ከ bot.start በፊት መቀመጥ አለበት)
   bot.catch((err) => {
     console.error('Telegram Bot Error:', err);
   });
+
+  // 8. Bot Starter (Development/Local ላይ ብቻ እንዲነሳ)
+  if (process.env.NODE_ENV !== 'production') {
+    bot.start(); // Local/Development ላይ ብቻ
+  }
+
 } else {
   console.log('TELEGRAM_BOT_TOKEN አልተዋቀረም፤ ቦቱ ሳይነሳ አገልጋዩ ብቻ ይሰራል።');
 }
