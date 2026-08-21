@@ -839,7 +839,7 @@ app.post('/api/withdraw-request', async (req, res) => {
     }
   }
 
-  res.json({ success: true, balance: updatedUser.mainWallet, message: "የወጪ ጥያቄዎ ተልኳል! አድሚኑ እስኪያጸድቀው ይታገሱ።" });
+  res.json({ success: true, balance: updatedUser.mainWallet, message: "የወጪ ጥያቄዎ ተልቋል! አድሚኑ እስኪያጸድቀው ይታገሱ።" });
 });
 
 app.get('/api/user', async (req, res) => {
@@ -915,7 +915,7 @@ setInterval(async () => {
         winningNumber = 'NONE';
       }
 
-      // እዚህ ላይ የነበረው io.io.emit ስህተት ተስተካክሏል
+      // --- የተስተካከለው የ Socket Event መላኪያ ---
       io.emit('game_result', { 
         winningNumber: winNum, 
         selectedNumbers, 
