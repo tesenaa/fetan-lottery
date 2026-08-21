@@ -497,8 +497,11 @@ export default function App() {
       setMainWallet(prev => prev + stake);
       socket.emit('deselect_number', { numberChosen: num, userId });
     } else {
+      // የተስተካከለ የሂሳብ ማረጋገጫ (Balance & Total Cost Validation)
       const totalAvailableBalance = mainWallet + playWallet;
-      if (totalAvailableBalance < stake) {
+      const requiredBalance = (selectedNumbers.length + 1) * stake;
+
+      if (totalAvailableBalance < requiredBalance) {
         alert("⚠️ የእርስዎ ቀሪ ሂሳብ በቂ አይደለም! እባክዎን አስቀድመው ገንዘብ ያስገቡ ✨");
         return;
       }
@@ -515,7 +518,7 @@ export default function App() {
       setAllPickedNumbers(prev => [...prev, num]);
       socket.emit('select_number', { numberChosen: num, userId, userName });
     }
-  }, [phase, isBanned, myPickedSet, mainWallet, playWallet, stake, socket, userId, userName]);
+  }, [phase, isBanned, myPickedSet, mainWallet, playWallet, stake, socket, userId, userName, selectedNumbers.length]);
 
   const handleDeposit = async () => {
     if (!depAmount || Number(depAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
@@ -535,7 +538,6 @@ export default function App() {
       });
       const data = await res.json();
       
-      // ትራንዛክሽኑ የተደገመ (Duplicate) ከሆነ ሰርቨሩ የሚመልሰውን መልዕክት እዚህ ያሳያል
       alert(data.message);
       if (data.success) {
         setPastedSMS('');
