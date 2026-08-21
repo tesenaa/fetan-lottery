@@ -38,8 +38,8 @@ const userSchema = new mongoose.Schema({
   mainWallet: { type: Number, default: 0, min: 0 },
   playWallet: { type: Number, default: 0, min: 0 },
   totalInvite: { type: Number, default: 0 },
-  invitedCount: { type: Number, default: 0 }, // ትክክለኛ የተጋበዙ ሰዎች ብዛት
-  hasReceivedInviteBonus: { type: Boolean, default: false }, // 20 ሰው ሞልቶ የ100 ብር ቦነስ መወሰዱን ማረጋገጫ
+  invitedCount: { type: Number, default: 0 },
+  hasReceivedInviteBonus: { type: Boolean, default: false },
   gamesWon: { type: Number, default: 0 },
   totalGames: { type: Number, default: 0 },
   isBanned: { type: Boolean, default: false }
@@ -784,22 +784,17 @@ app.post('/api/user/register', async (req, res) => {
 
   const user = await getOrInitUser(uid, firstName, username, phone);
 
-  // አዲስ ተጠቃሚ ሆኖ በሪፈራል ሲገባ እና ራሱን ራሱ እንዳጋበዘ ካልተደረገ
   if (isNewUser && referrerId && String(referrerId) !== uid) {
     const refUid = String(referrerId);
     const refUser = await getOrInitUser(refUid);
     
     if (refUser) {
-      // totalInvite በ 1 ይጨምራል (ለስታቲስቲክስ)
       refUser.totalInvite += 1;
-      
-      // invitedCount በ 1 ይጨምራል (ለቦነስ ቆጠራ)
       refUser.invitedCount += 1;
 
-      // 20 ሰው ሲሞላ እና ገና ቦነሱን ያልወሰደ ከሆነ (1 ሰው = 5 ብር ስለሆነ 20 * 5 = 100 ብር)
       if (refUser.invitedCount >= 20 && !refUser.hasReceivedInviteBonus) {
-        refUser.mainWallet += 100; // 20 ሰው ሲሞላ 100 ብር ወደ ዋናው ዋሌታ ይገባል
-        refUser.hasReceivedInviteBonus = true; // ሁለተኛ እንዳይወስድ ይዘጋል
+        refUser.mainWallet += 100;
+        refUser.hasReceivedInviteBonus = true;
 
         if (bot) {
           try {
@@ -811,7 +806,6 @@ app.post('/api/user/register', async (req, res) => {
           } catch (err) {}
         }
       } else {
-        // 20 ካልሞላ በቴሌግራም ማሳወቂያ ብቻ ማሳየት ይቻላል (ከተፈለገ)
         if (bot) {
           try {
             await bot.api.sendMessage(
@@ -1041,6 +1035,7 @@ io.on('connection', async (socket) => {
 
     if (chosenList.length === 0) return;
 
+    // ቀድሞ የተመረጡትን ቁጥሮች ከዚህ ጨዋታ ማጣራት
     const uniqueNewNumbers = chosenList.filter(num => 
       !selectedNumbers.some(n => Number(n.number) === Number(num))
     );
@@ -1057,12 +1052,15 @@ io.on('connection', async (socket) => {
     const STAKE_PER_TICKET = settings.ticketPrice;
     const TOTAL_COST = STAKE_PER_TICKET * uniqueNewNumbers.length;
 
+    // **ስተካከል 1: በቂ ሂሳብ (playWallet + mainWallet) መኖሩን ማረጋገጥ**
     if ((userDoc.mainWallet + userDoc.playWallet) < TOTAL_COST) {
-      socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን አስቀድመው ሂሳብዎን ይሙሉ::' });
+      socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን ሂሳብዎን ይሙሉ::' });
       return;
     }
 
     let updatedUser = null;
+    
+    // **ስተካከል 2: ሂሳቡ ከ playWallet እና ከ mainWallet በትክክል መቀነሱን ማረጋገጥ**
     if (userDoc.playWallet >= TOTAL_COST) {
       updatedUser = await User.findOneAndUpdate(
         { userId: uid, playWallet: { $gte: TOTAL_COST } },
