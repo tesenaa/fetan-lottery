@@ -15,18 +15,17 @@ export const bot = botToken ? new Bot(botToken) : null;
 const userStates = {};
 
 if (bot) {
-  // 1. "≡ Menu" በተን ማዘጋጀት
+  // 1. Bot Commands Menu ማዘጋጀት (ለምሳሌ /menu እና /start)
   bot.api.setMyCommands([
-    { command: "start", description: "ዋና ሜኑን ለመክፈት" },
+    { command: "start", description: "ቦቱን ለመጀመር" },
+    { command: "menu", description: "ዋና ሜኑውን ለማየት" },
     { command: "help", description: "እርዳታ ለማግኘት" }
   ]).catch(err => console.error('Menu setup error:', err));
 
-  // 2. Chat Menu Button ቀጥታ Web App እንዲከፍት ማድረግ
+  // 2. Chat Menu Button (ከግራ በኩል የሚታየውን ዋና ቁልፍ 'Menu ☰' ማድረግ)
   bot.api.setChatMenuButton({
     menu_button: {
-      type: 'web_app',
-      text: 'Play 🎮',
-      web_app: { url: WEB_APP_URL }
+      type: 'commands' // ወደ Commands Menu እንዲቀየር ያደርጋል
     }
   }).catch(err => console.error('ChatMenuButton error:', err));
 
@@ -37,6 +36,21 @@ if (bot) {
     .text('Contact Support ☎️', 'support').text('Instruction 📖', 'instruction').row()
     .text('Transfer 🎁', 'transfer').text('Withdraw 🤑', 'withdraw').row()
     .text('Invite 🔗', 'invite').text('Convert Bonus 💱', 'convert');
+
+  // የሜኑ መልእክቱን የሚልክ የተለመደ ተግባር (Function)
+  const sendMainMenu = async (ctx) => {
+    const captionText = `👋 Welcome to Fetan Lottery! Choose an option below.\n\nእንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወት ይችላሉ።`;
+
+    try {
+      await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
+        caption: captionText,
+        reply_markup: mainInlineMenu
+      });
+    } catch (err) {
+      console.error('Photo send error:', err);
+      await ctx.reply(captionText, { reply_markup: mainInlineMenu });
+    }
+  };
 
   // 4. /start Command
   bot.command('start', async (ctx) => {
@@ -55,20 +69,15 @@ if (bot) {
       console.error('Registration fetch error:', err);
     }
 
-    const captionText = `👋 Welcome to Fetan Lottery! Choose an option below.\n\nእንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወት ይችላሉ።`;
-
-    try {
-      await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
-        caption: captionText,
-        reply_markup: mainInlineMenu
-      });
-    } catch (err) {
-      console.error('Photo send error:', err);
-      await ctx.reply(captionText, { reply_markup: mainInlineMenu });
-    }
+    await sendMainMenu(ctx);
   });
 
-  // --- 5. INLINE & TEXT BUTTON HANDLERS ---
+  // 5. /menu Command (ሜኑ ሲነካ የሚሰራ)
+  bot.command('menu', async (ctx) => {
+    await sendMainMenu(ctx);
+  });
+
+  // --- 6. INLINE & TEXT BUTTON HANDLERS ---
 
   bot.callbackQuery('play', async (ctx) => {
     await ctx.answerCallbackQuery();
@@ -317,7 +326,7 @@ Phone: ${TELEBIRR_NUMBER}
     await ctx.reply("❌ የዲፖዚት ሂደቱ ተሰርዟል።");
   });
 
-  // --- 6. EVENT LISTENERS ---
+  // --- 7. EVENT LISTENERS ---
 
   bot.on(':contact', async (ctx) => {
     const userId = String(ctx.from?.id);
@@ -363,7 +372,7 @@ Phone: ${TELEBIRR_NUMBER}
     const chatId = ctx.chat.id;
     const text = ctx.message.text;
 
-    if (text.startsWith('/start')) return;
+    if (text.startsWith('/start') || text.startsWith('/menu')) return;
 
     // AWAITING AMOUNT (የዲፖዚት መጠን መቀበያ)
     if (userStates[chatId] && userStates[chatId].step === 'AWAITING_AMOUNT') {
@@ -412,13 +421,11 @@ Phone: ${TELEBIRR_NUMBER}
           })
         });
 
-        const result = await response.json();
+        const result = response.ok ? await response.json() : {};
 
-        // እዚህ ጋር ባክኤንዱ ትራንዛክሽኑ የተደገመ መሆኑን (Duplicate) ሲያመለክት አድሚኑ ጋር ሳይደርስ እንዲመለስ ተደረገ
         if (response.ok && (result.success || result._id || result.id)) {
           await ctx.reply("✅ ጥያቄዎ ደርሶናል! የላኩት የክፍያ ማረጋገጫ ተመርምሮ በአጭር ጊዜ ውስጥ ሂሳብዎ ላይ ገቢ ይደረጋል።");
         } else {
-          // የትራንዛክሽን ቁጥር መደገሙን ወይም ስህተት መኖሩን ከባክኤንድ በመጣው መልዕክት (result.message) ያሳያል
           const errorMsg = result.message || 'ይህ የትራንዛክሽን ቁጥር ቀደም ሲል ጥቅም ላይ ውሏል ወይም ትክክለኛ አይደለም።';
           await ctx.reply(`⚠️ ${errorMsg}`);
         }
@@ -430,14 +437,14 @@ Phone: ${TELEBIRR_NUMBER}
     }
   });
 
-  // 7. Error Handler (ከ bot.start በፊት መቀመጥ አለበት)
+  // 8. Error Handler
   bot.catch((err) => {
     console.error('Telegram Bot Error:', err);
   });
 
-  // 8. Bot Starter (Development/Local ላይ ብቻ እንዲነሳ)
+  // 9. Bot Starter
   if (process.env.NODE_ENV !== 'production') {
-    bot.start(); // Local/Development ላይ ብቻ
+    bot.start();
   }
 
 } else {
