@@ -487,20 +487,19 @@ export default function App() {
     };
   }, [socket, userId, updateBoardStats, fetchUserData, fetchAdminData, isAdmin]);
 
-  // በቂ ሂሳብ ሳይኖረው ቁጥር ሲጫን ኖቲፊኬሽን እንዲያሳይ የተስተካከለ ሎጂክ
   const toggleNumber = useCallback((num) => {
     if (phase !== 'selecting') return;
     if (isBanned) return alert("አካውንትዎ የታገደ ስለሆነ መጫወት አይችሉም!");
 
-    const totalAvailableBalance = mainWallet + playWallet;
+    const totalAvailableBalance = Number(mainWallet) + Number(playWallet);
 
     if (myPickedSet.has(num)) {
       setSelectedNumbers(prev => prev.filter(n => n !== num));
       setAllPickedNumbers(prev => prev.filter(n => n !== num));
-      setMainWallet(prev => prev + stake);
+      setMainWallet(prev => Number(prev) + Number(stake));
       socket.emit('deselect_number', { numberChosen: num, userId });
     } else {
-      if (totalAvailableBalance < stake) {
+      if (totalAvailableBalance < Number(stake)) {
         const msg = "⚠️ በቂ ሂሳብ የለውም! እባክዎ አካውንትዎ ላይ ገንዘብ ይጫኑ።";
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showAlert) {
           window.Telegram.WebApp.showAlert(msg);
@@ -510,12 +509,12 @@ export default function App() {
         return;
       }
 
-      if (playWallet >= stake) {
-        setPlayWallet(prev => prev - stake);
+      if (Number(playWallet) >= Number(stake)) {
+        setPlayWallet(prev => Number(prev) - Number(stake));
       } else {
-        const remainingStake = stake - playWallet;
+        const remainingStake = Number(stake) - Number(playWallet);
         setPlayWallet(0);
-        setMainWallet(prev => prev - remainingStake);
+        setMainWallet(prev => Number(prev) - Number(remainingStake));
       }
 
       setSelectedNumbers(prev => [...prev, num]);
@@ -556,8 +555,15 @@ export default function App() {
   const handleWithdraw = async () => {
     if (!withAmount || Number(withAmount) <= 0) return alert("እባክዎን ትክክለኛ መጠን ያስገቡ!");
     
-    if (Number(withAmount) > mainWallet) {
-      return alert("⚠️ በቂ ዋና ሂሳብ (Main Wallet) የለዎትም!");
+    // የተስተካከለ የሂሳብ ማረጋገጫ (String ወደ Number በመቀየር)
+    if (Number(withAmount) > Number(mainWallet)) {
+      const msg = "⚠️ በቂ ዋና ሂሳብ (Main Wallet) የለዎትም!";
+      if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showAlert) {
+        window.Telegram.WebApp.showAlert(msg);
+      } else {
+        alert(msg);
+      }
+      return;
     }
 
     try {
@@ -577,7 +583,7 @@ export default function App() {
         if (data.balance !== undefined) {
           setMainWallet(data.balance);
         } else {
-          setMainWallet(prev => prev - Number(withAmount));
+          setMainWallet(prev => Number(prev) - Number(withAmount));
         }
         setWithAmount('');
         fetchUserData();
@@ -741,7 +747,7 @@ export default function App() {
                       {visibleNumbers.map((num) => {
                         const isMine = myPickedSet.has(num);
                         const isOthers = allPickedSet.has(num) && !isMine;
-                        const hasEnoughMoney = (mainWallet + playWallet) >= stake;
+                        const hasEnoughMoney = (Number(mainWallet) + Number(playWallet)) >= Number(stake);
                         const isDisabled = phase !== 'selecting' || isBanned || (!hasEnoughMoney && !isMine);
 
                         return (
@@ -768,7 +774,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justify: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
+                    <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
                       <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}>
                         🎰 የዕጣ ማውጫ
                       </div>
@@ -780,7 +786,7 @@ export default function App() {
                         border: winningNumber === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber !== '?' && winningNumber !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'),
                         display: 'flex',
                         alignItems: 'center',
-                        justify: 'center',
+                        justifyContent: 'center',
                         boxShadow: winningNumber === 'SPINNING' ? '0 0 20px rgba(0, 242, 254, 0.6)' : (winningNumber !== '?' && winningNumber !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'),
                         transition: 'all 0.3s ease',
                         position: 'relative',
@@ -1352,7 +1358,7 @@ export default function App() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justify: 'center',
+              justifyContent: 'center',
               gap: '4px',
               fontSize: '11px',
               fontWeight: '600',
@@ -1438,7 +1444,7 @@ export default function App() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                justify: 'center',
+                justifyContent: 'center',
                 gap: '4px',
                 fontSize: '11px',
                 fontWeight: '600',

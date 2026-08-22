@@ -834,52 +834,71 @@ app.post('/api/withdraw-request', async (req, res) => {
     return res.status(400).json({ success: false, message: "እባክዎን ትክክለኛ መጠን ያስገቡ!" });
   }
 
-  const updatedUser = await User.findOneAndUpdate(
-    { userId: uid, isBanned: false, mainWallet: { $gte: subAmount } },
-    { $inc: { mainWallet: -subAmount } },
-    { new: true }
-  );
+  try {
+    // ተጠቃሚውን ከዳታቤዝ እንፈልጋለን
+    const user = await User.findOne({ userId: uid, isBanned: false });
 
-  if (!updatedUser) {
-    return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም ወይም አካውንትዎ የታገደ ነው!" });
-  }
-
-  await notifyUserBalanceUpdate(uid);
-
-  const tx = await Transaction.create({
-    userId: uid,
-    userName: userName || `User_${uid}`,
-    type: 'withdrawal',
-    amount: subAmount,
-    phone: phone || updatedUser.phone,
-    status: 'PENDING'
-  });
-
-  if (bot && ADMIN_GROUP_ID) {
-    try {
-      const keyboard = new InlineKeyboard()
-        .text('✅ Approve', `wit_approve:${tx._id}`)
-        .text('❌ Reject', `wit_reject:${tx._id}`);
-
-      const msgText =
-        `📤 *አዲስ የወጪ (Withdrawal) ጥያቄ*\n\n` +
-        `• *User:* @${updatedUser.username || 'N/A'} (ID: \`${uid}\`)\n` +
-        `• *Amount:* ${subAmount} ETB\n` +
-        `• *Phone:* ${phone || updatedUser.phone || 'N/A'}`;
-
-      const sentMsg = await bot.api.sendMessage(ADMIN_GROUP_ID, msgText, {
-        parse_mode: 'Markdown',
-        reply_markup: keyboard
-      });
-
-      tx.telegramMessageId = sentMsg.message_id;
-      await tx.save();
-    } catch (err) {
-      console.error('የወጪ አድሚን ኖቲፊኬሽን መላክ አልተቻለም:', err.message);
+    if (!user) {
+      return res.status(400).json({ success: false, message: "አካውንቱ አልተገኘም ወይም የታገደ ነው!" });
     }
-  }
 
-  res.json({ success: true, balance: updatedUser.mainWallet, message: "የወጪ ጥያቄዎ ተልቋል! አድሚኑ እስኪያጸድቀው ይታገሱ።" });
+    // ከዋናው ዋሌታ (mainWallet) ብቻ ወይም ከጠቅላላው ዋሌታ (mainWallet + playWallet) እንዲወጣ መወሰን ይቻላል
+    // አብዛኛውን ጊዜ ውጪ የሚደረገው ከ Main Wallet ስለሆነ ዋናው ዋሌታ ከጠየቁት መጠን ጋር ማወዳደር
+    if (user.mainWallet < subAmount) {
+      return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም! (በ Main Wallet ውስጥ የሚበቃ ገንዘብ የለም)" });
+    }
+
+    // ገንዘቡን ከ Main Wallet መቀነስ
+    const updatedUser = await User.findOneAndUpdate(
+      { userId: uid, isBanned: false, mainWallet: { $gte: subAmount } },
+      { $inc: { mainWallet: -subAmount } },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም ወይም አካውንትዎ የታገደ ነው!" });
+    }
+
+    await notifyUserBalanceUpdate(uid);
+
+    const tx = await Transaction.create({
+      userId: uid,
+      userName: userName || updatedUser.username || `User_${uid}`,
+      type: 'withdrawal',
+      amount: subAmount,
+      phone: phone || updatedUser.phone,
+      status: 'PENDING'
+    });
+
+    if (bot && ADMIN_GROUP_ID) {
+      try {
+        const keyboard = new InlineKeyboard()
+          .text('✅ Approve', `wit_approve:${tx._id}`)
+          .text('❌ Reject', `wit_reject:${tx._id}`);
+
+        const msgText =
+          `📤 *አዲስ የወጪ (Withdrawal) ጥያቄ*\n\n` +
+          `• *User:* @${updatedUser.username || 'N/A'} (ID: \`${uid}\`)\n` +
+          `• *Amount:* ${subAmount} ETB\n` +
+          `• *Phone:* ${phone || updatedUser.phone || 'N/A'}`;
+
+        const sentMsg = await bot.api.sendMessage(ADMIN_GROUP_ID, msgText, {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
+        });
+
+        tx.telegramMessageId = sentMsg.message_id;
+        await tx.save();
+      } catch (err) {
+        console.error('የወጪ አድሚን ኖቲፊኬሽን መላክ አልተቻለም:', err.message);
+      }
+    }
+
+    res.json({ success: true, balance: updatedUser.mainWallet, message: "የወጪ ጥያቄዎ ተልቋል! አድሚኑ እስኪያጸድቀው ይታገሱ።" });
+  } catch (err) {
+    console.error("Withdrawal Error:", err);
+    res.status(500).json({ success: false, message: "የወጪ ጥያቄን በሚያስገባበት ጊዜ ስህተት ተፈጥሯል!" });
+  }
 });
 
 app.get('/api/user', async (req, res) => {
@@ -1035,7 +1054,6 @@ io.on('connection', async (socket) => {
 
     if (chosenList.length === 0) return;
 
-    // ቀድሞ የተመረጡትን ቁጥሮች ማጣራት
     const uniqueNewNumbers = chosenList.filter(num => 
       !selectedNumbers.some(n => Number(n.number) === Number(num))
     );
@@ -1052,7 +1070,6 @@ io.on('connection', async (socket) => {
     const STAKE_PER_TICKET = settings.ticketPrice;
     const TOTAL_COST = STAKE_PER_TICKET * uniqueNewNumbers.length;
 
-    // 1. መጀመሪያ በቂ ሂሳብ (mainWallet + playWallet) መኖሩን ማረጋገጥ
     if ((userDoc.mainWallet + userDoc.playWallet) < TOTAL_COST) {
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን ሂሳብዎን ይሙሉ::' });
       return;
@@ -1060,7 +1077,6 @@ io.on('connection', async (socket) => {
 
     let updatedUser = null;
     
-    // 2. ከ playWallet እና mainWallet ላይ ገንዘቡን በአቶሚክ (Atomic) መንገድ መቀነስ
     if (userDoc.playWallet >= TOTAL_COST) {
       updatedUser = await User.findOneAndUpdate(
         { userId: uid, playWallet: { $gte: TOTAL_COST } },
@@ -1076,13 +1092,11 @@ io.on('connection', async (socket) => {
       );
     }
 
-    // ከላይ ያለው የማሻሻያ ትዕዛዝ ካልተሳካ (ገንዘቡ በቂ ካልሆነ) ጨዋታውን ማቋረጥ
     if (!updatedUser) {
       socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! ክፍያው አልተሳካም።' });
       return;
     }
 
-    // 3. ሂሳቡ በትክክል ከተቀነሰ በኋላ ብቻ ቁጥሮቹን ወደ ጨዋታው ሰሌዳ መጨመር
     uniqueNewNumbers.forEach(num => {
       selectedNumbers.push({
         number: Number(num),
@@ -1108,7 +1122,7 @@ io.on('connection', async (socket) => {
       const updatedUser = await User.findOneAndUpdate(
         { userId: uid },
         { $inc: { mainWallet: settings.ticketPrice } },
-        { new: `true` }
+        { new: true }
       );
 
       const s = await getGameStats();
