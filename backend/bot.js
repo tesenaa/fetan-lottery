@@ -17,15 +17,15 @@ const userStates = {};
 if (bot) {
   // 1. Bot Commands Menu ማዘጋጀት (ልክ እንደ Beteseb Bingo ዝርዝሮች)
   bot.api.setMyCommands([
-    { command: "start", description: "ቦቱን ለመጀመር / Start the bot" },
-    { command: "menu", description: "ዋናውን ሜኑ ለማየት / Main Menu" },
-    { command: "play", description: "ጨዋታውን ለመጫወት / Play Lottery" },
-    { command: "register", description: "አካውንት ለመመዝገብ / Register" },
-    { command: "deposit", description: "ብር ለማስገባት / Deposit Money" },
-    { command: "balance", description: "ቀሪ ሂሳብ ለማየት / Check Balance" },
-    { command: "withdraw", description: "ገንዘብ ለማውጣት / Withdraw Money" },
-    { command: "invite", description: "ጓደኛ ለመጋበዝ / Invite Friends" },
-    { command: "instruction", description: "የጨዋታ መመሪያ / How to Play" }
+    { command: "start", description: "Start" },
+      { command: "register", description: "Register" },
+    { command: "play", description: "Play" },
+
+    { command: "deposit", description: "Deposit" },
+    { command: "balance", description: "Balance" },
+    { command: "withdraw", description: "Withdraw" },
+    { command: "invite", description: "Invite" },
+    { command: "instruction", description: "instruction" }
   ]).catch(err => console.error('Menu setup error:', err));
 
   // 2. Chat Menu Button ቀጥታ Commands እንዲያሳይ ማድረግ
