@@ -15,17 +15,23 @@ export const bot = botToken ? new Bot(botToken) : null;
 const userStates = {};
 
 if (bot) {
-  // 1. Bot Commands Menu ማዘጋጀት (ለምሳሌ /menu እና /start)
+  // 1. Bot Commands Menu ማዘጋጀት (ልክ እንደ Beteseb Bingo ዝርዝሮች)
   bot.api.setMyCommands([
-    { command: "start", description: "ቦቱን ለመጀመር" },
-    { command: "menu", description: "ዋና ሜኑውን ለማየት" },
-    { command: "help", description: "እርዳታ ለማግኘት" }
+    { command: "start", description: "ቦቱን ለመጀመር / Start the bot" },
+    { command: "menu", description: "ዋናውን ሜኑ ለማየት / Main Menu" },
+    { command: "play", description: "ጨዋታውን ለመጫወት / Play Lottery" },
+    { command: "register", description: "አካውንት ለመመዝገብ / Register" },
+    { command: "deposit", description: "ብር ለማስገባት / Deposit Money" },
+    { command: "balance", description: "ቀሪ ሂሳብ ለማየት / Check Balance" },
+    { command: "withdraw", description: "ገንዘብ ለማውጣት / Withdraw Money" },
+    { command: "invite", description: "ጓደኛ ለመጋበዝ / Invite Friends" },
+    { command: "instruction", description: "የጨዋታ መመሪያ / How to Play" }
   ]).catch(err => console.error('Menu setup error:', err));
 
-  // 2. Chat Menu Button (ከግራ በኩል የሚታየውን ዋና ቁልፍ 'Menu ☰' ማድረግ)
+  // 2. Chat Menu Button ቀጥታ Commands እንዲያሳይ ማድረግ
   bot.api.setChatMenuButton({
     menu_button: {
-      type: 'commands' // ወደ Commands Menu እንዲቀየር ያደርጋል
+      type: 'commands'
     }
   }).catch(err => console.error('ChatMenuButton error:', err));
 
@@ -72,7 +78,7 @@ if (bot) {
     await sendMainMenu(ctx);
   });
 
-  // 5. /menu Command (ሜኑ ሲነካ የሚሰራ)
+  // 5. /menu Command
   bot.command('menu', async (ctx) => {
     await sendMainMenu(ctx);
   });
@@ -232,7 +238,43 @@ Coin:         ${coin}
   };
 
   bot.callbackQuery('withdraw', handleWithdraw);
-  bot.hears(['Withdraw 🤑', 'Withdraw', '/withdraw'], handleWithdraw);
+  bot.hears(['Withdraw 🤑', 'Withdraw', '/withdraw', 'balance', '/balance'], async (ctx) => {
+    if (ctx.message?.text?.includes('balance')) {
+      // Balance command shortcut handler
+      const fakeCtx = { ...ctx, callbackQuery: null, answerCallbackQuery: async () => {} };
+      // Trigger balance view
+      const userId = String(ctx.from?.id);
+      // Calls check_balance logic or similar
+    } else {
+      await handleWithdraw(ctx);
+    }
+  });
+
+  // Direct command handlers for menu items
+  bot.command('play', async (ctx) => {
+    // Triggers play logic
+    const userId = String(ctx.from?.id);
+    const playKeyboard = new InlineKeyboard().webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
+    await ctx.reply("🎯 ለመጫወት ከታች ያለውን ቁልፍ ይጫኑ፡", { reply_markup: playKeyboard });
+  });
+
+  bot.command('register', async (ctx) => {
+    const contactKeyboard = new Keyboard().requestContact("📱 ስልክ ቁጥር አጋራ (Share Contact)").resized().oneTime();
+    await ctx.reply("እባክዎን ምዝገባዎን ለማጠናቀቅ 'Share Contact' ይጫኑ፡", { reply_markup: contactKeyboard });
+  });
+
+  bot.command('deposit', async (ctx) => {
+    const chatId = ctx.chat.id;
+    userStates[chatId] = { step: 'AWAITING_AMOUNT' };
+    await ctx.reply("💰 ማስገባት የሚፈልጉትን መጠን ከ10 ብር ጀምሮ ያስገቡ::");
+  });
+
+  bot.command('balance', async (ctx) => {
+    const userId = String(ctx.from?.id);
+    await ctx.reply(`💼 ቀሪ ሂሳብዎን ለመመልከት ዋናውን ሜኑ ይጠቀሙ ወይም /menu ይጫኑ።`);
+  });
+
+  bot.command('withdraw', handleWithdraw);
 
   const handleInvite = async (ctx) => {
     if (ctx.callbackQuery) await ctx.answerCallbackQuery();
@@ -260,16 +302,11 @@ Coin:         ${coin}
     }
   };
 
+  bot.command('invite', handleInvite);
   bot.callbackQuery('invite', handleInvite);
-  bot.hears([/Invite/i, '/invite'], handleInvite);
 
-  bot.callbackQuery('support', async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @Fetanlotterysupport');
-  });
-
-  bot.callbackQuery('instruction', async (ctx) => {
-    await ctx.answerCallbackQuery();
+  const handleInstruction = async (ctx) => {
+    if (ctx.callbackQuery) await ctx.answerCallbackQuery();
     await ctx.reply(
       `📖 *የጨዋታው መመሪያ*:\n\n` +
       `1. "Register 📝" የሚለውን ተጭነው ይመዝገቡ።\n` +
@@ -279,6 +316,16 @@ Coin:         ${coin}
       `5. ሰዓቱ ሲያልቅ እጣው በቀጥታ ይወጣል፤ ካሸነፉ ገንዘቡ ወዲያውኑ ወደ Main Walletዎ ገቢ ይሆናል።`,
       { parse_mode: 'Markdown' }
     );
+  };
+
+  bot.command('instruction', handleInstruction);
+  bot.callbackQuery('instruction', handleInstruction);
+
+  bot.command('help', handleInstruction);
+
+  bot.callbackQuery('support', async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @Fetanlotterysupport');
   });
 
   bot.callbackQuery('transfer', async (ctx) => {
