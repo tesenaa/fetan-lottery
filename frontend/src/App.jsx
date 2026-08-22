@@ -487,7 +487,7 @@ export default function App() {
     };
   }, [socket, userId, updateBoardStats, fetchUserData, fetchAdminData, isAdmin]);
 
-  // የተስተካከለው የቁጥር ምርጫ ሎጂክ (በቂ ብር ከሌለ መምረጥ እንዳይቻል በትክክል ይቆጣጠራል)
+  // በቂ ሂሳብ ሳይኖረው ቁጥር ሲጫን ኖቲፊኬሽን እንዲያሳይ የተስተካከለ ሎጂክ
   const toggleNumber = useCallback((num) => {
     if (phase !== 'selecting') return;
     if (isBanned) return alert("አካውንትዎ የታገደ ስለሆነ መጫወት አይችሉም!");
@@ -501,7 +501,12 @@ export default function App() {
       socket.emit('deselect_number', { numberChosen: num, userId });
     } else {
       if (totalAvailableBalance < stake) {
-        alert("⚠️ የእርስዎ ቀሪ ሂሳብ በቂ አይደለም! በቂ ሂሳብ የለዎትም (Insufficient Balance) ✨");
+        const msg = "⚠️ በቂ ሂሳብ የለውም! እባክዎ አካውንትዎ ላይ ገንዘብ ይጫኑ።";
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showAlert) {
+          window.Telegram.WebApp.showAlert(msg);
+        } else {
+          alert(msg);
+        }
         return;
       }
 
@@ -628,7 +633,7 @@ export default function App() {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      justify: 'flex-start',
+      justifyContent: 'flex-start',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       boxSizing: 'border-box',
       overflow: 'hidden'
