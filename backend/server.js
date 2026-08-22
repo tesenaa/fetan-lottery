@@ -262,11 +262,11 @@ async function updateDailyStats(depositAmount = 0, withdrawalAmount = 0, housePr
 }
 
 async function notifyUserBalanceUpdate(targetUid) {
-  const updatedUser = await User.findOne({ userId: targetUid });
+  const updatedUser = await User.findOne({ userId: String(targetUid) });
   if (!updatedUser) return;
 
   for (let [socketId, userId] of activeUsersMap.entries()) {
-    if (userId === targetUid) {
+    if (String(userId) === String(targetUid)) {
       io.to(socketId).emit('balance_updated', {
         balance: updatedUser.mainWallet,
         playWallet: updatedUser.playWallet
@@ -450,7 +450,7 @@ const handleDepositRequest = async (req, res) => {
   const depAmount = Number(amount);
 
   try {
-    const user = await getOrInitUser(uid);
+    const user = await getOrInitUser(uid, userName);
     if (user.isBanned) {
       return res.status(403).json({ success: false, message: "አካውንትዎ የታገደ ስለሆነ አገልግሎቱን ማግኘት አይችሉም!" });
     }
@@ -825,8 +825,14 @@ app.post('/api/user/register', async (req, res) => {
   res.json({ success: true, isNew: isNewUser, user });
 });
 
+// --- የተስተካከለው የውጪ ጥያቄ (Withdrawal Request) ራውተር ---
 app.post('/api/withdraw-request', async (req, res) => {
   const { userId, userName, amount, phone } = req.body;
+  
+  if (!userId) {
+    return res.status(400).json({ success: false, message: "User ID አልተገኘም!" });
+  }
+
   const uid = String(userId);
   const subAmount = Number(amount);
 
@@ -835,16 +841,18 @@ app.post('/api/withdraw-request', async (req, res) => {
   }
 
   try {
-    const user = await User.findOne({ userId: uid, isBanned: false });
+    // ተጠቃሚው ዳታቤዝ ውስጥ ከሌለ በራስ-ሰር እንዲፈጠር getOrInitUser እንጠቀማለን (አካውንቱ እንዳይጠፋ)
+    let user = await getOrInitUser(uid, userName, '', phone);
 
-    if (!user) {
-      return res.status(400).json({ success: false, message: "አካውንቱ አልተገኘም ወይም የታገደ ነው!" });
+    if (user.isBanned) {
+      return res.status(400).json({ success: false, message: "አካውንትዎ የታገደ ነው!" });
     }
 
     if (user.mainWallet < subAmount) {
       return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም! (በ Main Wallet ውስጥ የሚበቃ ገንዘብ የለም)" });
     }
 
+    // ሂሳቡን በቀጥታ መቀነስ እና ማዘመን (Atomic Update በ mainWallet $gte በመጠቀም)
     const updatedUser = await User.findOneAndUpdate(
       { userId: uid, isBanned: false, mainWallet: { $gte: subAmount } },
       { $inc: { mainWallet: -subAmount } },
@@ -1074,7 +1082,7 @@ io.on('connection', async (socket) => {
     let updatedUser = null;
     
     if (userDoc.playWallet >= TOTAL_COST) {
-      updatedUser = await User.findOneAndUpdate(
+      updatedServerUser = await User.findOneAndUpdate(
         { userId: uid, playWallet: { $gte: TOTAL_COST } },
         { $inc: { playWallet: -TOTAL_COST } },
         { new: true }
