@@ -130,7 +130,7 @@ const activeUsersMap = new Map();
 
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
 
-if (process.env.NODE_ENV === 'production' && RENDER_URL) {
+if (process.env.NODE_ENV === 'production' && RENDER_URL && bot) {
   app.use('/webhook', webhookCallback(bot, 'express'));
 }
 
@@ -835,20 +835,16 @@ app.post('/api/withdraw-request', async (req, res) => {
   }
 
   try {
-    // ተጠቃሚውን ከዳታቤዝ እንፈልጋለን
     const user = await User.findOne({ userId: uid, isBanned: false });
 
     if (!user) {
       return res.status(400).json({ success: false, message: "አካውንቱ አልተገኘም ወይም የታገደ ነው!" });
     }
 
-    // ከዋናው ዋሌታ (mainWallet) ብቻ ወይም ከጠቅላላው ዋሌታ (mainWallet + playWallet) እንዲወጣ መወሰን ይቻላል
-    // አብዛኛውን ጊዜ ውጪ የሚደረገው ከ Main Wallet ስለሆነ ዋናው ዋሌታ ከጠየቁት መጠን ጋር ማወዳደር
     if (user.mainWallet < subAmount) {
       return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም! (በ Main Wallet ውስጥ የሚበቃ ገንዘብ የለም)" });
     }
 
-    // ገንዘቡን ከ Main Wallet መቀነስ
     const updatedUser = await User.findOneAndUpdate(
       { userId: uid, isBanned: false, mainWallet: { $gte: subAmount } },
       { $inc: { mainWallet: -subAmount } },
