@@ -776,7 +776,7 @@ export default function App() {
 
                     <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
                       <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}>
-                        🎰 የዕጣ ማውጫ
+                        የዕጣ ማውጫ
                       </div>
                       <div style={{
                         width: '110px',
