@@ -248,11 +248,7 @@ Coin:         ${coin}
   bot.callbackQuery('withdraw', handleWithdraw);
   bot.hears(['Withdraw 🤑', 'Withdraw', '/withdraw', 'balance', '/balance'], async (ctx) => {
     if (ctx.message?.text?.includes('balance')) {
-      // Balance command shortcut handler
-      const fakeCtx = { ...ctx, callbackQuery: null, answerCallbackQuery: async () => {} };
-      // Trigger balance view
       const userId = String(ctx.from?.id);
-      // Calls check_balance logic or similar
     } else {
       await handleWithdraw(ctx);
     }
@@ -260,7 +256,6 @@ Coin:         ${coin}
 
   // Direct command handlers for menu items
   bot.command('play', async (ctx) => {
-    // Triggers play logic
     const userId = String(ctx.from?.id);
     const playKeyboard = new InlineKeyboard().webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
     await ctx.reply("🎯 ለመጫወት ከታች ያለውን ቁልፍ ይጫኑ፡", { reply_markup: playKeyboard, disable_notification: false });
@@ -471,6 +466,16 @@ Coin:         ${coin}
 
         if (response.ok && (result.success || result._id || result.id)) {
           await ctx.reply("✅ ጥያቄዎ ደርሶናል! የላኩት የክፍያ ማረጋገጫ ተመርምሮ በአጭር ጊዜ ውስጥ ሂሳብዎ ላይ ገቢ ይደረጋል።", { disable_notification: false });
+
+          // አድሚን ግሩፕ ካለ (በ .env ውስጥ ADMIN_GROUP_ID የተሞላ ከሆነ) ማሳወቂያ በድምፅ ይልካል
+          if (process.env.ADMIN_GROUP_ID) {
+            const adminMsg = `🔔 <b>አዲስ የዲፖዚት ጥያቄ!</b>\n\n👤 ስም: ${userName}\n🆔 ID: <code>${userId}</code>\n💰 መጠን: ${amount} ETB\n\n📝 <b>SMS:</b>\n<code>${text}</code>`;
+            await bot.api.sendMessage(process.env.ADMIN_GROUP_ID, adminMsg, {
+              parse_mode: 'HTML',
+              disable_notification: false // 👈 አድሚኖቹ ከቴሌግራም ውጭ ቢሆኑም ኖቲፊኬሽኑ በድምፅ እንዲመጣ
+            });
+          }
+
         } else {
           const errorMsg = result.message || 'ይህ የትራንዛክሽን ቁጥር ቀደም ሲል ጥቅም ላይ ውሏል ወይም ትክክለኛ አይደለም።';
           await ctx.reply(`⚠️ ${errorMsg}`, { disable_notification: false });
