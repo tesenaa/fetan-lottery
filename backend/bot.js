@@ -18,9 +18,8 @@ if (bot) {
   // 1. Bot Commands Menu ማዘጋጀት (ልክ እንደ Beteseb Bingo ዝርዝሮች)
   bot.api.setMyCommands([
     { command: "start", description: "Start" },
-      { command: "register", description: "Register" },
+    { command: "register", description: "Register" },
     { command: "play", description: "Play" },
-
     { command: "deposit", description: "Deposit" },
     { command: "balance", description: "Balance" },
     { command: "withdraw", description: "Withdraw" },
@@ -45,16 +44,20 @@ if (bot) {
 
   // የሜኑ መልእክቱን የሚልክ የተለመደ ተግባር (Function)
   const sendMainMenu = async (ctx) => {
-    const captionText = `👋 Welcome to Fetan Lottery! Choose an option below.\n\nእንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወት ይችላሉ።`;
+    const captionText = "👋 Welcome to Fetan Lottery! Choose an option below.\n\nእንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወት ይችላሉ።";
 
     try {
       await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
         caption: captionText,
-        reply_markup: mainInlineMenu
+        reply_markup: mainInlineMenu,
+        disable_notification: false
       });
     } catch (err) {
       console.error('Photo send error:', err);
-      await ctx.reply(captionText, { reply_markup: mainInlineMenu });
+      await ctx.reply(captionText, { 
+        reply_markup: mainInlineMenu,
+        disable_notification: false 
+      });
     }
   };
 
@@ -100,7 +103,8 @@ if (bot) {
             .webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
 
           await ctx.reply("🎯 ለመጫወት ዝግጁ ነዎት! ከታች ያለውን ቁልፍ ተጭነው ይግቡ፡", {
-            reply_markup: playKeyboard
+            reply_markup: playKeyboard,
+            disable_notification: false
           });
           return;
         }
@@ -116,19 +120,20 @@ if (bot) {
         "እባክዎን መጀመሪያ *'Register 📝'* በማድረግ ወይም ከታች ያለውን *'📱 ስልክ ቁጥር አጋራ (Share Contact)'* ቁልፍ ተጭነው ስልክ ቁጥርዎን ያጋሩ፡",
         {
           parse_mode: 'Markdown',
-          reply_markup: contactKeyboard
+          reply_markup: contactKeyboard,
+          disable_notification: false
         }
       );
     } catch (err) {
       console.error('Play Validation Error:', err);
-      await ctx.reply('❌ የስህተት ምልክት አጋጥሟል። እባክዎን እንደገና ይሞክሩ።');
+      await ctx.reply('❌ የስህተት ምልክት አጋጥሟል። እባክዎን እንደገና ይሞክሩ።', { disable_notification: false });
     }
   });
 
   bot.callbackQuery('check_balance', async (ctx) => {
     await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
-    const telegramName = ctx.from?.first_name + (ctx.from?.last_name ? ' ' + ctx.from?.last_name : '');
+    const telegramName = (ctx.from?.first_name || '') + (ctx.from?.last_name ? ' ' + ctx.from?.last_name : '');
     
     let phone = "አልተመዘገበም";
     let mainWallet = 0;
@@ -165,7 +170,8 @@ Coin:         ${coin}
 
     await ctx.reply(accountInfoText, {
       parse_mode: 'Markdown',
-      reply_markup: balanceMenu
+      reply_markup: balanceMenu,
+      disable_notification: false
     });
   });
 
@@ -184,7 +190,8 @@ Coin:         ${coin}
             "አሁኑኑ መጫወት ለመጀመር *Play 🎮* የሚለውን ይጫኑ ወይም *Deposit 💵* በማድረግ ሂሳብዎን ይሙሉ፤",
             { 
               parse_mode: 'Markdown',
-              reply_markup: { remove_keyboard: true }
+              reply_markup: { remove_keyboard: true },
+              disable_notification: false
             }
           );
           return;
@@ -197,11 +204,12 @@ Coin:         ${coin}
         .oneTime();
 
       await ctx.reply("እባክዎን ምዝገባዎን ለማጠናቀቅ ከታች ያለውን 'Share Contact' ቁልፍ ይጫኑ፡", {
-        reply_markup: contactKeyboard
+        reply_markup: contactKeyboard,
+        disable_notification: false
       });
     } catch (err) {
       console.error('Registration Error:', err);
-      await ctx.reply('❌ የምዝገባ ስህተት አጋጥሟል። እባክዎን እንደገና ይሞክሩ።');
+      await ctx.reply('❌ የምዝገባ ስህተት አጋጥሟል። እባክዎን እንደገና ይሞክሩ።', { disable_notification: false });
     }
   });
 
@@ -209,7 +217,7 @@ Coin:         ${coin}
     await ctx.answerCallbackQuery();
     const chatId = ctx.chat.id;
     userStates[chatId] = { step: 'AWAITING_AMOUNT' };
-    await ctx.reply("💰 ማስገባት የሚፈልጉትን መጠን ከ10 ብር ጀምሮ ያስገቡ::");
+    await ctx.reply("💰 ማስገባት የሚፈልጉትን መጠን ከ10 ብር ጀምሮ ያስገቡ::", { disable_notification: false });
   });
 
   const handleWithdraw = async (ctx) => {
@@ -227,13 +235,13 @@ Coin:         ${coin}
           `• *አነስተኛ ወጪ ማድረጊያ:* 50 ETB\n\n` +
           `ገንዘብ ለማውጣት በ WebApp ውስጥ ያለውን Wallet ገፅ ይጠቀሙ ወይም አስተዳዳሪውን ያናግሩ።`;
 
-        await ctx.reply(withdrawMessage, { parse_mode: 'Markdown' });
+        await ctx.reply(withdrawMessage, { parse_mode: 'Markdown', disable_notification: false });
       } else {
-        await ctx.reply('❌ የተጠቃሚ መረጃ ማግኘት አልተቻለም።');
+        await ctx.reply('❌ የተጠቃሚ መረጃ ማግኘት አልተቻለም።', { disable_notification: false });
       }
     } catch (err) {
       console.error('Withdraw Error:', err);
-      await ctx.reply('❌ የኔትወርክ ስህተት አጋጥሟል።');
+      await ctx.reply('❌ የኔትወርክ ስህተት አጋጥሟል።', { disable_notification: false });
     }
   };
 
@@ -255,23 +263,23 @@ Coin:         ${coin}
     // Triggers play logic
     const userId = String(ctx.from?.id);
     const playKeyboard = new InlineKeyboard().webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
-    await ctx.reply("🎯 ለመጫወት ከታች ያለውን ቁልፍ ይጫኑ፡", { reply_markup: playKeyboard });
+    await ctx.reply("🎯 ለመጫወት ከታች ያለውን ቁልፍ ይጫኑ፡", { reply_markup: playKeyboard, disable_notification: false });
   });
 
   bot.command('register', async (ctx) => {
     const contactKeyboard = new Keyboard().requestContact("📱 ስልክ ቁጥር አጋራ (Share Contact)").resized().oneTime();
-    await ctx.reply("እባክዎን ምዝገባዎን ለማጠናቀቅ 'Share Contact' ይጫኑ፡", { reply_markup: contactKeyboard });
+    await ctx.reply("እባክዎን ምዝገባዎን ለማጠናቀቅ 'Share Contact' ይጫኑ፡", { reply_markup: contactKeyboard, disable_notification: false });
   });
 
   bot.command('deposit', async (ctx) => {
     const chatId = ctx.chat.id;
     userStates[chatId] = { step: 'AWAITING_AMOUNT' };
-    await ctx.reply("💰 ማስገባት የሚፈልጉትን መጠን ከ10 ብር ጀምሮ ያስገቡ::");
+    await ctx.reply("💰 ማስገባት የሚፈልጉትን መጠን ከ10 ብር ጀምሮ ያስገቡ::", { disable_notification: false });
   });
 
   bot.command('balance', async (ctx) => {
     const userId = String(ctx.from?.id);
-    await ctx.reply(`💼 ቀሪ ሂሳብዎን ለመመልከት ዋናውን ሜኑ ይጠቀሙ ወይም /menu ይጫኑ።`);
+    await ctx.reply(`💼 ቀሪ ሂሳብዎን ለመመልከት ዋናውን ሜኑ ይጠቀሙ ወይም /menu ይጫኑ።`, { disable_notification: false });
   });
 
   bot.command('withdraw', handleWithdraw);
@@ -286,16 +294,15 @@ Coin:         ${coin}
       const shareText = "🎉 ና ወደ Fetan Lottery እንጫወት! በዚህ ሊንክ ስትመዘገብ የ 10 ETB ነፃ ቦነስ ታገኛለህ፦";
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
 
-      const inviteMessage = `🔗 *ለጓደኞችዎ ያጋሩ እና ነፃ ቦነስ ያግኙ!*\n\n` +
-                            `🎁 *የእርስዎ መጋበዣ ሊንክ:*\n${inviteLink}\n\n` +
-                            `💡 *ጥቅሙ:* ጓደኛዎ በእርስዎ ሊንክ ሲመዘገብ ለእርስዎ *10 ETB* ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!`;
+      const inviteMessage = `🔗 *ለጓደኞችዎ ያጋሩ እና ነፃ ቦነስ ያግኙ!*\n\n🎁 *የእርስዎ መጋበዣ ሊንክ:*\n${inviteLink}\n\n💡 *ጥቅሙ:* ጓደኛዎ በእርስዎ ሊንክ ሲመዘገብ ለእርስዎ *10 ETB* ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!`;
 
       const shareKeyboard = new InlineKeyboard()
         .url("📩 ለጓደኛ Share አድርግ", shareUrl);
 
       await ctx.reply(inviteMessage, {
         parse_mode: 'Markdown',
-        reply_markup: shareKeyboard
+        reply_markup: shareKeyboard,
+        disable_notification: false
       });
     } catch (error) {
       console.error("Error handling invite command:", error);
@@ -308,34 +315,28 @@ Coin:         ${coin}
   const handleInstruction = async (ctx) => {
     if (ctx.callbackQuery) await ctx.answerCallbackQuery();
     await ctx.reply(
-      `📖 *የጨዋታው መመሪያ*:\n\n` +
-      `1. "Register 📝" የሚለውን ተጭነው ይመዝገቡ።\n` +
-      `2. "Deposit 💵" የሚለውን ተጭነው ወደ ዋሌት ብር ያስቀምጡ።\n` +
-      `3. "Play 🎮" የሚለውን ተጭነው WebApp ይክፈቱ።\n` +
-      `4. የሚወዱትን የሎተሪ ቁጥር ይምረጡ።\n` +
-      `5. ሰዓቱ ሲያልቅ እጣው በቀጥታ ይወጣል፤ ካሸነፉ ገንዘቡ ወዲያውኑ ወደ Main Walletዎ ገቢ ይሆናል።`,
-      { parse_mode: 'Markdown' }
+      `📖 *የጨዋታው መመሪያ*:\n\n1. "Register 📝" የሚለውን ተጭነው ይመዝገቡ።\n2. "Deposit 💵" የሚለውን ተጭነው ወደ ዋሌት ብር ያስቀምጡ።\n3. "Play 🎮" የሚለውን ተጭነው WebApp ይክፈቱ።\n4. የሚወዱትን የሎተሪ ቁጥር ይምረጡ።\n5. ሰዓቱ ሲያልቅ እጣው በቀጥታ ይወጣል፤ ካሸነፉ ገንዘቡ ወዲያውኑ ወደ Main Walletዎ ገቢ ይሆናል።`,
+      { parse_mode: 'Markdown', disable_notification: false }
     );
   };
 
   bot.command('instruction', handleInstruction);
   bot.callbackQuery('instruction', handleInstruction);
-
   bot.command('help', handleInstruction);
 
   bot.callbackQuery('support', async (ctx) => {
     await ctx.answerCallbackQuery();
-    await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @Fetanlotterysupport');
+    await ctx.reply('☎️ ለአስተያየት እና ለተጨማሪ እርዳታ በቴሌግራም ያውሩን፡ @Fetanlotterysupport', { disable_notification: false });
   });
 
   bot.callbackQuery('transfer', async (ctx) => {
     await ctx.answerCallbackQuery();
-    await ctx.reply('🎁 ለሌላ ተጫዋች ገንዘብ ለማስተላለፍ በ WebApp ውስጥ ያለውን Transfer ገፅ ይጠቀሙ።');
+    await ctx.reply('🎁 ለሌላ ተጫዋች ገንዘብ ለማስተላለፍ በ WebApp ውስጥ ያለውን Transfer ገፅ ይጠቀሙ።', { disable_notification: false });
   });
 
   bot.callbackQuery('convert', async (ctx) => {
     await ctx.answerCallbackQuery();
-    await ctx.reply('💱 Play Wallet ቦነስን ወደ Main Wallet ለመቀየር አነስተኛው መጠን 100 ETB መሆን አለበት።');
+    await ctx.reply('💱 Play Wallet ቦነስን ወደ Main Wallet ለመቀየር አነስተኛው መጠን 100 ETB መሆን አለበት።', { disable_notification: false });
   });
 
   bot.callbackQuery(/^copy_/, async (ctx) => {
@@ -348,13 +349,7 @@ Coin:         ${coin}
     const amount = ctx.callbackQuery.data.split("_")[2];
     userStates[chatId] = { step: 'AWAITING_SMS', amount: amount };
 
-    const instructionsText = `የሚያጋጥሟችሁ የክፍያ ችግር:@Fetanlotterysupport ላይ ፃፉልን::
-
-1. ከታች ባለው የቴሌብር አካውንት ${amount} ብር ያስገቡ
-
-Phone: ${TELEBIRR_NUMBER}
-
-2. የከፈሉበትን አጭር የፅሁፍ መልዕክት(message) copy በማድረግ እዚ ላይ Past አድርገው ይላኩና ይላኩ👇👇👇`;
+    const instructionsText = `የሚያጋጥሟችሁ የክፍያ ችግር:@Fetanlotterysupport ላይ ፃፉልን::\n\n1. ከታች ባለው የቴሌብር አካውንት ${amount} ብር ያስገቡ\n\nPhone: ${TELEBIRR_NUMBER}\n\n2. የከፈሉበትን አጭር የፅሁፍ መልዕክት(message) copy በማድረግ እዚ ላይ Past አድርገው ይላኩና ይላኩ👇👇👇`;
 
     const shareContactKeyboard = new Keyboard()
       .requestContact("📞 Share contact")
@@ -362,7 +357,8 @@ Phone: ${TELEBIRR_NUMBER}
       .oneTime();
 
     await ctx.reply(instructionsText, {
-      reply_markup: shareContactKeyboard
+      reply_markup: shareContactKeyboard,
+      disable_notification: false
     });
   });
 
@@ -370,7 +366,7 @@ Phone: ${TELEBIRR_NUMBER}
     const chatId = ctx.chat.id;
     delete userStates[chatId];
     await ctx.answerCallbackQuery({ text: "ተሰርዟል!" });
-    await ctx.reply("❌ የዲፖዚት ሂደቱ ተሰርዟል።");
+    await ctx.reply("❌ የዲፖዚት ሂደቱ ተሰርዟል።", { disable_notification: false });
   });
 
   // --- 7. EVENT LISTENERS ---
@@ -399,7 +395,8 @@ Phone: ${TELEBIRR_NUMBER}
         "🎉 *ምዝገባዎ በስኬት ተጠናቋል!*\n\n📱 ስልክ ቁጥርዎ፦ " + phoneNumber + " ተመዝግቧል።",
         {
           parse_mode: 'Markdown',
-          reply_markup: { remove_keyboard: true }
+          reply_markup: { remove_keyboard: true },
+          disable_notification: false
         }
       );
     } catch (err) {
@@ -408,7 +405,8 @@ Phone: ${TELEBIRR_NUMBER}
         "🎉 *ምዝገባዎ በስኬት ተጠናቋል!*\n\n📱 ስልክ ቁጥርዎ፦ " + phoneNumber + " ተመዝግቧል።",
         {
           parse_mode: 'Markdown',
-          reply_markup: { remove_keyboard: true }
+          reply_markup: { remove_keyboard: true },
+          disable_notification: false
         }
       );
     }
@@ -425,7 +423,7 @@ Phone: ${TELEBIRR_NUMBER}
     if (userStates[chatId] && userStates[chatId].step === 'AWAITING_AMOUNT') {
       const amount = parseInt(text);
       if (isNaN(amount) || amount < 10) {
-        await ctx.reply("⚠️ እባክዎን ትክክለኛ መጠን ያስገቡ (ከ10 ብር ጀምሮ)።");
+        await ctx.reply("⚠️ እባክዎን ትክክለኛ መጠን ያስገቡ (ከ10 ብር ጀምሮ)።", { disable_notification: false });
         return;
       }
 
@@ -440,7 +438,8 @@ Phone: ${TELEBIRR_NUMBER}
         .text("Telebirr", `pay_telebirr_${amount}`).row()
         .text("❌ Cancel", "cancel_deposit");
       await ctx.reply(paymentOptionMessage, {
-        reply_markup: paymentKeyboard
+        reply_markup: paymentKeyboard,
+        disable_notification: false
       });
       return;
     }
@@ -471,14 +470,14 @@ Phone: ${TELEBIRR_NUMBER}
         const result = response.ok ? await response.json() : {};
 
         if (response.ok && (result.success || result._id || result.id)) {
-          await ctx.reply("✅ ጥያቄዎ ደርሶናል! የላኩት የክፍያ ማረጋገጫ ተመርምሮ በአጭር ጊዜ ውስጥ ሂሳብዎ ላይ ገቢ ይደረጋል።");
+          await ctx.reply("✅ ጥያቄዎ ደርሶናል! የላኩት የክፍያ ማረጋገጫ ተመርምሮ በአጭር ጊዜ ውስጥ ሂሳብዎ ላይ ገቢ ይደረጋል።", { disable_notification: false });
         } else {
           const errorMsg = result.message || 'ይህ የትራንዛክሽን ቁጥር ቀደም ሲል ጥቅም ላይ ውሏል ወይም ትክክለኛ አይደለም።';
-          await ctx.reply(`⚠️ ${errorMsg}`);
+          await ctx.reply(`⚠️ ${errorMsg}`, { disable_notification: false });
         }
       } catch (err) {
         console.error('Deposit request API error:', err);
-        await ctx.reply("❌ የኔትወርክ ስህተት አጋጥሟል። እባክዎን ቆይተው እንደገና ይሞክሩ።");
+        await ctx.reply("❌ የኔትወርክ ስህተት አጋጥሟል። እባክዎን ቆይተው እንደገና ይሞክሩ።", { disable_notification: false });
       }
       return;
     }
