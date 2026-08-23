@@ -17,11 +17,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- MONGODB CONNECTION ---
+// --- MONGODB CONNECTION WITH ADVANCED POOLING ---
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (MONGODB_URI) {
-  mongoose.connect(MONGODB_URI)
+  mongoose.connect(MONGODB_URI, {
+    maxPoolSize: 100,
+    minPoolSize: 20,
+    socketTimeoutMS: 45000,
+    serverSelectionTimeoutMS: 5000,
+  })
     .then(() => console.log('✅ Connected to MongoDB Atlas successfully!'))
     .catch((err) => console.error('❌ MongoDB Connection Error:', err));
 } else {
@@ -45,6 +50,7 @@ const userSchema = new mongoose.Schema({
   isBanned: { type: Boolean, default: false }
 }, { timestamps: true });
 
+// 3 ወር (90 ቀናት) ሆናቸው በራስ-ሰር እንዲጠፉ TTL index (expireAfterSeconds: 7776000) ተሰጥቷቸዋል
 const depositSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
   userName: { type: String, default: '' },
@@ -53,8 +59,9 @@ const depositSchema = new mongoose.Schema({
   transactionId: { type: String, default: null, index: true },
   status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
   processedBy: { type: String, default: null },
-  telegramMessageId: { type: Number, default: null }
-}, { timestamps: true });
+  telegramMessageId: { type: Number, default: null },
+  createdAt: { type: Date, default: Date.now, expires: 7776000 } 
+});
 
 const transactionSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
@@ -64,22 +71,24 @@ const transactionSchema = new mongoose.Schema({
   status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
   processedBy: { type: String, default: null },
   phone: { type: String, default: '' },
-  telegramMessageId: { type: Number, default: null }
-}, { timestamps: true });
+  telegramMessageId: { type: Number, default: null },
+  createdAt: { type: Date, default: Date.now, expires: 7776000 }
+});
 
 const gameHistorySchema = new mongoose.Schema({
-  gameId: { type: String, required: true },
+  gameId: { type: String, required: true, index: true },
   winningNumber: { type: Number, required: true },
-  winnerUserId: { type: String, required: true },
+  winnerUserId: { type: String, required: true, index: true },
   winnerName: { type: String, default: '' },
   totalCollected: { type: Number, default: 0 },
   derash: { type: Number, default: 0 },
   houseProfit: { type: Number, default: 0 },
-  playersCount: { type: Number, default: 0 }
-}, { timestamps: true });
+  playersCount: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now, expires: 7776000 }
+});
 
 const dailyStatSchema = new mongoose.Schema({
-  dateStr: { type: String, required: true, unique: true },
+  dateStr: { type: String, required: true, unique: true, index: true },
   totalDeposit: { type: Number, default: 0 },
   totalWithdrawal: { type: Number, default: 0 },
   houseProfit: { type: Number, default: 0 },
@@ -111,7 +120,10 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
-  transports: ['polling', 'websocket']
+  transports: ['websocket', 'polling'],
+  perMessageDeflate: {
+    threshold: 1024
+  }
 });
 
 function generateGameId() {
@@ -127,6 +139,48 @@ let winningNumber = null;
 
 const registeredUsersSet = new Set();
 const activeUsersMap = new Map();
+
+let cachedSettings = null;
+let lastSettingsFetch = 0;
+const SETTINGS_CACHE_TTL = 10000;
+
+async function getSettings() {
+  const now = Date.now();
+  if (cachedSettings && (now - lastSettingsFetch < SETTINGS_CACHE_TTL)) {
+    return cachedSettings;
+  }
+  let settings = await SystemSettings.findOne();
+  if (!settings) {
+    settings = await SystemSettings.create({
+      ticketPrice: 10,
+      winnerPercentage: 80,
+      houseCommissionPercentage: 20,
+      manualWinningNumber: null,
+      activeAdmins: { admin1: true, admin2: true }
+    });
+  }
+  cachedSettings = settings;
+  lastSettingsFetch = now;
+  return settings;
+}
+
+let boardUpdateTimeout = null;
+function broadcastBoard() {
+  if (boardUpdateTimeout) return;
+  boardUpdateTimeout = setTimeout(async () => {
+    boardUpdateTimeout = null;
+    const uniquePlayers = new Set(selectedNumbers.map(n => String(n.userId))).size;
+    const settings = await getSettings();
+    const totalCollected = selectedNumbers.length * settings.ticketPrice;
+    const derash = Math.floor(totalCollected * (settings.winnerPercentage / 100));
+
+    io.emit('board_updated', {
+      selectedNumbers,
+      totalPlayers: uniquePlayers,
+      derash
+    });
+  }, 50); 
+}
 
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
 
@@ -145,20 +199,6 @@ function extractTransactionId(text) {
     return telebirrMatch[1].toUpperCase();
   }
   return null;
-}
-
-async function getSettings() {
-  let settings = await SystemSettings.findOne();
-  if (!settings) {
-    settings = await SystemSettings.create({
-      ticketPrice: 10,
-      winnerPercentage: 80,
-      houseCommissionPercentage: 20,
-      manualWinningNumber: null,
-      activeAdmins: { admin1: true, admin2: true }
-    });
-  }
-  return settings;
 }
 
 async function checkAdminAuth(req, res, next) {
@@ -562,6 +602,10 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
       settings.activeAdmins = activeAdmins;
     }
     await settings.save();
+    
+    cachedSettings = settings;
+    lastSettingsFetch = Date.now();
+
     res.json({ success: true, settings, message: "የሲስተም ሰቲንግ በተሳካ ሁኔታ ተስተካክሏል!" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -573,7 +617,7 @@ app.get('/api/admin/users', checkAdminAuth, async (req, res) => {
     return res.status(403).json({ success: false, message: "የተከለከለ ክፍል!" });
   }
   try {
-    const users = await User.find().sort({ createdAt: -1 });
+    const users = await User.find().sort({ createdAt: -1 }).limit(500);
     res.json({ success: true, users });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -620,8 +664,8 @@ app.post('/api/admin/update-balance', checkAdminAuth, async (req, res) => {
 
 app.get('/api/admin/transactions', checkAdminAuth, async (req, res) => {
   try {
-    const deposits = await Deposit.find().sort({ createdAt: -1 });
-    const withdrawals = await Transaction.find({ type: 'withdrawal' }).sort({ createdAt: -1 });
+    const deposits = await Deposit.find().sort({ createdAt: -1 }).limit(100);
+    const withdrawals = await Transaction.find({ type: 'withdrawal' }).sort({ createdAt: -1 }).limit(100);
     res.json({ success: true, transactions: deposits, withdrawals, role: req.adminRole });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -825,7 +869,6 @@ app.post('/api/user/register', async (req, res) => {
   res.json({ success: true, isNew: isNewUser, user });
 });
 
-// --- የተስተካከለው የውጪ ጥያቄ (Withdrawal Request) ራውተር ---
 app.post('/api/withdraw-request', async (req, res) => {
   const { userId, userName, amount, phone } = req.body;
   
@@ -841,7 +884,6 @@ app.post('/api/withdraw-request', async (req, res) => {
   }
 
   try {
-    // ተጠቃሚው ዳታቤዝ ውስጥ ከሌለ በራስ-ሰር እንዲፈጠር getOrInitUser እንጠቀማለን (አካውንቱ እንዳይጠፋ)
     let user = await getOrInitUser(uid, userName, '', phone);
 
     if (user.isBanned) {
@@ -852,7 +894,6 @@ app.post('/api/withdraw-request', async (req, res) => {
       return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለም! (በ Main Wallet ውስጥ የሚበቃ ገንዘብ የለም)" });
     }
 
-    // ሂሳቡን በቀጥታ መቀነስ እና ማዘመን (Atomic Update በ mainWallet $gte በመጠቀም)
     const updatedUser = await User.findOneAndUpdate(
       { userId: uid, isBanned: false, mainWallet: { $gte: subAmount } },
       { $inc: { mainWallet: -subAmount } },
@@ -949,6 +990,7 @@ setInterval(async () => {
           winNum = settings.manualWinningNumber;
           settings.manualWinningNumber = null;
           await settings.save();
+          cachedSettings = settings;
         } else {
           const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
           winNum = selectedNumbers[randomIndex].number;
@@ -1014,7 +1056,7 @@ io.on('connection', async (socket) => {
   const userId = socket.handshake.query.userId;
 
   if (userId && userId !== 'GUEST_USER') {
-    await getOrInitUser(userId);
+    getOrInitUser(userId).catch(() => {});
     activeUsersMap.set(socket.id, String(userId));
   }
 
@@ -1058,9 +1100,8 @@ io.on('connection', async (socket) => {
 
     if (chosenList.length === 0) return;
 
-    const uniqueNewNumbers = chosenList.filter(num => 
-      !selectedNumbers.some(n => Number(n.number) === Number(num))
-    );
+    const currentSelectedSet = new Set(selectedNumbers.map(n => Number(n.number)));
+    const uniqueNewNumbers = chosenList.filter(num => !currentSelectedSet.has(Number(num)));
 
     if (uniqueNewNumbers.length === 0) return;
 
@@ -1082,7 +1123,7 @@ io.on('connection', async (socket) => {
     let updatedUser = null;
     
     if (userDoc.playWallet >= TOTAL_COST) {
-      updatedServerUser = await User.findOneAndUpdate(
+      updatedUser = await User.findOneAndUpdate(
         { userId: uid, playWallet: { $gte: TOTAL_COST } },
         { $inc: { playWallet: -TOTAL_COST } },
         { new: true }
@@ -1109,8 +1150,7 @@ io.on('connection', async (socket) => {
       });
     });
 
-    const s = await getGameStats();
-    io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
+    broadcastBoard();
     socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
   });
 
@@ -1129,8 +1169,7 @@ io.on('connection', async (socket) => {
         { new: true }
       );
 
-      const s = await getGameStats();
-      io.emit('board_updated', { selectedNumbers, totalPlayers: s.totalPlayers, derash: s.derash });
+      broadcastBoard();
       socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
     }
   });
