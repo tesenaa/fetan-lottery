@@ -741,7 +741,7 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
                     <div style={{ backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
-                      {phase === 'spinning' ? (allPickedNumbers.length > 0 ? '🎰 ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : '⏳ የምርጫ ጊዜ፤ ' + selectionTime + ' ሰከንድ'}
+                      {phase === 'spinning' ? (allPickedNumbers.length > 0 ? 'ዕጣ እየወጣ ነው...' : '⚠️ ምንም ቁጥር አልተመረጠም!') : 'የምርጫ ጊዜ  ' + selectionTime + ' S'}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
                       {visibleNumbers.map((num) => {
