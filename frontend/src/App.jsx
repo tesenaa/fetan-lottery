@@ -80,7 +80,7 @@ export default function App() {
   const [totalInvite, setTotalInvite] = useState(0);
   const [totalGames, setTotalGames] = useState(0);
 
-  // SEPARATE STATES FOR STAKE 10 AND STAKE 20
+  // SEPARATE STATES FOR STAKE 10 AND STAKE 20 (INDEPENDENT)
   const [selectedNumbers10, setSelectedNumbers10] = useState([]);
   const [allPickedNumbers10, setAllPickedNumbers10] = useState([]);
   const [playerCount10, setPlayerCount10] = useState(0);
@@ -101,7 +101,7 @@ export default function App() {
   const [winnerInfo20, setWinnerInfo20] = useState(null);
   const [currentGameId20, setCurrentGameId20] = useState('FL-200000');
 
-  // ACTIVE STAKE REFERENCES & DERIVED VALUES
+  // ACTIVE STAKE REFERENCES & DERIVED VALUES BASED ON CURRENT STAKE
   const selectedNumbers = stake === 20 ? selectedNumbers20 : selectedNumbers10;
   const allPickedNumbers = stake === 20 ? allPickedNumbers20 : allPickedNumbers10;
   const myPickedSet = useMemo(() => new Set(selectedNumbers), [selectedNumbers]);
@@ -166,6 +166,7 @@ export default function App() {
         allSelectedList.map(item => typeof item === 'object' ? String(item.userId) : String(item))
       ).size;
       setPlayerCount20(uniquePlayers);
+      // ቲኬት 20 ብር ስለሆነ በ 20 ይባዛል
       setDerash20(Math.floor(allSelectedList.length * 20 * (sysSettings.winnerPercentage / 100)));
     }
   }, [sysSettings.winnerPercentage]);

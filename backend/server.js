@@ -83,7 +83,7 @@ const gameHistorySchema = new mongoose.Schema({
   derash: { type: Number, default: 0 },
   houseProfit: { type: Number, default: 0 },
   playersCount: { type: Number, default: 0 },
-  stake: { type: Number, default: 10 },
+  stake: { type: Number, default: 20 },
   createdAt: { type: Date, default: Date.now, expires: 7776000 }
 });
 
@@ -96,7 +96,7 @@ const dailyStatSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const systemSettingsSchema = new mongoose.Schema({
-  ticketPrice: { type: Number, default: 10 },
+  ticketPrice: { type: Number, default: 20 },
   winnerPercentage: { type: Number, default: 80 },
   houseCommissionPercentage: { type: Number, default: 20 },
   manualWinningNumber: { type: Number, default: null },
@@ -126,15 +126,15 @@ const io = new Server(server, {
   }
 });
 
-function generateGameId() {
+function generateGameId(stake) {
   const randomNum = Math.floor(100000 + Math.random() * 900000);
-  return `FL-${randomNum}`;
+  return `FL-${stake}-${randomNum}`;
 }
 
-// --- ለባለ 10 እና ባለ 20 እስቴኮች የተለዩ Game States ---
+// --- ለባለ 10 እና ባለ 20 እስቴኮች ሙሉ በሙሉ Independent የሆኑ Game States (የየራሳቸው ራንደም Game ID ያላቸው) ---
 const gameStates = {
   10: {
-    currentGameId: generateGameId(),
+    currentGameId: generateGameId(10),
     selectedNumbers: [],
     timeLeft: 50,
     gamePhase: 'selecting',
@@ -142,7 +142,7 @@ const gameStates = {
     boardUpdateTimeout: null
   },
   20: {
-    currentGameId: generateGameId(),
+    currentGameId: generateGameId(20),
     selectedNumbers: [],
     timeLeft: 50,
     gamePhase: 'selecting',
@@ -166,7 +166,7 @@ async function getSettings() {
   let settings = await SystemSettings.findOne();
   if (!settings) {
     settings = await SystemSettings.create({
-      ticketPrice: 10,
+      ticketPrice: 20,
       winnerPercentage: 80,
       houseCommissionPercentage: 20,
       manualWinningNumber: null,
@@ -190,7 +190,6 @@ function broadcastBoard(stake) {
     const totalCollected = state.selectedNumbers.length * stake;
     const derash = Math.floor(totalCollected * (settings.winnerPercentage / 100));
 
-    // Fix: ለየራሱ እስቴክ ብቻ ቦርዱን እንልካለን (io.to / ወይም ከስታኬ ጋር)
     io.emit('board_updated', {
       stake: Number(stake),
       selectedNumbers: state.selectedNumbers,
@@ -270,7 +269,7 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
       phone: phone || '',
       phoneBonusReceived: isPhoneProvided,
       mainWallet: 0,
-      playWallet: isPhoneProvided ? 10 : 0,
+      playWallet: isPhoneProvided ? 20 : 0,
       totalInvite: 0,
       invitedCount: 0,
       hasReceivedInviteBonus: false,
@@ -281,18 +280,18 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
 
     if (isPhoneProvided && bot) {
       try {
-        await bot.api.sendMessage(uid, `🎉 *እንኳን ደስ አለዎት!*\n\nስልክ ቁጥርዎን ስላጋሩ *10 ETB* ቦነስ በ Play Walletዎ ላይ ተጨምሯል!`, { parse_mode: 'Markdown' });
+        await bot.api.sendMessage(uid, `🎉 *እንኳን ደስ አለዎት!*\n\nስልክ ቁጥርዎን ስላጋሩ *20 ETB* ቦነስ በ Play Walletዎ ላይ ተጨምሯል!`, { parse_mode: 'Markdown' });
       } catch (err) {}
     }
   } else if (phone && !dbUser.phoneBonusReceived) {
     dbUser.phone = phone;
-    dbUser.playWallet += 10;
+    dbUser.playWallet += 20;
     dbUser.phoneBonusReceived = true;
     await dbUser.save();
 
     if (bot) {
       try {
-        await bot.api.sendMessage(uid, `🎉 *እንኳን ደስ አለዎት!*\n\nስልክ ቁጥርዎን ስላጋሩ *10 ETB* ቦነስ በ Play Walletዎ ላይ ተጨምሯል!`, { parse_mode: 'Markdown' });
+        await bot.api.sendMessage(uid, `🎉 *እንኳን ደስ አለዎት!*\n\nስልክ ቁጥርዎን ስላጋሩ *20 ETB* ቦነስ በ Play Walletዎ ላይ ተጨምሯል!`, { parse_mode: 'Markdown' });
       } catch (err) {}
     }
   } else if (phone && !dbUser.phone) {
@@ -1012,7 +1011,7 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- ለባለ 10 እና ባለ 20 እስቴኮች የተለዩ የጨዋታ ሉፕ ሰዓቶች (የተስተካከለና የተለያየ ሎጂክ) ---
+// --- ለባለ 10 እና ባለ 20 እስቴኮች ሙሉ በሙሉ Independent የሆኑ የጨዋታ ሉፕ ሰዓቶች ---
 [10, 20].forEach(stake => {
   setInterval(async () => {
     const state = gameStates[stake];
@@ -1063,33 +1062,25 @@ setInterval(() => {
           state.winningNumber = 'NONE';
         }
 
-        // Fix: ለተወሰነ stake ብቻ የጨዋታ ውጤቱን እና ዊነር ቦክስ በግልጽ እንልካለን
+        const nextGameId = generateGameId(stake);
+
         io.emit('game_result', { 
           stake: Number(stake),
           winningNumber: winNum, 
           selectedNumbers: state.selectedNumbers, 
           derash: stats.derash, 
           gameId: state.currentGameId,
+          nextGameId: nextGameId,
           winnerName: winnerUser ? winnerUser.userName : null,
           winnerUserId: winnerUser ? winnerUser.userId : null
         });
-
-        setTimeout(() => {
-          state.gamePhase = 'result';
-          io.emit('show_winner_box', {
-            stake: Number(stake),
-            winningNumber: winNum,
-            winnerName: winnerUser ? winnerUser.userName : 'የለም',
-            derash: stats.derash
-          });
-        }, 6000);
 
         setTimeout(() => {
           state.selectedNumbers = [];
           state.timeLeft = 50;
           state.gamePhase = 'selecting';
           state.winningNumber = '?';
-          state.currentGameId = generateGameId();
+          state.currentGameId = nextGameId;
           io.emit('reset_game', { stake: Number(stake), timeLeft: 50, gamePhase: 'selecting', gameId: state.currentGameId });
         }, 10000);
       }
