@@ -131,7 +131,7 @@ function generateGameId(stake) {
   return `FL-${stake}-${randomNum}`;
 }
 
-// --- ለባለ 10 እና ባለ 20 እስቴኮች ሙሉ በሙሉ Independent የሆኑ Game States (የየራሳቸው ራንደም Game ID ያላቸው) ---
+// --- Independent Game States for stake 10 and 20 ---
 const gameStates = {
   10: {
     currentGameId: generateGameId(10),
@@ -1011,12 +1011,21 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- ለባለ 10 እና ባለ 20 እስቴኮች ሙሉ በሙሉ Independent የሆኑ የጨዋታ ሉፕ ሰዓቶች ---
+// --- Game Loop for Stakes 10 and 20 with Stable Second Decrements ---
 [10, 20].forEach(stake => {
   setInterval(async () => {
     const state = gameStates[stake];
     if (state.gamePhase === 'selecting') {
       state.timeLeft--;
+      
+      // Send timer tick explicitly every second to all connected clients
+      io.emit('timer_tick', { 
+        stake: Number(stake), 
+        timeLeft: state.timeLeft, 
+        gamePhase: state.gamePhase, 
+        gameId: state.currentGameId 
+      });
+
       if (state.timeLeft <= 0) {
         state.gamePhase = 'spinning';
         const stats = await getGameStats(stake);
@@ -1081,10 +1090,15 @@ setInterval(() => {
           state.gamePhase = 'selecting';
           state.winningNumber = '?';
           state.currentGameId = nextGameId;
-          io.emit('reset_game', { stake: Number(stake), timeLeft: 50, gamePhase: 'selecting', gameId: state.currentGameId });
+          
+          io.emit('reset_game', { 
+            stake: Number(stake), 
+            timeLeft: 50, 
+            gamePhase: 'selecting', 
+            gameId: state.currentGameId 
+          });
         }, 10000);
       }
-      io.emit('timer_tick', { stake: Number(stake), timeLeft: state.timeLeft, gamePhase: state.gamePhase, gameId: state.currentGameId });
     }
   }, 1000);
 });
