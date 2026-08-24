@@ -1018,7 +1018,6 @@ setInterval(() => {
     if (state.gamePhase === 'selecting') {
       state.timeLeft--;
       
-      // Send timer tick explicitly every second to all connected clients
       io.emit('timer_tick', { 
         stake: Number(stake), 
         timeLeft: state.timeLeft, 
@@ -1229,6 +1228,8 @@ io.on('connection', async (socket) => {
     const index = state.selectedNumbers.findIndex(n => Number(n.number) === Number(numberChosen) && String(n.userId) === uid);
     if (index !== -1) {
       state.selectedNumbers.splice(index, 1);
+      
+      // ሲሰረዝ ገንዘቡ ወደ Main Wallet ይመለሳል
       const updatedUser = await User.findOneAndUpdate(
         { userId: uid },
         { $inc: { mainWallet: stake } },
@@ -1236,7 +1237,9 @@ io.on('connection', async (socket) => {
       );
 
       broadcastBoard(stake);
-      socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
+      if (updatedUser) {
+        socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
+      }
     }
   });
 
