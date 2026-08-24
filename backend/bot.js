@@ -279,17 +279,30 @@ Coin:         ${coin}
 
   bot.command('withdraw', handleWithdraw);
 
+  // የተስተካከለው የ Invite Handler
   const handleInvite = async (ctx) => {
-    if (ctx.callbackQuery) await ctx.answerCallbackQuery();
+    if (ctx.callbackQuery) {
+      try {
+        await ctx.answerCallbackQuery();
+      } catch (e) {
+        // ignore if already answered
+      }
+    }
     try {
-      const userId = ctx.from?.id;
+      const userId = ctx.from?.id || ctx.callbackQuery?.from?.id;
+
+      if (!userId) {
+        await ctx.reply("❌ የተጠቃሚ መረጃ ማግኘት አልተቻለም። እባክዎን /start ብለው እንደገና ይሞክሩ።", { disable_notification: false });
+        return;
+      }
+
       const botUsername = ctx.me?.username || 'fetanlottery_bot';
       
       const inviteLink = `https://t.me/${botUsername}?start=${userId}`;
       const shareText = "🎉 ና ወደ Fetan Lottery እንጫወት! በዚህ ሊንክ ስትመዘገብ የ 10 ETB ነፃ ቦነስ ታገኛለህ፦";
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
 
-      const inviteMessage = `🔗 *ለጓደኞችዎ ያጋሩ እና ነፃ ቦነስ ያግኙ!*\n\n🎁 *የእርስዎ መጋበዣ ሊንክ:*\n${inviteLink}\n\n💡 *ጥቅሙ:* ጓደኛዎ በእርስዎ ሊንክ ሲመዘገብ ለእርስዎ *10 ETB* ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!`;
+      const inviteMessage = `🔗 *ለጓደኞችዎ ያጋሩ እና ነፃ ቦነስ ያግኙ!*\n\n🎁 *የእርስዎ መጋበዣ ሊንክ:*\n` + `\`${inviteLink}\`` + `\n\n💡 *ጥቅሙ:* ጓደኛዎ በእርስዎ ሊንክ ሲመዘገብ ለእርስዎ *10 ETB* ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!`;
 
       const shareKeyboard = new InlineKeyboard()
         .url("📩 ለጓደኛ Share አድርግ", shareUrl);
@@ -301,6 +314,7 @@ Coin:         ${coin}
       });
     } catch (error) {
       console.error("Error handling invite command:", error);
+      await ctx.reply("❌ ሊንኩን ማመንጨት አልተቻለም። እባክዎን ቆይተው እንደገና ይሞክሩ።", { disable_notification: false });
     }
   };
 
@@ -467,12 +481,11 @@ Coin:         ${coin}
         if (response.ok && (result.success || result._id || result.id)) {
           await ctx.reply("✅ ጥያቄዎ ደርሶናል! የላኩት የክፍያ ማረጋገጫ ተመርምሮ በአጭር ጊዜ ውስጥ ሂሳብዎ ላይ ገቢ ይደረጋል።", { disable_notification: false });
 
-          // አድሚን ግሩፕ ካለ (በ .env ውስጥ ADMIN_GROUP_ID የተሞላ ከሆነ) ማሳወቂያ በድምፅ ይልካል
           if (process.env.ADMIN_GROUP_ID) {
             const adminMsg = `🔔 <b>አዲስ የዲፖዚት ጥያቄ!</b>\n\n👤 ስም: ${userName}\n🆔 ID: <code>${userId}</code>\n💰 መጠን: ${amount} ETB\n\n📝 <b>SMS:</b>\n<code>${text}</code>`;
             await bot.api.sendMessage(process.env.ADMIN_GROUP_ID, adminMsg, {
               parse_mode: 'HTML',
-              disable_notification: false // 👈 አድሚኖቹ ከቴሌግራም ውጭ ቢሆኑም ኖቲፊኬሽኑ በድምፅ እንዲመጣ
+              disable_notification: false
             });
           }
 
