@@ -246,6 +246,7 @@ Coin:         ${coin}`;
   bot.hears(['Withdraw 🤑', 'Withdraw', '/withdraw', 'balance', '/balance'], async (ctx) => {
     if (ctx.message?.text?.includes('balance')) {
       const userId = String(ctx.from?.id);
+      await ctx.reply("💼 ቀሪ ሂሳብዎን ለመመልከት ዋናውን ሜኑ ይጠቀሙ ወይም /menu ይጫኑ።", { disable_notification: false });
     } else {
       await handleWithdraw(ctx);
     }
