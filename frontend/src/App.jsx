@@ -166,7 +166,6 @@ export default function App() {
         allSelectedList.map(item => typeof item === 'object' ? String(item.userId) : String(item))
       ).size;
       setPlayerCount20(uniquePlayers);
-      // ቲኬት 20 ብር ስለሆነ በ 20 ይባዛል
       setDerash20(Math.floor(allSelectedList.length * 20 * (sysSettings.winnerPercentage / 100)));
     }
   }, [sysSettings.winnerPercentage]);
