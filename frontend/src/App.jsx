@@ -613,7 +613,7 @@ export default function App() {
 
   const toggleNumber = useCallback((num) => {
     if (phase !== 'selecting') return;
-    if (isBanned) return alert("አካውንትዎ የታገደ ስለሆነ መጫወት አይችሉም!");
+    if (isBanned) return alert("አካውንትዎ የታገደ ስለሆነ መختارት አይችሉም!");
 
     const totalAvailableBalance = Number(mainWallet) + Number(playWallet);
 

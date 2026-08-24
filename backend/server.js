@@ -50,7 +50,6 @@ const userSchema = new mongoose.Schema({
   isBanned: { type: Boolean, default: false }
 }, { timestamps: true });
 
-// 3 ወር (90 ቀናት) ሆናቸው በራስ-ሰር እንዲጠፉ TTL index (expireAfterSeconds: 7776000) ተሰጥቷቸዋል
 const depositSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
   userName: { type: String, default: '' },
@@ -96,7 +95,7 @@ const dailyStatSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const systemSettingsSchema = new mongoose.Schema({
-  ticketPrice: { type: Number, default: 10 },
+  ticketPrice: { type: Number, default: 10 }, // ለባለ 10 እና ባለ 20 እስቴክ ድጋፍ እንዲኖረው
   winnerPercentage: { type: Number, default: 80 },
   houseCommissionPercentage: { type: Number, default: 20 },
   manualWinningNumber: { type: Number, default: null },
@@ -177,7 +176,8 @@ function broadcastBoard() {
     io.emit('board_updated', {
       selectedNumbers,
       totalPlayers: uniquePlayers,
-      derash
+      derash,
+      ticketPrice: settings.ticketPrice
     });
   }, 50); 
 }
@@ -540,6 +540,7 @@ const handleDepositRequest = async (req, res) => {
           .text('❌ Reject', `dep_reject:${deposit._id}`);
 
         const msgText =
+          `🔔 <b>ድምፅ ያለው አዲስ የገቢ (Deposit) ጥያቄ!</b>\n\n` +
           `📥 *አዲስ የዴፖዚት ጥያቄ*\n\n` +
           `• *User:* @${user.username || 'N/A'} (ID: \`${uid}\`)\n` +
           `• *Amount:* ${depAmount} ETB\n` +
@@ -548,6 +549,7 @@ const handleDepositRequest = async (req, res) => {
 
         const sentMsg = await bot.api.sendMessage(ADMIN_GROUP_ID, msgText, {
           parse_mode: 'Markdown',
+          disable_notification: false, 
           reply_markup: keyboard
         });
 
@@ -590,7 +592,15 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
 
   try {
     let settings = await getSettings();
-    if (ticketPrice !== undefined) settings.ticketPrice = Number(ticketPrice);
+    
+    // የቲኬት ዋጋን (Stake: 10 ወይም 20 ወዘተ) ትክክለኛ በሆነ መልኩ መቀበልና ማስተካከል
+    if (ticketPrice !== undefined) {
+      const newPrice = Number(ticketPrice);
+      if (newPrice === 10 || newPrice === 20) {
+        settings.ticketPrice = newPrice;
+      }
+    }
+
     if (winnerPercentage !== undefined) {
       settings.winnerPercentage = Number(winnerPercentage);
       settings.houseCommissionPercentage = 100 - Number(winnerPercentage);
@@ -605,6 +615,12 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
     
     cachedSettings = settings;
     lastSettingsFetch = Date.now();
+
+    // ሲቲንጉ ሲቀየር በሶኬት በኩል ለሁሉም ተጫዋቾች አዲሱን የቲኬት ዋጋ (Stake) ማሳወቅ
+    io.emit('settings_updated', {
+      ticketPrice: settings.ticketPrice,
+      winnerPercentage: settings.winnerPercentage
+    });
 
     res.json({ success: true, settings, message: "የሲስተም ሰቲንግ በተሳካ ሁኔታ ተስተካክሏል!" });
   } catch (err) {
@@ -922,6 +938,7 @@ app.post('/api/withdraw-request', async (req, res) => {
           .text('❌ Reject', `wit_reject:${tx._id}`);
 
         const msgText =
+          `🔔 <b>ድምፅ ያለው አዲስ የወጪ (Withdrawal) ጥያቄ!</b>\n\n` +
           `📤 *አዲስ የወጪ (Withdrawal) ጥያቄ*\n\n` +
           `• *User:* @${updatedUser.username || 'N/A'} (ID: \`${uid}\`)\n` +
           `• *Amount:* ${subAmount} ETB\n` +
@@ -929,6 +946,7 @@ app.post('/api/withdraw-request', async (req, res) => {
 
         const sentMsg = await bot.api.sendMessage(ADMIN_GROUP_ID, msgText, {
           parse_mode: 'Markdown',
+          disable_notification: false,
           reply_markup: keyboard
         });
 
@@ -953,9 +971,11 @@ app.get('/api/user', async (req, res) => {
   if (uid && uid !== 'GUEST_USER' && uid !== 'undefined') {
     const user = await getOrInitUser(uid);
     const history = await GameHistory.find({ winnerUserId: uid }).sort({ createdAt: -1 }).limit(10);
-    return res.json({ ...user.toObject(), history });
+    const settings = await getSettings(); // የቲኬት ዋጋን ከስታቲስቲክስ ጋር እንዲያሳይ
+    return res.json({ ...user.toObject(), history, ticketPrice: settings.ticketPrice });
   }
 
+  const settings = await getSettings();
   res.json({
     mainWallet: 0,
     playWallet: 0,
@@ -965,7 +985,8 @@ app.get('/api/user', async (req, res) => {
     totalGames: 0,
     phone: "",
     isBanned: false,
-    history: []
+    history: [],
+    ticketPrice: settings.ticketPrice
   });
 });
 
@@ -1112,7 +1133,7 @@ io.on('connection', async (socket) => {
     }
 
     const settings = await getSettings();
-    const STAKE_PER_TICKET = settings.ticketPrice;
+    const STAKE_PER_TICKET = settings.ticketPrice; // ከሲስተሙ ትክክለኛውን የቲኬት ዋጋ (10 ወይም 20 ETB) ይወስዳል
     const TOTAL_COST = STAKE_PER_TICKET * uniqueNewNumbers.length;
 
     if ((userDoc.mainWallet + userDoc.playWallet) < TOTAL_COST) {
@@ -1163,6 +1184,7 @@ io.on('connection', async (socket) => {
     if (index !== -1) {
       selectedNumbers.splice(index, 1);
       const settings = await getSettings();
+      // ቁጥር ሲሰረዝ ትክክለኛው የቲኬት ዋጋ (10 ወይም 20) ወደ ተጫዋቹ ዋሌታ ይመለሳል
       const updatedUser = await User.findOneAndUpdate(
         { userId: uid },
         { $inc: { mainWallet: settings.ticketPrice } },

@@ -15,7 +15,7 @@ export const bot = botToken ? new Bot(botToken) : null;
 const userStates = {};
 
 if (bot) {
-  // 1. Bot Commands Menu ማዘጋጀት (ልክ እንደ Beteseb Bingo ዝርዝሮች)
+  // 1. Bot Commands Menu ማዘጋጀት
   bot.api.setMyCommands([
     { command: "start", description: "Start" },
     { command: "register", description: "Register" },
@@ -138,6 +138,7 @@ if (bot) {
     let mainWallet = 0;
     let playWallet = 0.0;
     let coin = 0;
+    let ticketPrice = 10; // ከባለ 10 እና ባለ 20 እስቴክ ጋር እንዲጣጣም
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
@@ -147,13 +148,14 @@ if (bot) {
         mainWallet = data.mainWallet || 0;
         playWallet = data.playWallet || 0.0;
         coin = data.coin || 0;
+        if (data.ticketPrice) ticketPrice = data.ticketPrice;
       }
     } catch (apiErr) {
       console.log("API Fetch Error (Using default/local values)");
     }
 
     const accountInfoText = 
-`💼 Account Info
+`💼 Account Info (Stake: ${ticketPrice} ETB)
 
 Name:         ${telegramName}
 Phone:        ${phone}
@@ -251,7 +253,6 @@ Coin:         ${coin}`;
 
   // Direct command handlers for menu items
   bot.command('play', async (ctx) => {
-    const userId = String(ctx.from?.id);
     const playKeyboard = new InlineKeyboard().webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
     await ctx.reply("🎯 ለመጫወት ከታች ያለውን ቁልፍ ይጫኑ፡", { reply_markup: playKeyboard, disable_notification: false });
   });
@@ -268,20 +269,17 @@ Coin:         ${coin}`;
   });
 
   bot.command('balance', async (ctx) => {
-    const userId = String(ctx.from?.id);
-    await ctx.reply(`💼 ቀሪ ሂሳብዎን ለመመልከት ዋናውን ሜኑ ይጠቀሙ ወይም /menu ይጫኑ።`, { disable_notification: false });
+    await ctx.reply("💼 ቀሪ ሂሳብዎን ለመመልከት ዋናውን ሜኑ ይጠቀሙ ወይም /menu ይጫኑ።", { disable_notification: false });
   });
 
   bot.command('withdraw', handleWithdraw);
 
-  // የተስተካከለው የ Invite Handler (የ Erros መፍቻ: parse_mode ሙሉ በሙሉ ጠፍቷል)
+  // Invite Handler
   const handleInvite = async (ctx) => {
     if (ctx.callbackQuery) {
       try {
         await ctx.answerCallbackQuery();
-      } catch (e) {
-        // ignore if already answered
-      }
+      } catch (e) {}
     }
     try {
       const userId = ctx.from?.id || ctx.callbackQuery?.from?.id;
@@ -393,14 +391,12 @@ Coin:         ${coin}`;
     }
 
     try {
-      await fetch(`${API_BASE_URL}/api/user/update-phone`, {
+      await fetch(`${API_BASE_URL}/api/user/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           userId: userId, 
-          telegramId: userId, 
-          phone: phoneNumber, 
-          phoneNumber: phoneNumber 
+          phone: phoneNumber 
         })
       });
 
