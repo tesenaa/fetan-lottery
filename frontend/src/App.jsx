@@ -411,9 +411,11 @@ export default function App() {
       if (gameStake === 20) {
         setSelectionTime20(data.timeLeft);
         if (data.gamePhase) setPhase20(data.gamePhase);
+        if (data.gameId) setCurrentGameId20(data.gameId);
       } else {
         setSelectionTime10(data.timeLeft);
         if (data.gamePhase) setPhase10(data.gamePhase);
+        if (data.gameId) setCurrentGameId10(data.gameId);
       }
     });
 

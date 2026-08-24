@@ -36,15 +36,15 @@ if (bot) {
 
   // 3. Main Inline Keyboard Menu
   const mainInlineMenu = new InlineKeyboard()
-    .text('Play 🎮', 'play').text('Register 📝', 'register').row()
-    .text('Check Balance 💵', 'check_balance').text('Deposit 💵', 'deposit').row()
-    .text('Contact Support ☎️', 'support').text('Instruction 📖', 'instruction').row()
-    .text('Transfer 🎁', 'transfer').text('Withdraw 🤑', 'withdraw').row()
-    .text('Invite 🔗', 'invite').text('Convert Bonus 💱', 'convert');
+    .text('Play 10 ETB 🎮', 'play_10').text('Play 20 ETB 🎮', 'play_20').row()
+    .text('Register 📝', 'register').text('Check Balance 💵', 'check_balance').row()
+    .text('Deposit 💵', 'deposit').text('Withdraw 🤑', 'withdraw').row()
+    .text('Invite 🔗', 'invite').text('Instruction 📖', 'instruction').row()
+    .text('Contact Support ☎️', 'support').text('Convert Bonus 💱', 'convert');
 
   // የሜኑ መልእክቱን የሚልክ የተለመደ ተግባር (Function)
   const sendMainMenu = async (ctx) => {
-    const captionText = "👋 Welcome to Fetan Lottery! Choose an option below.\n\nእንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወት ይችላሉ።";
+    const captionText = "👋 Welcome to Fetan Lottery! Choose an option below.\n\nእንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም የሚፈልጉትን እስቴክ (Stake 10 ወይም Stake 20) በመምረጥ መጫወት ይችላሉ።";
 
     try {
       await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
@@ -88,7 +88,8 @@ if (bot) {
 
   // --- 6. INLINE & TEXT BUTTON HANDLERS ---
 
-  bot.callbackQuery('play', async (ctx) => {
+  // የባለ 10 እና ባለ 20 ፕሌይ (Play) ማስተናገጃ
+  const handlePlaySelection = async (ctx, stakeType) => {
     await ctx.answerCallbackQuery();
     const userId = String(ctx.from?.id);
 
@@ -99,10 +100,11 @@ if (bot) {
         const userObj = data.user || data;
 
         if (userObj && userObj.phone && userObj.phone !== "አልተመዘገበም" && String(userObj.phone).trim() !== "") {
+          const targetUrl = `${WEB_APP_URL}?stake=${stakeType}`;
           const playKeyboard = new InlineKeyboard()
-            .webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
+            .webApp(`🎮 Stake ${stakeType} አሁኑኑ ተጫወት`, targetUrl);
 
-          await ctx.reply("🎯 ለመጫወት ዝግጁ ነዎት! ከታች ያለውን ቁልፍ ተጭነው ይግቡ፡", {
+          await ctx.reply(`🎯 የ ${stakeType} ብር ሎተሪ ለመጫወት ዝግጁ ነዎት! ከታች ያለውን ቁልፍ ተጭነው ይግቡ (ሰዓቱ እና ጌም አይዲው የተለዩ ናቸው)፦`, {
             reply_markup: playKeyboard,
             disable_notification: false
           });
@@ -127,6 +129,27 @@ if (bot) {
       console.error('Play Validation Error:', err);
       await ctx.reply('❌ የስህተት ምልክት አጋጥሟል። እባክዎን እንደገና ይሞክሩ።', { disable_notification: false });
     }
+  };
+
+  bot.callbackQuery('play_10', async (ctx) => {
+    await handlePlaySelection(ctx, 10);
+  });
+
+  bot.callbackQuery('play_20', async (ctx) => {
+    await handlePlaySelection(ctx, 20);
+  });
+
+  // አጠቃላይ Play  ሲጫኑ ባለ 10 እንዲመርጥ ወይም አማራጭ እንዲሰጥ
+  bot.callbackQuery('play', async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const playMenu = new InlineKeyboard()
+      .text('🎮 Stake 10 ETB', 'play_10')
+      .text('🎮 Stake 20 ETB', 'play_20');
+
+    await ctx.reply("👇 መጫወት የሚፈልጉትን የእስክ መጠን (Stake) ይምረጡ:", {
+      reply_markup: playMenu,
+      disable_notification: false
+    });
   });
 
   bot.callbackQuery('check_balance', async (ctx) => {
@@ -138,7 +161,7 @@ if (bot) {
     let mainWallet = 0;
     let playWallet = 0.0;
     let coin = 0;
-    let ticketPrice = 10; // ከባለ 10 እና ባለ 20 እስቴክ ጋር እንዲጣጣም
+    let ticketPrice = 10;
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}`);
@@ -155,7 +178,7 @@ if (bot) {
     }
 
     const accountInfoText = 
-`💼 Account Info (Stake: ${ticketPrice} ETB)
+`💼 Account Info
 
 Name:         ${telegramName}
 Phone:        ${phone}
@@ -253,8 +276,10 @@ Coin:         ${coin}`;
 
   // Direct command handlers for menu items
   bot.command('play', async (ctx) => {
-    const playKeyboard = new InlineKeyboard().webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
-    await ctx.reply("🎯 ለመጫወት ከታች ያለውን ቁልፍ ይጫኑ፡", { reply_markup: playKeyboard, disable_notification: false });
+    const playMenu = new InlineKeyboard()
+      .text('🎮 Stake 10 ETB', 'play_10')
+      .text('🎮 Stake 20 ETB', 'play_20');
+    await ctx.reply("🎯 ለመጫወት የሚፈልጉትን እስክ መጠን ይምረጡ:", { reply_markup: playMenu, disable_notification: false });
   });
 
   bot.command('register', async (ctx) => {
@@ -299,7 +324,7 @@ Coin:         ${coin}`;
         `🔥 በእጅዎ ያለውን ስልክ በመጠቀም ብቻ ዕድልዎን ይሞክሩ!\n\n` +
         `🎉 ወደ Fetan Lottery ይቀላቀሉ እና አሁኑኑ ማሸነፍ ይጀምሩ!\n\n` +
         `🎁 ልዩ ቦነስ: ከታች ባለው ሊንክ ሲመዘገብ ብቻ የ 10 ETB ነፃ ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!\n\n` +
-        `✅ ቀላል አጨዋወት\n` +
+        `✅ ቀላል አጨዋወት (Stake 10 እና Stake 20)\n` +
         `✅ ፈጣን ዲፖዚት እና ዊዝድሮዋል\n` +
         `✅ አስተማማኝ እና ፈጣን ዕጣ ማውጣት\n\n` +
         `🔗 የርስዎ መጋበዣ ሊንክ:\n` +
@@ -326,7 +351,7 @@ Coin:         ${coin}`;
   const handleInstruction = async (ctx) => {
     if (ctx.callbackQuery) await ctx.answerCallbackQuery();
     await ctx.reply(
-      `📖 የጨዋታው መመሪያ:\n\n1. "Register 📝" የሚለውን ተጭነው ይመዝገቡ።\n2. "Deposit 💵" የሚለውን ተጭነው ወደ ዋሌት ብር ያስቀምጡ።\n3. "Play 🎮" የሚለውን ተጭነው WebApp ይክፈቱ።\n4. የሚወዱትን የሎተሪ ቁጥር ይምረጡ።\n5. ሰዓቱ ሲያልቅ እጣው በቀጥታ ይወጣል፤ ካሸነፉ ገንዘቡ ወዲያውኑ ወደ Main Walletዎ ገቢ ይሆናል።`,
+      `📖 የጨዋታው መመሪያ:\n\n1. "Register 📝" የሚለውን ተጭነው ይመዝገቡ።\n2. "Deposit 💵" የሚለውን ተጭነው ወደ ዋሌት ብር ያስቀምጡ።\n3. የሚፈልጉትን እስቴክ (Stake 10 ወይም Stake 20) በመምረጥ WebApp ይክፈቱ።\n4. የሎተሪ ቁጥር ይምረጡ (ሒሳብዎ በቂ መሆኑን ያረጋግጡ)።\n5. ሰዓቱ ሲያልቅ እጣው በቀጥታ ለየብቻው ይወጣል፤ ካሸነፉ ገንዘቡ ወዲያውኑ ወደ Main Walletዎ ገቢ ይሆናል!`,
       { disable_notification: false }
     );
   };

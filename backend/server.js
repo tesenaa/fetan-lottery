@@ -83,6 +83,7 @@ const gameHistorySchema = new mongoose.Schema({
   derash: { type: Number, default: 0 },
   houseProfit: { type: Number, default: 0 },
   playersCount: { type: Number, default: 0 },
+  stake: { type: Number, default: 10 },
   createdAt: { type: Date, default: Date.now, expires: 7776000 }
 });
 
@@ -95,7 +96,7 @@ const dailyStatSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const systemSettingsSchema = new mongoose.Schema({
-  ticketPrice: { type: Number, default: 10 }, // ለባለ 10 እና ባለ 20 እስቴክ ድጋፍ እንዲኖረው
+  ticketPrice: { type: Number, default: 10 },
   winnerPercentage: { type: Number, default: 80 },
   houseCommissionPercentage: { type: Number, default: 20 },
   manualWinningNumber: { type: Number, default: null },
@@ -130,11 +131,25 @@ function generateGameId() {
   return `FL-${randomNum}`;
 }
 
-let currentGameId = generateGameId();
-let selectedNumbers = [];
-let timeLeft = 50;
-let gamePhase = 'selecting';
-let winningNumber = null;
+// --- ለባለ 10 እና ባለ 20 እስቴኮች የተለዩ Game States ---
+const gameStates = {
+  10: {
+    currentGameId: generateGameId(),
+    selectedNumbers: [],
+    timeLeft: 50,
+    gamePhase: 'selecting',
+    winningNumber: null,
+    boardUpdateTimeout: null
+  },
+  20: {
+    currentGameId: generateGameId(),
+    selectedNumbers: [],
+    timeLeft: 50,
+    gamePhase: 'selecting',
+    winningNumber: null,
+    boardUpdateTimeout: null
+  }
+};
 
 const registeredUsersSet = new Set();
 const activeUsersMap = new Map();
@@ -163,21 +178,24 @@ async function getSettings() {
   return settings;
 }
 
-let boardUpdateTimeout = null;
-function broadcastBoard() {
-  if (boardUpdateTimeout) return;
-  boardUpdateTimeout = setTimeout(async () => {
-    boardUpdateTimeout = null;
-    const uniquePlayers = new Set(selectedNumbers.map(n => String(n.userId))).size;
+function broadcastBoard(stake) {
+  const state = gameStates[stake];
+  if (!state) return;
+  if (state.boardUpdateTimeout) return;
+  
+  state.boardUpdateTimeout = setTimeout(async () => {
+    state.boardUpdateTimeout = null;
+    const uniquePlayers = new Set(state.selectedNumbers.map(n => String(n.userId))).size;
     const settings = await getSettings();
-    const totalCollected = selectedNumbers.length * settings.ticketPrice;
+    const totalCollected = state.selectedNumbers.length * stake;
     const derash = Math.floor(totalCollected * (settings.winnerPercentage / 100));
 
     io.emit('board_updated', {
-      selectedNumbers,
+      stake,
+      selectedNumbers: state.selectedNumbers,
       totalPlayers: uniquePlayers,
       derash,
-      ticketPrice: settings.ticketPrice
+      ticketPrice: stake
     });
   }, 50); 
 }
@@ -225,13 +243,13 @@ function formatUserCount(num) {
   return num.toString();
 }
 
-async function getGameStats() {
+async function getGameStats(stake) {
+  const state = gameStates[stake];
   const settings = await getSettings();
-  const stake = settings.ticketPrice;
   const winnerPct = settings.winnerPercentage / 100;
 
-  const uniquePlayers = new Set(selectedNumbers.map(n => String(n.userId))).size;
-  const totalCollected = selectedNumbers.length * stake;
+  const uniquePlayers = new Set(state.selectedNumbers.map(n => String(n.userId))).size;
+  const totalCollected = state.selectedNumbers.length * stake;
   const derash = Math.floor(totalCollected * winnerPct);
   const houseProfit = totalCollected - derash;
   
@@ -993,84 +1011,90 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- GAME TIMER & PHASE MANAGEMENT (FIXED TIMER SYNC) ---
-setInterval(async () => {
-  if (gamePhase === 'selecting') {
-    timeLeft--;
-    if (timeLeft <= 0) {
-      gamePhase = 'spinning';
-      const stats = await getGameStats();
-      const settings = await getSettings();
+// --- ለባለ 10 እና ባለ 20 እስቴኮች የተለዩ የጨዋታ ሉፕ ሰዓቶች (timers and game flows) ---
+[10, 20].forEach(stake => {
+  setInterval(async () => {
+    const state = gameStates[stake];
+    if (state.gamePhase === 'selecting') {
+      state.timeLeft--;
+      if (state.timeLeft <= 0) {
+        state.gamePhase = 'spinning';
+        const stats = await getGameStats(stake);
+        const settings = await getSettings();
 
-      let winNum = 'NONE';
-      let winnerUser = null;
+        let winNum = 'NONE';
+        let winnerUser = null;
 
-      if (selectedNumbers.length > 0) {
-        if (settings.manualWinningNumber !== null) {
-          winNum = settings.manualWinningNumber;
-          settings.manualWinningNumber = null;
-          await settings.save();
-          cachedSettings = settings;
+        if (state.selectedNumbers.length > 0) {
+          if (settings.manualWinningNumber !== null && stake === 10) {
+            winNum = settings.manualWinningNumber;
+            settings.manualWinningNumber = null;
+            await settings.save();
+            cachedSettings = settings;
+          } else {
+            const randomIndex = Math.floor(Math.random() * state.selectedNumbers.length);
+            winNum = state.selectedNumbers[randomIndex].number;
+          }
+
+          state.winningNumber = winNum;
+          const winItem = state.selectedNumbers.find(n => Number(n.number) === Number(winNum));
+
+          if (winItem) {
+            winnerUser = winItem;
+            await User.updateOne({ userId: String(winItem.userId) }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
+            await notifyUserBalanceUpdate(String(winItem.userId));
+
+            await GameHistory.create({
+              gameId: state.currentGameId,
+              winningNumber: winNum,
+              winnerUserId: String(winItem.userId),
+              winnerName: winItem.userName,
+              totalCollected: stats.totalCollected,
+              derash: stats.derash,
+              houseProfit: stats.houseProfit,
+              playersCount: stats.totalPlayers,
+              stake: stake
+            });
+
+            await updateDailyStats(0, 0, stats.houseProfit, 1);
+          }
         } else {
-          const randomIndex = Math.floor(Math.random() * selectedNumbers.length);
-          winNum = selectedNumbers[randomIndex].number;
+          state.winningNumber = 'NONE';
         }
 
-        winningNumber = winNum;
-        const winItem = selectedNumbers.find(n => Number(n.number) === Number(winNum));
-
-        if (winItem) {
-          winnerUser = winItem;
-          await User.updateOne({ userId: String(winItem.userId) }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
-          await notifyUserBalanceUpdate(String(winItem.userId));
-
-          await GameHistory.create({
-            gameId: currentGameId,
-            winningNumber: winNum,
-            winnerUserId: String(winItem.userId),
-            winnerName: winItem.userName,
-            totalCollected: stats.totalCollected,
-            derash: stats.derash,
-            houseProfit: stats.houseProfit,
-            playersCount: stats.totalPlayers
-          });
-
-          await updateDailyStats(0, 0, stats.houseProfit, 1);
-        }
-      } else {
-        winningNumber = 'NONE';
-      }
-
-      io.emit('game_result', { 
-        winningNumber: winNum, 
-        selectedNumbers, 
-        derash: stats.derash, 
-        gameId: currentGameId,
-        winnerName: winnerUser ? winnerUser.userName : null,
-        winnerUserId: winnerUser ? winnerUser.userId : null
-      });
-
-      setTimeout(() => {
-        gamePhase = 'result';
-        io.emit('show_winner_box', {
-          winningNumber: winNum,
-          winnerName: winnerUser ? winnerUser.userName : 'የለም',
-          derash: stats.derash
+        io.emit('game_result', { 
+          stake,
+          winningNumber: winNum, 
+          selectedNumbers: state.selectedNumbers, 
+          derash: stats.derash, 
+          gameId: state.currentGameId,
+          winnerName: winnerUser ? winnerUser.userName : null,
+          winnerUserId: winnerUser ? winnerUser.userId : null
         });
-      }, 6000);
 
-      setTimeout(() => {
-        selectedNumbers = [];
-        timeLeft = 50; // ሰከንዱ ከባለ 10ሩ ጋር እኩል ከ 50 ጀምሮ ወደ ታች እንዲቆጥር ተደርጓል
-        gamePhase = 'selecting';
-        winningNumber = '?';
-        currentGameId = generateGameId();
-        io.emit('reset_game', { timeLeft: 50, gamePhase: 'selecting', gameId: currentGameId });
-      }, 10000);
+        setTimeout(() => {
+          state.gamePhase = 'result';
+          io.emit('show_winner_box', {
+            stake,
+            winningNumber: winNum,
+            winnerName: winnerUser ? winnerUser.userName : 'የለም',
+            derash: stats.derash
+          });
+        }, 6000);
+
+        setTimeout(() => {
+          state.selectedNumbers = [];
+          state.timeLeft = 50;
+          state.gamePhase = 'selecting';
+          state.winningNumber = '?';
+          state.currentGameId = generateGameId();
+          io.emit('reset_game', { stake, timeLeft: 50, gamePhase: 'selecting', gameId: state.currentGameId });
+        }, 10000);
+      }
+      io.emit('timer_tick', { stake, timeLeft: state.timeLeft, gamePhase: state.gamePhase, gameId: state.currentGameId });
     }
-    io.emit('timer_tick', { timeLeft, gamePhase, gameId: currentGameId });
-  }
-}, 1000);
+  }, 1000);
+});
 
 io.on('connection', async (socket) => {
   const userId = socket.handshake.query.userId;
@@ -1083,17 +1107,29 @@ io.on('connection', async (socket) => {
   const activeCount = new Set(activeUsersMap.values()).size;
   const registeredCount = registeredUsersSet.size;
 
-  const stats = await getGameStats();
+  const stats10 = await getGameStats(10);
+  const stats20 = await getGameStats(20);
   const settings = await getSettings();
 
   socket.emit('init_state', {
-    gameId: currentGameId,
-    selectedNumbers,
-    timeLeft,
-    gamePhase,
-    winningNumber,
-    totalPlayers: stats.totalPlayers,
-    derash: stats.derash,
+    stake10: {
+      gameId: gameStates[10].currentGameId,
+      selectedNumbers: gameStates[10].selectedNumbers,
+      timeLeft: gameStates[10].timeLeft,
+      gamePhase: gameStates[10].gamePhase,
+      winningNumber: gameStates[10].winningNumber,
+      totalPlayers: stats10.totalPlayers,
+      derash: stats10.derash
+    },
+    stake20: {
+      gameId: gameStates[20].currentGameId,
+      selectedNumbers: gameStates[20].selectedNumbers,
+      timeLeft: gameStates[20].timeLeft,
+      gamePhase: gameStates[20].gamePhase,
+      winningNumber: gameStates[20].winningNumber,
+      totalPlayers: stats20.totalPlayers,
+      derash: stats20.derash
+    },
     ticketPrice: settings.ticketPrice
   });
 
@@ -1105,7 +1141,11 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('select_number', async (data) => {
-    if (gamePhase !== 'selecting') return;
+    // stakeholder (ወይም stake) ከዳታው መቀበል (ነባር ኮድ ከሌለ በዲហፎልት 10 ወይም 20)
+    const stake = Number(data.stake) || 10;
+    const state = gameStates[stake];
+    if (!state || state.gamePhase !== 'selecting') return;
+
     const { numbersChosen, numberChosen, userId, userName } = data;
     const uid = String(userId);
 
@@ -1120,7 +1160,7 @@ io.on('connection', async (socket) => {
 
     if (chosenList.length === 0) return;
 
-    const currentSelectedSet = new Set(selectedNumbers.map(n => Number(n.number)));
+    const currentSelectedSet = new Set(state.selectedNumbers.map(n => Number(n.number)));
     const uniqueNewNumbers = chosenList.filter(num => !currentSelectedSet.has(Number(num)));
 
     if (uniqueNewNumbers.length === 0) return;
@@ -1131,13 +1171,10 @@ io.on('connection', async (socket) => {
       return;
     }
 
-    const settings = await getSettings();
-    const STAKE_PER_TICKET = settings.ticketPrice; // የቲኬት ዋጋ (10 ወይም 20 ETB) ይወስዳል
-    const TOTAL_COST = STAKE_PER_TICKET * uniqueNewNumbers.length;
+    const TOTAL_COST = stake * uniqueNewNumbers.length;
 
-    // ሂሳብ በቂ ካልሆነ (ለ 10ም ሆነ ለ 20 ብር እስቴክ) መመረጥ አይችልም
     if ((userDoc.mainWallet + userDoc.playWallet) < TOTAL_COST) {
-      socket.emit('error_message', { message: `በቂ ሂሳብ የለም! የ ${STAKE_PER_TICKET} ብር እጣ ለመምረጥ በቂ ገንዘብ የለዎትም::` });
+      socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን ሂሳብዎን ይሙሉ::' });
       return;
     }
 
@@ -1164,33 +1201,35 @@ io.on('connection', async (socket) => {
     }
 
     uniqueNewNumbers.forEach(num => {
-      selectedNumbers.push({
+      state.selectedNumbers.push({
         number: Number(num),
         userId: uid,
         userName: userName || `ተጫዋች_${uid}`
       });
     });
 
-    broadcastBoard();
+    broadcastBoard(stake);
     socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
   });
 
   socket.on('deselect_number', async (data) => {
-    if (gamePhase !== 'selecting') return;
+    const stake = Number(data.stake) || 10;
+    const state = gameStates[stake];
+    if (!state || state.gamePhase !== 'selecting') return;
+
     const { numberChosen, userId } = data;
     const uid = String(userId);
 
-    const index = selectedNumbers.findIndex(n => Number(n.number) === Number(numberChosen) && String(n.userId) === uid);
+    const index = state.selectedNumbers.findIndex(n => Number(n.number) === Number(numberChosen) && String(n.userId) === uid);
     if (index !== -1) {
-      selectedNumbers.splice(index, 1);
-      const settings = await getSettings();
+      state.selectedNumbers.splice(index, 1);
       const updatedUser = await User.findOneAndUpdate(
         { userId: uid },
-        { $inc: { mainWallet: settings.ticketPrice } },
+        { $inc: { mainWallet: stake } },
         { new: true }
       );
 
-      broadcastBoard();
+      broadcastBoard(stake);
       socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
     }
   });
