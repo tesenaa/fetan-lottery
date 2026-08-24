@@ -279,7 +279,7 @@ Coin:         ${coin}
 
   bot.command('withdraw', handleWithdraw);
 
-  // የተስተካከለው የ Invite Handler
+  // የተስተካከለው የ Invite Handler (ከባነር ፎቶ እና ማስተዋወቂያ ጽሁፍ ጋር)
   const handleInvite = async (ctx) => {
     if (ctx.callbackQuery) {
       try {
@@ -302,12 +302,22 @@ Coin:         ${coin}
       const shareText = "🎉 ና ወደ Fetan Lottery እንጫወት! በዚህ ሊንክ ስትመዘገብ የ 10 ETB ነፃ ቦነስ ታገኛለህ፦";
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
 
-      const inviteMessage = `🔗 *ለጓደኞችዎ ያጋሩ እና ነፃ ቦነስ ያግኙ!*\n\n🎁 *የእርስዎ መጋበዣ ሊንክ:*\n` + `\`${inviteLink}\`` + `\n\n💡 *ጥቅሙ:* ጓደኛዎ በእርስዎ ሊንክ ሲመዘገብ ለእርስዎ *10 ETB* ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!`;
+      const inviteCaption = 
+        `🔥 *በእጅዎ ያለውን ስልክ በመጠቀም ብቻ ዕድልዎን ይሞክሩ!*\n\n` +
+        `🎉 *ወደ Fetan Lottery ይቀላቀሉ እና አሁኑኑ ማሸነፍ ይጀምሩ!*\n\n` +
+        `🎁 *ልዩ ቦነስ:* ከታች ባለው ሊንክ ሲመዘገብ ብቻ የ *10 ETB* ነፃ ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!\n\n` +
+        `✅ ቀላል አጨዋወት\n` +
+        `✅ ፈጣን ዲፖዚት እና ዊዝድሮዋል\n` +
+        `✅ አስተማማኝ እና ፈጣን ዕጣ ማውጣት\n\n` +
+        `🔗 *የእርስዎ መጋበዣ ሊንክ:*\n` +
+        `\`${inviteLink}\`\n\n` +
+        `👇 *አሁኑኑ በመመዝገብ ነፃ ቦነስዎን ይሰብስቡ!*`;
 
       const shareKeyboard = new InlineKeyboard()
         .url("📩 ለጓደኛ Share አድርግ", shareUrl);
 
-      await ctx.reply(inviteMessage, {
+      await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
+        caption: inviteCaption,
         parse_mode: 'Markdown',
         reply_markup: shareKeyboard,
         disable_notification: false
