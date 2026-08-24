@@ -593,7 +593,6 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
   try {
     let settings = await getSettings();
     
-    // የቲኬት ዋጋን (Stake: 10 ወይም 20 ወዘተ) ትክክለኛ በሆነ መልኩ መቀበልና ማስተካከል
     if (ticketPrice !== undefined) {
       const newPrice = Number(ticketPrice);
       if (newPrice === 10 || newPrice === 20) {
@@ -616,7 +615,6 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
     cachedSettings = settings;
     lastSettingsFetch = Date.now();
 
-    // ሲቲንጉ ሲቀየር በሶኬት በኩል ለሁሉም ተጫዋቾች አዲሱን የቲኬት ዋጋ (Stake) ማሳወቅ
     io.emit('settings_updated', {
       ticketPrice: settings.ticketPrice,
       winnerPercentage: settings.winnerPercentage
@@ -971,7 +969,7 @@ app.get('/api/user', async (req, res) => {
   if (uid && uid !== 'GUEST_USER' && uid !== 'undefined') {
     const user = await getOrInitUser(uid);
     const history = await GameHistory.find({ winnerUserId: uid }).sort({ createdAt: -1 }).limit(10);
-    const settings = await getSettings(); // የቲኬት ዋጋን ከስታቲስቲክስ ጋር እንዲያሳይ
+    const settings = await getSettings();
     return res.json({ ...user.toObject(), history, ticketPrice: settings.ticketPrice });
   }
 
@@ -995,6 +993,7 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
+// --- GAME TIMER & PHASE MANAGEMENT (FIXED TIMER SYNC) ---
 setInterval(async () => {
   if (gamePhase === 'selecting') {
     timeLeft--;
@@ -1062,7 +1061,7 @@ setInterval(async () => {
 
       setTimeout(() => {
         selectedNumbers = [];
-        timeLeft = 50;
+        timeLeft = 50; // ሰከንዱ ከባለ 10ሩ ጋር እኩል ከ 50 ጀምሮ ወደ ታች እንዲቆጥር ተደርጓል
         gamePhase = 'selecting';
         winningNumber = '?';
         currentGameId = generateGameId();
@@ -1133,11 +1132,12 @@ io.on('connection', async (socket) => {
     }
 
     const settings = await getSettings();
-    const STAKE_PER_TICKET = settings.ticketPrice; // ከሲስተሙ ትክክለኛውን የቲኬት ዋጋ (10 ወይም 20 ETB) ይወስዳል
+    const STAKE_PER_TICKET = settings.ticketPrice; // የቲኬት ዋጋ (10 ወይም 20 ETB) ይወስዳል
     const TOTAL_COST = STAKE_PER_TICKET * uniqueNewNumbers.length;
 
+    // ሂሳብ በቂ ካልሆነ (ለ 10ም ሆነ ለ 20 ብር እስቴክ) መመረጥ አይችልም
     if ((userDoc.mainWallet + userDoc.playWallet) < TOTAL_COST) {
-      socket.emit('error_message', { message: 'በቂ ሂሳብ የለም! እባክዎን ሂሳብዎን ይሙሉ::' });
+      socket.emit('error_message', { message: `በቂ ሂሳብ የለም! የ ${STAKE_PER_TICKET} ብር እጣ ለመምረጥ በቂ ገንዘብ የለዎትም::` });
       return;
     }
 
@@ -1184,7 +1184,6 @@ io.on('connection', async (socket) => {
     if (index !== -1) {
       selectedNumbers.splice(index, 1);
       const settings = await getSettings();
-      // ቁጥር ሲሰረዝ ትክክለኛው የቲኬት ዋጋ (10 ወይም 20) ወደ ተጫዋቹ ዋሌታ ይመለሳል
       const updatedUser = await User.findOneAndUpdate(
         { userId: uid },
         { $inc: { mainWallet: settings.ticketPrice } },
