@@ -190,8 +190,9 @@ function broadcastBoard(stake) {
     const totalCollected = state.selectedNumbers.length * stake;
     const derash = Math.floor(totalCollected * (settings.winnerPercentage / 100));
 
+    // Fix: በየትኛው stake ላይ እንደሚሰራ ለክላይንቱ በግልጽ እንልካለን
     io.emit('board_updated', {
-      stake,
+      stake: Number(stake),
       selectedNumbers: state.selectedNumbers,
       totalPlayers: uniquePlayers,
       derash,
@@ -1062,8 +1063,9 @@ setInterval(() => {
           state.winningNumber = 'NONE';
         }
 
+        // Fix: ለተወሰነ stake ብቻ የጨዋታ ውጤቱን እና ዊነር ቦክስ እንልካለን
         io.emit('game_result', { 
-          stake,
+          stake: Number(stake),
           winningNumber: winNum, 
           selectedNumbers: state.selectedNumbers, 
           derash: stats.derash, 
@@ -1075,7 +1077,7 @@ setInterval(() => {
         setTimeout(() => {
           state.gamePhase = 'result';
           io.emit('show_winner_box', {
-            stake,
+            stake: Number(stake),
             winningNumber: winNum,
             winnerName: winnerUser ? winnerUser.userName : 'የለም',
             derash: stats.derash
@@ -1088,10 +1090,10 @@ setInterval(() => {
           state.gamePhase = 'selecting';
           state.winningNumber = '?';
           state.currentGameId = generateGameId();
-          io.emit('reset_game', { stake, timeLeft: 50, gamePhase: 'selecting', gameId: state.currentGameId });
+          io.emit('reset_game', { stake: Number(stake), timeLeft: 50, gamePhase: 'selecting', gameId: state.currentGameId });
         }, 10000);
       }
-      io.emit('timer_tick', { stake, timeLeft: state.timeLeft, gamePhase: state.gamePhase, gameId: state.currentGameId });
+      io.emit('timer_tick', { stake: Number(stake), timeLeft: state.timeLeft, gamePhase: state.gamePhase, gameId: state.currentGameId });
     }
   }, 1000);
 });
@@ -1141,7 +1143,6 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('select_number', async (data) => {
-    // stakeholder (ወይም stake) ከዳታው መቀበል (ነባር ኮድ ከሌለ በዲហፎልት 10 ወይም 20)
     const stake = Number(data.stake) || 10;
     const state = gameStates[stake];
     if (!state || state.gamePhase !== 'selecting') return;
