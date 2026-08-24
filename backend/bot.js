@@ -116,10 +116,9 @@ if (bot) {
         .oneTime();
 
       await ctx.reply(
-        "⚠️ *ለመጫወት አስቀድመው መመዝገብ አለብዎት!*\n\n" +
-        "እባክዎን መጀመሪያ *'Register 📝'* በማድረግ ወይም ከታች ያለውን *'📱 ስልክ ቁጥር አጋራ (Share Contact)'* ቁልፍ ተጭነው ስልክ ቁጥርዎን ያጋሩ፡",
+        "⚠️ ለመጫወት አስቀድመው መመዝገብ አለብዎት!\n\n" +
+        "እባክዎን መጀመሪያ 'Register 📝' በማድረግ ወይም ከታች ያለውን '📱 ስልክ ቁጥር አጋራ (Share Contact)' ቁልፍ ተጭነው ስልክ ቁጥርዎን ያጋሩ፡",
         {
-          parse_mode: 'Markdown',
           reply_markup: contactKeyboard,
           disable_notification: false
         }
@@ -156,20 +155,17 @@ if (bot) {
     const accountInfoText = 
 `💼 Account Info
 
-\`\`\`
 Name:         ${telegramName}
 Phone:        ${phone}
 Main wallet:  ${mainWallet}
 Play wallet:  ${Number(playWallet).toFixed(1)}
-Coin:         ${coin}
-\`\`\``;
+Coin:         ${coin}`;
 
     const balanceMenu = new InlineKeyboard()
       .text("📋 COPY CODE", `copy_${userId}`).row()
       .text("💵 Deposit", "deposit").text("🤑 Withdraw", "withdraw");
 
     await ctx.reply(accountInfoText, {
-      parse_mode: 'Markdown',
       reply_markup: balanceMenu,
       disable_notification: false
     });
@@ -186,10 +182,9 @@ Coin:         ${coin}
         
         if (userObj && userObj.phone && userObj.phone !== "አልተመዘገበም" && String(userObj.phone).trim() !== "") {
           await ctx.reply(
-            "ℹ️ *ቀደም ሲል ተመዝግበዋል!*\n\n" +
-            "አሁኑኑ መጫወት ለመጀመር *Play 🎮* የሚለውን ይጫኑ ወይም *Deposit 💵* በማድረግ ሂሳብዎን ይሙሉ፤",
+            "ℹ️ ቀደም ሲል ተመዝግበዋል!\n\n" +
+            "አሁኑኑ መጫወት ለመጀመር Play 🎮 የሚለውን ይጫኑ ወይም Deposit 💵 በማድረግ ሂሳብዎን ይሙሉ፤",
             { 
-              parse_mode: 'Markdown',
               reply_markup: { remove_keyboard: true },
               disable_notification: false
             }
@@ -230,12 +225,12 @@ Coin:         ${coin}
         const mainWallet = data.mainWallet || 0;
 
         const withdrawMessage = 
-          `📤 *ገንዘብ ማውጫ (Withdrawal)*\n\n` +
-          `• *ያልዎት ቀሪ ሂሳብ:* ${mainWallet} ETB\n` +
-          `• *አነስተኛ ወጪ ማድረጊያ:* 50 ETB\n\n` +
+          `📤 ገንዘብ ማውጫ (Withdrawal)\n\n` +
+          `• ያልዎት ቀሪ ሂሳብ: ${mainWallet} ETB\n` +
+          `• አነስተኛ ወጪ ማድረጊያ: 50 ETB\n\n` +
           `ገንዘብ ለማውጣት በ WebApp ውስጥ ያለውን Wallet ገፅ ይጠቀሙ ወይም አስተዳዳሪውን ያናግሩ።`;
 
-        await ctx.reply(withdrawMessage, { parse_mode: 'Markdown', disable_notification: false });
+        await ctx.reply(withdrawMessage, { disable_notification: false });
       } else {
         await ctx.reply('❌ የተጠቃሚ መረጃ ማግኘት አልተቻለም።', { disable_notification: false });
       }
@@ -279,7 +274,7 @@ Coin:         ${coin}
 
   bot.command('withdraw', handleWithdraw);
 
-  // የተስተካከለው የ Invite Handler (ከባነር ፎቶ እና ማስተዋወቂያ ጽሁፍ ጋር)
+  // የተስተካከለው የ Invite Handler (የ Erros መፍቻ: parse_mode ሙሉ በሙሉ ጠፍቷል)
   const handleInvite = async (ctx) => {
     if (ctx.callbackQuery) {
       try {
@@ -297,30 +292,29 @@ Coin:         ${coin}
       }
 
       const botUsername = ctx.me?.username || 'fetanlottery_bot';
-      
       const inviteLink = `https://t.me/${botUsername}?start=${userId}`;
+      
       const shareText = "🎉 ና ወደ Fetan Lottery እንጫወት! በዚህ ሊንክ ስትመዘገብ የ 10 ETB ነፃ ቦነስ ታገኛለህ፦";
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
 
       const inviteCaption = 
-        `🔥 *በእጅዎ ያለውን ስልክ በመጠቀም ብቻ ዕድልዎን ይሞክሩ!*\n\n` +
-        `🎉 *ወደ Fetan Lottery ይቀላቀሉ እና አሁኑኑ ማሸነፍ ይጀምሩ!*\n\n` +
-        `🎁 *ልዩ ቦነስ:* ከታች ባለው ሊንክ ሲመዘገብ ብቻ የ *10 ETB* ነፃ ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!\n\n` +
+        `🔥 በእጅዎ ያለውን ስልክ በመጠቀም ብቻ ዕድልዎን ይሞክሩ!\n\n` +
+        `🎉 ወደ Fetan Lottery ይቀላቀሉ እና አሁኑኑ ማሸነፍ ይጀምሩ!\n\n` +
+        `🎁 ልዩ ቦነስ: ከታች ባለው ሊንክ ሲመዘገብ ብቻ የ 10 ETB ነፃ ቦነስ በ Play Wallet ላይ ይጨመርልዎታል!\n\n` +
         `✅ ቀላል አጨዋወት\n` +
         `✅ ፈጣን ዲፖዚት እና ዊዝድሮዋል\n` +
         `✅ አስተማማኝ እና ፈጣን ዕጣ ማውጣት\n\n` +
-        `🔗 *የእርስዎ መጋበዣ ሊንክ:*\n` +
-        `\`${inviteLink}\`\n\n` +
-        `👇 *አሁኑኑ በመመዝገብ ነፃ ቦነስዎን ይሰብስቡ!*`;
+        `🔗 የርስዎ መጋበዣ ሊንክ:\n` +
+        `${inviteLink}\n\n` +
+        `👇 አሁኑኑ በመመዝገብ ነፃ ቦነስዎን ይሰብስቡ!`;
 
       const shareKeyboard = new InlineKeyboard()
-        .url("📩 ለጓደኛ Share አድርግ", shareUrl);
+        .url("✉️ ለጓደኛ Share አድርግ", shareUrl);
 
       await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
         caption: inviteCaption,
-        parse_mode: 'Markdown',
-        reply_markup: shareKeyboard,
-        disable_notification: false
+        disable_notification: false,
+        reply_markup: shareKeyboard
       });
     } catch (error) {
       console.error("Error handling invite command:", error);
@@ -334,8 +328,8 @@ Coin:         ${coin}
   const handleInstruction = async (ctx) => {
     if (ctx.callbackQuery) await ctx.answerCallbackQuery();
     await ctx.reply(
-      `📖 *የጨዋታው መመሪያ*:\n\n1. "Register 📝" የሚለውን ተጭነው ይመዝገቡ።\n2. "Deposit 💵" የሚለውን ተጭነው ወደ ዋሌት ብር ያስቀምጡ።\n3. "Play 🎮" የሚለውን ተጭነው WebApp ይክፈቱ።\n4. የሚወዱትን የሎተሪ ቁጥር ይምረጡ።\n5. ሰዓቱ ሲያልቅ እጣው በቀጥታ ይወጣል፤ ካሸነፉ ገንዘቡ ወዲያውኑ ወደ Main Walletዎ ገቢ ይሆናል።`,
-      { parse_mode: 'Markdown', disable_notification: false }
+      `📖 የጨዋታው መመሪያ:\n\n1. "Register 📝" የሚለውን ተጭነው ይመዝገቡ።\n2. "Deposit 💵" የሚለውን ተጭነው ወደ ዋሌት ብር ያስቀምጡ።\n3. "Play 🎮" የሚለውን ተጭነው WebApp ይክፈቱ።\n4. የሚወዱትን የሎተሪ ቁጥር ይምረጡ።\n5. ሰዓቱ ሲያልቅ እጣው በቀጥታ ይወጣል፤ ካሸነፉ ገንዘቡ ወዲያውኑ ወደ Main Walletዎ ገቢ ይሆናል።`,
+      { disable_notification: false }
     );
   };
 
@@ -411,9 +405,8 @@ Coin:         ${coin}
       });
 
       await ctx.reply(
-        "🎉 *ምዝገባዎ በስኬት ተጠናቋል!*\n\n📱 ስልክ ቁጥርዎ፦ " + phoneNumber + " ተመዝግቧል።",
+        "🎉 ምዝገባዎ በስኬት ተጠናቋል!\n\n📱 ስልክ ቁጥርዎ፦ " + phoneNumber + " ተመዝግቧል።",
         {
-          parse_mode: 'Markdown',
           reply_markup: { remove_keyboard: true },
           disable_notification: false
         }
@@ -421,9 +414,8 @@ Coin:         ${coin}
     } catch (err) {
       console.error('Phone update fetch error:', err);
       await ctx.reply(
-        "🎉 *ምዝገባዎ በስኬት ተጠናቋል!*\n\n📱 ስልክ ቁጥርዎ፦ " + phoneNumber + " ተመዝግቧል።",
+        "🎉 ምዝገባዎ በስኬት ተጠናቋል!\n\n📱 ስልክ ቁጥርዎ፦ " + phoneNumber + " ተመዝግቧል።",
         {
-          parse_mode: 'Markdown',
           reply_markup: { remove_keyboard: true },
           disable_notification: false
         }
