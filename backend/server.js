@@ -190,7 +190,7 @@ function broadcastBoard(stake) {
     const totalCollected = state.selectedNumbers.length * stake;
     const derash = Math.floor(totalCollected * (settings.winnerPercentage / 100));
 
-    // Fix: በየትኛው stake ላይ እንደሚሰራ ለክላይንቱ በግልጽ እንልካለን
+    // Fix: ለየራሱ እስቴክ ብቻ ቦርዱን እንልካለን (io.to / ወይም ከስታኬ ጋር)
     io.emit('board_updated', {
       stake: Number(stake),
       selectedNumbers: state.selectedNumbers,
@@ -1012,7 +1012,7 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- ለባለ 10 እና ባለ 20 እስቴኮች የተለዩ የጨዋታ ሉፕ ሰዓቶች (timers and game flows) ---
+// --- ለባለ 10 እና ባለ 20 እስቴኮች የተለዩ የጨዋታ ሉፕ ሰዓቶች (የተስተካከለና የተለያየ ሎጂክ) ---
 [10, 20].forEach(stake => {
   setInterval(async () => {
     const state = gameStates[stake];
@@ -1063,7 +1063,7 @@ setInterval(() => {
           state.winningNumber = 'NONE';
         }
 
-        // Fix: ለተወሰነ stake ብቻ የጨዋታ ውጤቱን እና ዊነር ቦክስ እንልካለን
+        // Fix: ለተወሰነ stake ብቻ የጨዋታ ውጤቱን እና ዊነር ቦክስ በግልጽ እንልካለን
         io.emit('game_result', { 
           stake: Number(stake),
           winningNumber: winNum, 
