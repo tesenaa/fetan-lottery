@@ -1011,7 +1011,7 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- Game Loop for Stakes 10 and 20 with Stable Second Decrements ---
+// --- Independent Game Loops for Stakes 10 and 20 (Fixed Both Issues) ---
 [10, 20].forEach(stake => {
   setInterval(async () => {
     const state = gameStates[stake];
@@ -1247,7 +1247,7 @@ io.on('connection', async (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.source?.PORT || process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server listening on port ${PORT}`);
 });
