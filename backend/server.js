@@ -83,7 +83,7 @@ const gameHistorySchema = new mongoose.Schema({
   derash: { type: Number, default: 0 },
   houseProfit: { type: Number, default: 0 },
   playersCount: { type: Number, default: 0 },
-  stake: { type: Number, default: 20 },
+  stake: { type: Number, required: true }, // Stake 10 ወይም 20 ሆኖ ይመዘገባል
   createdAt: { type: Date, default: Date.now, expires: 7776000 }
 });
 
@@ -99,7 +99,8 @@ const systemSettingsSchema = new mongoose.Schema({
   ticketPrice: { type: Number, default: 20 },
   winnerPercentage: { type: Number, default: 80 },
   houseCommissionPercentage: { type: Number, default: 20 },
-  manualWinningNumber: { type: Number, default: null },
+  manualWinningNumber10: { type: Number, default: null }, // ለ Play 10 የተለየ
+  manualWinningNumber20: { type: Number, default: null }, // ለ Play 20 የተለየ
   activeAdmins: {
     admin1: { type: Boolean, default: true },
     admin2: { type: Boolean, default: true }
@@ -169,7 +170,8 @@ async function getSettings() {
       ticketPrice: 20,
       winnerPercentage: 80,
       houseCommissionPercentage: 20,
-      manualWinningNumber: null,
+      manualWinningNumber10: null,
+      manualWinningNumber20: null,
       activeAdmins: { admin1: true, admin2: true }
     });
   }
@@ -190,6 +192,7 @@ function broadcastBoard(stake) {
     const totalCollected = state.selectedNumbers.length * stake;
     const derash = Math.floor(totalCollected * (settings.winnerPercentage / 100));
 
+    // የትኛው Stake እንደሆነ በ socket room ወይም በ data ውስጥ stake በመጨመር መላክ ይቻላል
     io.emit('board_updated', {
       stake: Number(stake),
       selectedNumbers: state.selectedNumbers,
@@ -606,7 +609,7 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
     return res.status(403).json({ success: false, message: "ይህንን ለማድረግ የሱፐር አድሚን ስልጣን ያስፈልጋል!" });
   }
 
-  const { ticketPrice, winnerPercentage, manualWinningNumber, activeAdmins } = req.body;
+  const { ticketPrice, winnerPercentage, manualWinningNumber10, manualWinningNumber20, activeAdmins } = req.body;
 
   try {
     let settings = await getSettings();
@@ -622,8 +625,11 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
       settings.winnerPercentage = Number(winnerPercentage);
       settings.houseCommissionPercentage = 100 - Number(winnerPercentage);
     }
-    if (manualWinningNumber !== undefined) {
-      settings.manualWinningNumber = manualWinningNumber !== null ? Number(manualWinningNumber) : null;
+    if (manualWinningNumber10 !== undefined) {
+      settings.manualWinningNumber10 = manualWinningNumber10 !== null ? Number(manualWinningNumber10) : null;
+    }
+    if (manualWinningNumber20 !== undefined) {
+      settings.manualWinningNumber20 = manualWinningNumber20 !== null ? Number(manualWinningNumber20) : null;
     }
     if (activeAdmins !== undefined) {
       settings.activeAdmins = activeAdmins;
@@ -1011,7 +1017,7 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- Independent Game Loops for Stakes 10 and 20 (Fixed Both Issues) ---
+// --- Independent Game Loops for Stakes 10 and 20 (Fully Separated) ---
 [10, 20].forEach(stake => {
   setInterval(async () => {
     const state = gameStates[stake];
@@ -1034,9 +1040,14 @@ setInterval(() => {
         let winnerUser = null;
 
         if (state.selectedNumbers.length > 0) {
-          if (settings.manualWinningNumber !== null && stake === 10) {
-            winNum = settings.manualWinningNumber;
-            settings.manualWinningNumber = null;
+          if (stake === 10 && settings.manualWinningNumber10 !== null) {
+            winNum = settings.manualWinningNumber10;
+            settings.manualWinningNumber10 = null;
+            await settings.save();
+            cachedSettings = settings;
+          } else if (stake === 20 && settings.manualWinningNumber20 !== null) {
+            winNum = settings.manualWinningNumber20;
+            settings.manualWinningNumber20 = null;
             await settings.save();
             cachedSettings = settings;
           } else {
@@ -1247,7 +1258,7 @@ io.on('connection', async (socket) => {
   });
 });
 
-const PORT = process.source?.PORT || process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server listening on port ${PORT}`);
 });
