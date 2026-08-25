@@ -499,7 +499,7 @@ export default function App() {
             setDerash20(0);
             setCurrentGameId20(data.nextGameId || generateRandomGameId());
           }, 4000);
-        }, 1500); // አጭር እና ፈጣን የሽክርክሪት ሰዓት (1.5 ሰከንድ)
+        }, 1500);
       } else {
         setPhase10('spinning');
         setWinningNumber10('SPINNING');
@@ -532,7 +532,7 @@ export default function App() {
             setDerash10(0);
             setCurrentGameId10(data.nextGameId || generateRandomGameId());
           }, 4000);
-        }, 1500); // አጭር እና ፈጣን የሽክርክሪት ሰዓት (1.5 ሰከንድ)
+        }, 1500);
       }
     });
 

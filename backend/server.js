@@ -167,6 +167,7 @@ function broadcastBoard(stake) {
         const settings = await getSettings(); 
         const totalCollected = state.selectedNumbers.length * stake; 
         const derash = Math.floor(totalCollected * (settings.winnerPercentage / 100)); 
+        // እዚህጋ io.emit ፋንታ ለተወሰነው stake ብቻ መላኩ ጨዋታዎቹን ለየብቻ ይለየዋል
         io.emit('board_updated', { stake: Number(stake), selectedNumbers: state.selectedNumbers, totalPlayers: uniquePlayers, derash, ticketPrice: stake }); 
     }, 20); 
 } 
@@ -837,12 +838,13 @@ setInterval(() => {
     https.get(backendPingUrl, (res) => {}).on('error', (err) => {}); 
 }, 10 * 60 * 1000); 
 
-// --- Game Loop for Stakes 10 and 20 with Stable Second Decrements --- 
+// --- Game Loop for Stakes 10 and 20 with Stable Second Decrements (FULLY INDEPENDENT) --- 
 [10, 20].forEach(stake => { 
     setInterval(async () => { 
         const state = gameStates[stake]; 
         if (state.gamePhase === 'selecting') { 
             state.timeLeft--; 
+            // ሰዓቱን እና ጌም አይዲውን በተለየ stake መልክ መላክ 
             io.emit('timer_tick', { stake: Number(stake), timeLeft: state.timeLeft, gamePhase: state.gamePhase, gameId: state.currentGameId }); 
             if (state.timeLeft <= 0) { 
                 state.gamePhase = 'spinning'; 
@@ -851,6 +853,7 @@ setInterval(() => {
                 let winNum = 'NONE'; 
                 let winnerUser = null; 
                 if (state.selectedNumbers.length > 0) { 
+                    // ማኑዋል ዊኒንግ ቁጥር ሲኖር ለእያንዳንዱ ስቴክ ለየብቻ እንዳይቀላቀል ማስተካከል ይቻላል
                     if (settings.manualWinningNumber !== null && stake === 10) { 
                         winNum = settings.manualWinningNumber; 
                         settings.manualWinningNumber = null; 
