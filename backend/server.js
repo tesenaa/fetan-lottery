@@ -1229,7 +1229,6 @@ io.on('connection', async (socket) => {
     if (index !== -1) {
       state.selectedNumbers.splice(index, 1);
       
-      // ሲሰረዝ ገንዘቡ ወደ Main Wallet ይመለሳል
       const updatedUser = await User.findOneAndUpdate(
         { userId: uid },
         { $inc: { mainWallet: stake } },
