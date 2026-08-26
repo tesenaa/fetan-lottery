@@ -191,6 +191,7 @@ function broadcastBoard(stake) {
     const totalCollected = state.selectedNumbers.length * numericStake;
     const derash = Math.floor(totalCollected * (settings.winnerPercentage / 100));
     
+    // በግልጽ ስቴክ (Stake) በመጥቀስ ለሁሉም ക്לየንቶች መረጃ እናደርሳለን
     io.emit('board_updated', {
       stake: numericStake,
       selectedNumbers: state.selectedNumbers,
@@ -880,13 +881,15 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- Independent Game Loops for Stakes 10 and 20 (FULLY SEPARATED) ---
+// --- Independent Game Loops for Stakes 10 and 20 (FULLY SEPARATED & EXPLICITLY STAKE-TAGGED) ---
 [10, 20].forEach(stake => {
   const numericStake = Number(stake);
   setInterval(async () => {
     const state = gameStates[numericStake];
     if (state.gamePhase === 'selecting') {
       state.timeLeft--;
+      
+      // በግልጽ stake በመላክ የ 10 እና የ 20 ሰዓት (Timer) እና ጌም አይዲ እንዳይቀላቀሉ ተደርጓል
       io.emit('timer_tick', {
         stake: numericStake,
         timeLeft: state.timeLeft,
@@ -908,7 +911,7 @@ setInterval(() => {
           if (activeManualWin !== null && activeManualWin !== undefined) {
             winNum = activeManualWin;
             settings[manualKey] = null;
-            settings.manualWinningNumber = null;
+            if (numericStake !== 10) settings.manualWinningNumber = null;
             await settings.save();
             cachedSettings = settings;
           } else {
@@ -957,6 +960,7 @@ setInterval(() => {
           state.gamePhase = 'selecting';
           state.winningNumber = '?';
           state.currentGameId = nextGameId;
+          
           io.emit('reset_game', {
             stake: numericStake,
             timeLeft: 50,
