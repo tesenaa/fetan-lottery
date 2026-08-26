@@ -86,7 +86,7 @@ export default function App() {
     return `FL-${randomNum}`;
   };
 
-  // SEPARATE STATES FOR STAKE 10 AND STAKE 20 (INDEPENDENT)
+  // SEPARATE STATES FOR STAKE 10 AND STAKE 20 (COMPLETELY INDEPENDENT)
   const [selectedNumbers10, setSelectedNumbers10] = useState([]);
   const [allPickedNumbers10, setAllPickedNumbers10] = useState([]);
   const [playerCount10, setPlayerCount10] = useState(0);
@@ -107,7 +107,7 @@ export default function App() {
   const [winnerInfo20, setWinnerInfo20] = useState(null);
   const [currentGameId20, setCurrentGameId20] = useState(generateRandomGameId());
 
-  // ACTIVE STAKE REFERENCES & DERIVED VALUES BASED ON CURRENT STAKE
+  // ACTIVE STAKE REFERENCES & DYNAMIC MAPPING BASED ON CURRENT STAKE SELECTION
   const selectedNumbers = stake === 20 ? selectedNumbers20 : selectedNumbers10;
   const allPickedNumbers = stake === 20 ? allPickedNumbers20 : allPickedNumbers10;
   const myPickedSet = useMemo(() => new Set(selectedNumbers), [selectedNumbers]);
