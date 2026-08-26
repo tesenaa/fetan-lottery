@@ -1,28 +1,145 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fetan Lottery</title>
-
-    <!-- Telegram Web App SDK (ከሁሉም በፊት ቢቀመጥ ይመረጣል) -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { background: #0f1016; color: #fff; font-family: sans-serif; margin: 0; padding: 10px; }
+        .hidden { display: none !important; }
+        .card { background: #1a1b26; border: 1px solid #2f3148; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
+        .btn-green { background: #10b981; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 10px;}
+        .btn-blue { background: #0ea5e9; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        
+        /* Game Screen Grid */
+        .grid-90 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-height: 400px; overflow-y: auto; }
+        .grid-num { background: #25283c; border: 1px solid #3f4465; color: #fff; padding: 10px 0; text-align: center; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .grid-num.selected { background: #10b981; border-color: #34d399; }
+        
+        .top-stats { display: flex; justify-content: space-between; background: #13141d; padding: 8px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; text-align: center; }
+        .stat-box { background: #1f233a; padding: 5px 10px; border-radius: 6px; border: 1px solid #323859; }
+    </style>
+</head>
+<body>
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- HOME SCREEN -->
+    <div id="home-screen">
+        <h2>Welcome to <span style="color: #f59e0b;">Fetan Lottery</span></h2>
+        <div class="card" style="border-color: #ef4444;">
+            <p style="text-align:center; color:#f59e0b; margin-top:0;">Choose Stake</p>
+            <button class="btn-green" onclick="startGame(10)">▶ Play 10 ETB</button>
+            <button class="btn-blue" onclick="startGame(20)">▶ Play 20 ETB</button>
+        </div>
+        <div class="card">
+            <div style="text-align: center; margin-bottom: 10px;" id="active-users">1 Active Users</div>
+            <hr style="border-color: #2f3148;">
+            <div style="text-align: center; margin-top: 10px;" id="reg-users">1 Registered Users</div>
+        </div>
+    </div>
 
-    <!-- Meta Description & Theme -->
-    <meta name="description" content="Fetan Lottery - Play and win instantly." />
-    <meta name="theme-color" content="#ffffff" />
+    <!-- GAME ROOM SCREEN (Independent for 10 & 20) -->
+    <div id="game-screen" class="hidden">
+        <button onclick="goHome()" style="background:#1e2235; color:#fff; border:none; padding:8px 15px; border-radius:6px; cursor:pointer; margin-bottom:10px;">← Back</button>
+        
+        <div class="top-stats">
+            <div class="stat-box">Game ID<br><span id="lbl-gameid" style="color:#f59e0b; font-weight:bold;">--</span></div>
+            <div class="stat-box">Players<br><span id="lbl-players" style="color:#38bdf8; font-weight:bold;">0</span></div>
+            <div class="stat-box">Stake<br><span id="lbl-stake" style="color:#34d399; font-weight:bold;">--</span></div>
+            <div class="stat-box">Derash<br><span id="lbl-derash" style="color:#fbbf24; font-weight:bold;">0 ETB</span></div>
+        </div>
 
-    <!-- Open Graph (ለቴሌግራም እና ለሶሻል ሚዲያ ሼር) -->
-    <meta property="og:title" content="Fetan Lottery" />
-    <meta property="og:description" content="Play and win instantly with Fetan Lottery." />
-    <meta property="og:type" content="website" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+        <div id="timer-box" style="background: #0284c7; text-align: center; padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 10px;">
+            የመረጡ ጊዜ 10 S
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <!-- Numbers Grid (1 to 90) -->
+            <div style="flex: 2;">
+                <div class="grid-90" id="numbers-grid"></div>
+            </div>
+            
+            <!-- Right Panel -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
+                <div class="card" style="margin:0; padding:10px; min-height: 80px;">
+                    <span style="color: #f87171; font-size: 13px;">📌 የተመረጡ ቁጥሮች (<span id="sel-count">0</span>):</span>
+                    <div id="selected-list" style="font-size: 12px; color: #94a3b8; margin-top: 5px;">እስካሁን ምንም አልተመረጠም</div>
+                </div>
+
+                <div class="card" style="margin:0; padding:10px; text-align: center;">
+                    <span style="font-size: 13px;">የቁጥር ውጤት</span>
+                    <div style="width: 90px; height: 90px; border: 3px solid #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 10px auto; font-size: 32px; font-weight: bold;" id="winning-num">?</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentStake = 0;
+        let selectedNumbers = [];
+
+        // 1 እስከ 90 ቁጥሮችን በግሪድ መልክ መሙላት
+        const gridContainer = document.getElementById('numbers-grid');
+        for (let i = 1; i <= 90; i++) {
+            const btn = document.createElement('div');
+            btn.className = 'grid-num';
+            btn.innerText = i;
+            btn.id = `num-${i}`;
+            btn.onclick = () => toggleNumber(i);
+            gridContainer.appendChild(btn);
+        }
+
+        function startGame(stake) {
+            currentStake = stake;
+            selectedNumbers = [];
+            updateSelectedUI();
+            
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            
+            // የዚህን ስቴክ ጨዋታ ከሰርቨር መጠየቅ (Independent Join)
+            socket.emit('join_game', { stake: currentStake });
+        }
+
+        function goHome() {
+            socket.emit('leave_game', { stake: currentStake });
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('home-screen').classList.remove('hidden');
+        }
+
+        function toggleNumber(num) {
+            const index = selectedNumbers.indexOf(num);
+            if (index > -1) {
+                selectedNumbers.splice(index, 1);
+                document.getElementById(`num-${num}`).classList.remove('selected');
+            } else {
+                if(selectedNumbers.length < 5) { // ቢበዛ 5 ቁጥር መምረጥ የሚያስችል όριο (Limit)
+                    selectedNumbers.push(num);
+                    document.getElementById(`num-${num}`).classList.add('selected');
+                } else {
+                    alert('ከ 5 በላይ ቁጥር መምረጥ አይችሉም!');
+                }
+            }
+            updateSelectedUI();
+            socket.emit('update_selection', { stake: currentStake, numbers: selectedNumbers });
+        }
+
+        function updateSelectedUI() {
+            document.getElementById('sel-count').innerText = selectedNumbers.length;
+            document.getElementById('selected-list').innerText = selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'እስካሁን ምንም አልተመረጠም';
+        }
+
+        // ከሰርቨር የሚመጡ መረጃዎችን መቀበል (የሁለቱ ጨዋታዎች በንፁህ ሁኔታ ተነጥለዋል)
+        socket.on('game_state', (data) => {
+            if (data.stake === currentStake) {
+                document.getElementById('lbl-gameid').innerText = data.gameId;
+                document.getElementById('lbl-players').innerText = data.playersCount;
+                document.getElementById('lbl-stake').innerText = data.stake + ' ETB';
+                document.getElementById('lbl-derash').innerText = (data.playersCount * data.stake) + ' ETB';
+            }
+        });
+    </script>
+</body>
 </html>

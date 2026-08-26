@@ -172,7 +172,6 @@ function broadcastBoard(stake) {
         const totalCollected = state.selectedNumbers.length * stake; 
         const derash = Math.floor(totalCollected * (settings.winnerPercentage / 100)); 
         
-        // ጨዋታዎቹን ለየብቻ ለመላክ stakeን ጨምሮ እንልካለን
         io.emit('board_updated', { stake: Number(stake), selectedNumbers: state.selectedNumbers, totalPlayers: uniquePlayers, derash, ticketPrice: stake }); 
     }, 20); 
 } 
@@ -854,7 +853,6 @@ setInterval(() => {
         if (state.gamePhase === 'selecting') { 
             state.timeLeft--; 
             
-            // የሰዓት ቆጣሪውን እና የጌም አይዲውን ለየብቻው Stake (10 ወይም 20) ብቻ እንልካለን
             io.emit('timer_tick', { 
                 stake: Number(stake), 
                 timeLeft: state.timeLeft, 
@@ -870,7 +868,6 @@ setInterval(() => {
                 let winnerUser = null; 
 
                 if (state.selectedNumbers.length > 0) { 
-                    // ለእያንዳንዱ ስቴክ የተለየ ማኑዋል ዊኒንግ ቁጥር እንዲኖረው ተደረገ
                     const manualKey = stake === 10 ? 'manualWinningNumber10' : 'manualWinningNumber20';
                     let activeManualWin = settings[manualKey] !== null ? settings[manualKey] : (stake === 10 ? null : settings.manualWinningNumber);
 
@@ -911,7 +908,6 @@ setInterval(() => {
 
                 const nextGameId = generateGameId(stake); 
                 
-                // የጨዋታ ውጤቱን ለየብቻው Stake ብቻ እንልካለን
                 io.emit('game_result', { 
                     stake: Number(stake), 
                     winningNumber: winNum, 
@@ -930,7 +926,6 @@ setInterval(() => {
                     state.winningNumber = '?'; 
                     state.currentGameId = nextGameId; 
                     
-                    // ጨዋታው ሲጀምር ሪሴት ሲደረግ ለየብቻው ይላካል
                     io.emit('reset_game', { 
                         stake: Number(stake), 
                         timeLeft: 50, 
