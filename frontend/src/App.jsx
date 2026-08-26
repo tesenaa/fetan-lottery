@@ -1192,7 +1192,7 @@ export default function App() {
                         <div style={{ fontSize: '11px', color: '#9ca3af' }}>👤 User: {tx.userName} (ID: {tx.userId})</div>
                         {tx.phone && <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>📱 Phone: {tx.phone}</div>}
                         {tx.transactionId && <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>🔑 Txn ID: {tx.transactionId}</div>}
-                        {tx.processedBy && <div style={{ fontSize: '10px', color: '#a7f3d0', marginTop: '2px' }}>👨‍💼 Processed By Admin: {tx.processedBy}</div>}
+                        {tx.processedBy && <div style={{ fontSize: '10px', color: '#a7f3d0', marginTop: '2px' }}>ፈጻሚ:{tx.processedBy}</div>}
                         <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>⏱️ Time: {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}</div>
                         {tx.pastedText && (
                           <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#0f172a', borderRadius: '6px', border: '1px solid #1e293b' }}>
@@ -1213,109 +1213,110 @@ export default function App() {
                       </div>
                     ))
                   ) : (
-                    <div style={{ textAlign: 'center', color: '#9ca3af', padding: '20px' }}>ማንንም ግኝይት አልተመዘገበ</div>
+                    <div style={{ textAlign: 'center', color: '#6b7280', padding: '20px', fontSize: '13px' }}>
+                      ምንም ጥያቄዎች አልተገኙም።
+                    </div>
                   )}
                 </div>
               </div>
             )}
 
-            {isSuperAdmin && adminTab === 'reports' && financialStats && (
+            {adminTab === 'reports' && isSuperAdmin && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h3 style={{ fontSize: '15px', color: '#f59e0b', margin: '0 0 4px 0' }}>📊 Financial Dashboard</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div style={{ backgroundColor: '#181830', padding: '14px', borderRadius: '10px', border: '1px solid #22c55e', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>አጠቃላይ ገቢ (Approved Deposit)</div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#22c55e', marginTop: '4px' }}>{financialStats.totalDeposit} ETB</div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#38bdf8' }}>📊 የሲስተም አጠቃላይ ገቢ እና ወጪ ሪፖርት</div>
+                {financialStats ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ backgroundColor: '#181830', padding: '12px', borderRadius: '8px', border: '1px solid #2a2a4a' }}>
+                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>Total Deposits</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#22c55e' }}>{financialStats.totalDeposits || 0} ETB</div>
+                    </div>
+                    <div style={{ backgroundColor: '#181830', padding: '12px', borderRadius: '8px', border: '1px solid #2a2a4a' }}>
+                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>Total Withdrawals</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#ef4444' }}>{financialStats.totalWithdrawals || 0} ETB</div>
+                    </div>
+                    <div style={{ backgroundColor: '#181830', padding: '12px', borderRadius: '8px', border: '1px solid #2a2a4a' }}>
+                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>User Main Wallets</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#f59e0b' }}>{financialStats.totalMainWallet || 0} ETB</div>
+                    </div>
+                    <div style={{ backgroundColor: '#181830', padding: '12px', borderRadius: '8px', border: '1px solid #2a2a4a' }}>
+                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>User Play Wallets</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#38bdf8' }}>{financialStats.totalPlayWallet || 0} ETB</div>
+                    </div>
                   </div>
-                  <div style={{ backgroundColor: '#181830', padding: '14px', borderRadius: '10px', border: '1px solid #ef4444', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>አጠቃላይ ወጪ (Approved Withdrawal)</div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#ef4444', marginTop: '4px' }}>{financialStats.totalWithdrawal} ETB</div>
-                  </div>
-                </div>
-                <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '10px', border: '1px solid #facc15', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>የቤት የፕሮቴ ትር (House Net Commission)</div>
-                  <div style={{ fontSize: '26px', fontWeight: 'bold', color: '#facc15', marginTop: '4px' }}>{financialStats.houseProfit} ETB</div>
-                </div>
+                ) : (
+                  <div style={{ color: '#6b7280', fontSize: '12px' }}>ስታቲስቲክስ እየተጫነ ነው...</div>
+                )}
               </div>
             )}
 
-            {isSuperAdmin && adminTab === 'users' && (
-              <>
-                <input type="text" placeholder="በተጠቃሚ ID ወይም ስልክ ፈልግ..." value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '16px', boxSizing: 'border-box' }} />
-                {editingUser && (
-                  <div style={{ backgroundColor: '#1b1b38', border: '1px solid #f59e0b', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-                    <h3 style={{ fontSize: '14px', color: '#f59e0b', margin: '0 0 10px 0' }}>የተጠቃሚ ሒሳብ ማስተካከያ: {editingUser.userId}</h3>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: '10px', color: '#9ca3af' }}>Main Wallet:</label>
-                        <input type="number" value={editMain} onChange={(e) => setEditMain(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #312e81', backgroundColor: '#0d0d1a', color: '#fff' }} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: '10px', color: '#9ca3af' }}>Play Wallet:</label>
-                        <input type="number" value={editPlay} onChange={(e) => setEditPlay(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #312e81', backgroundColor: '#0d0d1a', color: '#fff' }} />
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={handleUpdateUserBalance} style={{ flex: 1, padding: '8px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>💾 አዲስ</button>
-                      <button onClick={() => setEditingUser(null)} style={{ flex: 1, padding: '8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px' }}>ሰርዝ</button>
-                    </div>
-                  </div>
-                )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {filteredAdminUsers.map((u) => (
-                    <div key={u.userId} style={{ backgroundColor: '#181830', border: '1px solid #2a2a4a', borderRadius: '10px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {adminTab === 'users' && isSuperAdmin && (
+              <div>
+                <input type="text" placeholder="🔍 በ ID, ስም ወይም ስልክ ፈልግ..." value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {filteredAdminUsers.map(u => (
+                    <div key={u.userId} style={{ backgroundColor: '#181830', borderRadius: '8px', padding: '10px', border: '1px solid #2a2a4a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#38bdf8' }}>{u.firstName || 'ተጠቃሚ'} (ID: {u.userId})</div>
-                        <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>📱 {u.phone || 'ስልክ የለው'}</div>
-                        <div style={{ fontSize: '11px', color: '#22c55e', marginTop: '2px' }}>Main: {u.mainWallet} ETB | Play: {u.playWallet} ETB</div>
+                        <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{u.firstName || 'User'} ({u.userId})</div>
+                        <div style={{ fontSize: '11px', color: '#9ca3af' }}>Main: {u.mainWallet} ETB | Play: {u.playWallet} ETB</div>
+                        <div style={{ fontSize: '11px', color: '#38bdf8' }}>Phone: {u.phone || 'N/A'}</div>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <button onClick={() => { setEditingUser(u); setEditMain(u.mainWallet); setEditPlay(u.playWallet); }} style={{ backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>
-                          አስተካክል
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => { setEditingUser(u); setEditMain(u.mainWallet); setEditPlay(u.playWallet); }} style={{ padding: '6px 10px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}>
+                          Edit
                         </button>
-                        <button onClick={() => handleToggleBan(u.userId, u.isBanned)} style={{ backgroundColor: u.isBanned ? '#10b981' : '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>
+                        <button onClick={() => handleToggleBan(u.userId, u.isBanned)} style={{ padding: '6px 10px', backgroundColor: u.isBanned ? '#22c55e' : '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}>
                           {u.isBanned ? 'Unban' : 'Ban'}
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
-              </>
+                {editingUser && (
+                  <div style={{ marginTop: '16px', backgroundColor: '#1b1b38', padding: '12px', borderRadius: '8px', border: '1px solid #f59e0b' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: '#f59e0b' }}>Edit Balance for {editingUser.firstName}</div>
+                    <label style={{ fontSize: '10px', color: '#9ca3af' }}>Main Wallet:</label>
+                    <input type="number" value={editMain} onChange={(e) => setEditMain(e.target.value)} style={{ width: '100%', padding: '8px', marginBottom: '8px', backgroundColor: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: '4px' }} />
+                    <label style={{ fontSize: '10px', color: '#9ca3af' }}>Play Wallet:</label>
+                    <input type="number" value={editPlay} onChange={(e) => setEditPlay(e.target.value)} style={{ width: '100%', padding: '8px', marginBottom: '8px', backgroundColor: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: '4px' }} />
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button onClick={handleUpdateUserBalance} style={{ flex: 1, padding: '8px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                      <button onClick={() => setEditingUser(null)} style={{ flex: 1, padding: '8px', backgroundColor: '#6b7280', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
-            {isSuperAdmin && adminTab === 'game_control' && (
-              <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
-                <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>🎯 የቁጥር ማውጫ መቆጣጠሪያ (Draw Control)</h3>
-                <input type="number" placeholder="የማርሻልካም ቁጥር አስገባ (1-1000)" value={manualNumberInput} onChange={(e) => setManualNumberInput(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '12px', boxSizing: 'border-box' }} />
-                <button onClick={handleSetManualWinner} style={{ width: '100%', padding: '10px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  ቁጥሩን አስቀመጥ (Set Manual Number)
+            {adminTab === 'game_control' && isSuperAdmin && (
+              <div style={{ backgroundColor: '#181830', padding: '14px', borderRadius: '8px', border: '1px solid #2a2a4a' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#f59e0b', marginBottom: '8px' }}>🎲 ማኑዋል የማሸነፊያ ቁጥር ማስገቢያ</div>
+                <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '10px' }}>ለሚቀጥለው ዙር ጨዋታ አሸናፊ ቁጥር በግድ (Manual) እንዲወጣ ማድረግ ከፈለጉ ከዚህ በታች ያስገቡ።</div>
+                <input type="number" placeholder="ቁጥር (ከ 1 እስከ 1000)" value={manualNumberInput} onChange={(e) => setManualNumberInput(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: '6px' }} />
+                <button onClick={handleSetManualWinner} style={{ width: '100%', padding: '10px', backgroundColor: '#f59e0b', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  កំណត់ የማሸነፊያ ቁጥር (Set Manual Winner)
                 </button>
               </div>
             )}
 
-            {isSuperAdmin && adminTab === 'settings' && (
-              <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
-                <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>⚙️ የሲስተሙ አጠቃላይ ማስተካከያ</h3>
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ fontSize: '12px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>የቲኬት ዋጋ (ETB):</label>
-                  <input type="number" value={sysSettings.ticketPrice} onChange={(e) => setSysSettings({ ...sysSettings, ticketPrice: Number(e.target.value) })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '12px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>የአሸናፊዎች ድርሻ / የደርሽ መጠን (%):</label>
-                  <input type="number" value={sysSettings.winnerPercentage} onChange={(e) => setSysSettings({ ...sysSettings, winnerPercentage: Number(e.target.value) })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                </div>
-                <button onClick={() => handleUpdateSettings()} style={{ width: '100%', padding: '12px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  ለጊዜው አስቀምጥ (Save Settings)
+            {adminTab === 'settings' && isSuperAdmin && (
+              <div style={{ backgroundColor: '#181830', padding: '14px', borderRadius: '8px', border: '1px solid #2a2a4a' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#f59e0b', marginBottom: '10px' }}>⚙️ የሲስተም ቅንብሮች</div>
+                <label style={{ fontSize: '11px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Ticket Price (ETB):</label>
+                <input type="number" value={sysSettings.ticketPrice} onChange={(e) => setSysSettings({ ...sysSettings, ticketPrice: Number(e.target.value) })} style={{ width: '100%', padding: '8px', marginBottom: '10px', backgroundColor: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: '4px' }} />
+                <label style={{ fontSize: '11px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Winner Percentage (%):</label>
+                <input type="number" value={sysSettings.winnerPercentage} onChange={(e) => setSysSettings({ ...sysSettings, winnerPercentage: Number(e.target.value) })} style={{ width: '100%', padding: '8px', marginBottom: '10px', backgroundColor: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: '4px' }} />
+                <button onClick={() => handleUpdateSettings()} style={{ width: '100%', padding: '10px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  ቅንብሮችን Amed (Save Settings)
                 </button>
               </div>
             )}
 
-            {isSuperAdmin && adminTab === 'broadcast' && (
-              <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
-                <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>📢 Broadcast Message to Users</h3>
-                <textarea rows="4" placeholder="ለተጠቃሚዎች የሚላክ መልክት እዚህ ጋር ጻፍ..." value={broadcastText} onChange={(e) => setBroadcastText(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '12px', boxSizing: 'border-box' }} />
-                <button onClick={handleSendBroadcast} style={{ width: '100%', padding: '12px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  ለሁሉም ተጠቃሚ ላክ (Send Broadcast)
+            {adminTab === 'broadcast' && isSuperAdmin && (
+              <div style={{ backgroundColor: '#181830', padding: '14px', borderRadius: '8px', border: '1px solid #2a2a4a' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#f59e0b', marginBottom: '8px' }}>📢 ለሁሉም ተጠቃሚዎች መልእክት መላክ (Broadcast)</div>
+                <textarea rows="4" placeholder="የማስታወቂያ መልእክትዎን እዚህ ይጻፉ..." value={broadcastText} onChange={(e) => setBroadcastText(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: '6px', fontSize: '12px' }} />
+                <button onClick={handleSendBroadcast} style={{ width: '100%', padding: '10px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  መልእክት ላክ (Send Broadcast)
                 </button>
               </div>
             )}
@@ -1323,27 +1324,31 @@ export default function App() {
         )}
       </div>
 
-      {currentScreen === 'home' && (
-        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', backgroundColor: '#0f0f26', borderTop: '1px solid #2a2a50', padding: '8px 4px', flexShrink: 0, boxShadow: '0 -4px 12px rgba(0,0,0,0.4)', width: '100%', boxSizing: 'border-box' }}>
-          <button onClick={() => setCurrentTab('game')} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '11px', fontWeight: '600', flex: 1 }}>
-            <span style={{ fontSize: '20px', lineHeight: '1' }}>🎮</span> Game
+      {/* BOTTOM NAVIGATION BAR */}
+      <div style={{ width: '100%', backgroundColor: '#0e0e24', borderTop: '1px solid #1f1f3d', display: 'flex', justifyContent: 'space-around', padding: '8px 0', flexShrink: 0 }}>
+        <button onClick={() => { setCurrentTab('game'); setCurrentScreen('home'); }} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+          <span style={{ fontSize: '18px' }}>🎮</span>
+          <span>ጨዋታ</span>
+        </button>
+        <button onClick={() => setCurrentTab('history')} style={{ background: 'none', border: 'none', color: currentTab === 'history' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+          <span style={{ fontSize: '18px' }}>📜</span>
+          <span>ታሪክ</span>
+        </button>
+        <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color: currentTab === 'wallet' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column5', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+          <span style={{ fontSize: '18px' }}>💳</span>
+          <span>Wallet</span>
+        </button>
+        <button onClick={() => setCurrentTab('profile')} style={{ background: 'none', border: '1px solid transparent', background: 'none', border: 'none', color: currentTab === 'profile' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+          <span style={{ fontSize: '18px' }}>👤</span>
+          <span>Profile</span>
+        </button>
+        {isAdmin && (
+          <button onClick={() => setCurrentTab('admin')} style={{ background: 'none', border: 'none', color: currentTab === 'admin' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+            <span style={{ fontSize: '18px' }}>⚙️</span>
+            <span>Admin</span>
           </button>
-          <button onClick={() => setCurrentTab('history')} style={{ background: 'none', border: 'none', color: currentTab === 'history' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '11px', fontWeight: '600', flex: 1 }}>
-            <span style={{ fontSize: '20px', lineHeight: '1' }}>📜</span> History
-          </button>
-          <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: '1px solid transparent', color: currentTab === 'wallet' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '11px', fontWeight: '600', flex: 1 }}>
-            <span style={{ fontSize: '20px', lineHeight: '1' }}>💳</span> Wallet
-          </button>
-          <button onClick={() => setCurrentTab('profile')} style={{ background: 'none', border: 'none', color: currentTab === 'profile' ? '#38bdf8' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 1, justifyContent: 'center', gap: '4px', fontSize: '11px', fontWeight: '600', flex: 1 }}>
-            <span style={{ fontSize: '20px', lineHeight: '1' }}>👤</span> Profile
-          </button>
-          {isAdmin && (
-            <button onClick={() => setCurrentTab('admin')} style={{ background: 'none', border: 'none', color: currentTab === 'admin' ? '#f59e0b' : '#8e8ea8', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '11px', fontWeight: '600', flex: 1 }}>
-              <span style={{ fontSize: '20px', lineHeight: '1' }}>⚙️</span> Admin
-            </button>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

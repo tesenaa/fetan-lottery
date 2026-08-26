@@ -191,7 +191,6 @@ function broadcastBoard(stake) {
     const totalCollected = state.selectedNumbers.length * numericStake;
     const derash = Math.floor(totalCollected * (settings.winnerPercentage / 100));
     
-    // በግልጽ ስቴክ (Stake) በመጥቀስ ለሁሉም ക്לየንቶች መረጃ እናደርሳለን
     io.emit('board_updated', {
       stake: numericStake,
       selectedNumbers: state.selectedNumbers,
@@ -881,7 +880,7 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- Independent Game Loops for Stakes 10 and 20 (FULLY SEPARATED & EXPLICITLY STAKE-TAGGED) ---
+// --- Independent Game Loops for Stakes 10 and 20 ---
 [10, 20].forEach(stake => {
   const numericStake = Number(stake);
   setInterval(async () => {
@@ -889,7 +888,6 @@ setInterval(() => {
     if (state.gamePhase === 'selecting') {
       state.timeLeft--;
       
-      // በግልጽ stake በመላክ የ 10 እና የ 20 ሰዓት (Timer) እና ጌም አይዲ እንዳይቀላቀሉ ተደርጓል
       io.emit('timer_tick', {
         stake: numericStake,
         timeLeft: state.timeLeft,
