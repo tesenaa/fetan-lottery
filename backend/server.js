@@ -1008,26 +1008,45 @@ io.on('connection', async (socket) => {
             return; 
         } 
         let updatedUser = null; 
+        let usedWalletType = 'play'; 
+
         if (userDoc.playWallet >= TOTAL_COST) { 
             updatedUser = await User.findOneAndUpdate( 
                 { userId: uid, playWallet: { $gte: TOTAL_COST } }, 
                 { $inc: { playWallet: -TOTAL_COST } }, 
                 { new: true } 
             ); 
-        } else { 
+            usedWalletType = 'play'; 
+        } else if (userDoc.playWallet > 0) { 
             const remainingFromMain = TOTAL_COST - userDoc.playWallet; 
             updatedUser = await User.findOneAndUpdate( 
                 { userId: uid, playWallet: userDoc.playWallet, mainWallet: { $gte: remainingFromMain } }, 
                 { $set: { playWallet: 0 }, $inc: { mainWallet: -remainingFromMain } }, 
                 { new: true } 
             ); 
+            usedWalletType = 'mixed'; 
+        } else { 
+            updatedUser = await User.findOneAndUpdate( 
+                { userId: uid, mainWallet: { $gte: TOTAL_COST } }, 
+                { $inc: { mainWallet: -TOTAL_COST } }, 
+                { new: true } 
+            ); 
+            usedWalletType = 'main'; 
         } 
+
         if (!updatedUser) { 
             socket.emit('error_message', { message: 'በቂ ሒሳብ የለም!' }); 
             return; 
         } 
+        
         uniqueNewNumbers.forEach(num => { 
-            state.selectedNumbers.push({ number: Number(num), userId: uid, userName: userName || `ተጫዋች_${uid}` }); 
+            state.selectedNumbers.push({ 
+                number: Number(num), 
+                userId: uid, 
+                userName: userName || `ተጫዋች_${uid}`, 
+                walletUsed: usedWalletType,
+                costPerNumber: stake
+            }); 
         }); 
         broadcastBoard(stake); 
         socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet }); 
@@ -1040,13 +1059,22 @@ io.on('connection', async (socket) => {
         const { numberChosen, userId } = data; 
         const uid = String(userId); 
         const index = state.selectedNumbers.findIndex(n => Number(n.number) === Number(numberChosen) && String(n.userId) === uid); 
+        
         if (index !== -1) { 
+            const removedItem = state.selectedNumbers[index];
             state.selectedNumbers.splice(index, 1); 
+            
+            let updateQuery = { $inc: { mainWallet: stake } };
+            if (removedItem.walletUsed === 'play') {
+                updateQuery = { $inc: { playWallet: stake } };
+            }
+
             const updatedUser = await User.findOneAndUpdate( 
                 { userId: uid }, 
-                { $inc: { mainWallet: stake } }, 
+                updateQuery, 
                 { new: true } 
             ); 
+            
             broadcastBoard(stake); 
             if (updatedUser) { 
                 socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet }); 
