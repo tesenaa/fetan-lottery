@@ -101,6 +101,8 @@ const systemSettingsSchema = new mongoose.Schema({
   manualWinningNumber: { type: Number, default: null },
   manualWinningNumber10: { type: Number, default: null },
   manualWinningNumber20: { type: Number, default: null },
+  manualWinningNumber50: { type: Number, default: null },
+  manualWinningNumber100: { type: Number, default: null },
   activeAdmins: {
     admin1: { type: Boolean, default: true },
     admin2: { type: Boolean, default: true }
@@ -130,24 +132,12 @@ function generateGameId(stake) {
   return `FL-${stake}-${randomNum}`;
 }
 
-// --- Completely Independent Game States for stake 10 and 20 ---
+// --- Independent Game States for stakes 10, 20, 50, and 100 ---
 const gameStates = {
-  10: {
-    currentGameId: generateGameId(10),
-    selectedNumbers: [],
-    timeLeft: 50,
-    gamePhase: 'selecting',
-    winningNumber: null,
-    boardUpdateTimeout: null
-  },
-  20: {
-    currentGameId: generateGameId(20),
-    selectedNumbers: [],
-    timeLeft: 50,
-    gamePhase: 'selecting',
-    winningNumber: null,
-    boardUpdateTimeout: null
-  }
+  10: { currentGameId: generateGameId(10), selectedNumbers: [], timeLeft: 50, gamePhase: 'selecting', winningNumber: null, boardUpdateTimeout: null },
+  20: { currentGameId: generateGameId(20), selectedNumbers: [], timeLeft: 50, gamePhase: 'selecting', winningNumber: null, boardUpdateTimeout: null },
+  50: { currentGameId: generateGameId(50), selectedNumbers: [], timeLeft: 50, gamePhase: 'selecting', winningNumber: null, boardUpdateTimeout: null },
+  100: { currentGameId: generateGameId(100), selectedNumbers: [], timeLeft: 50, gamePhase: 'selecting', winningNumber: null, boardUpdateTimeout: null }
 };
 
 const registeredUsersSet = new Set();
@@ -170,6 +160,8 @@ async function getSettings() {
       manualWinningNumber: null,
       manualWinningNumber10: null,
       manualWinningNumber20: null,
+      manualWinningNumber50: null,
+      manualWinningNumber100: null,
       activeAdmins: { admin1: true, admin2: true }
     });
   }
@@ -469,7 +461,7 @@ const handleDepositRequest = async (req, res) => {
     }
     const existingPending = await Deposit.findOne({ userId: uid, status: 'PENDING' });
     if (existingPending) {
-      return res.status(400).json({ success: false, message: "⚠️ አስቀድሞ የ pendiente የደፖዚት ጥያቄ አለዎት።" });
+      return res.status(400).json({ success: false, message: "⚠️ አስቀድሞ የ pending የደፖዚት ጥያቄ አለዎት።" });
     }
     const txnId = extractTransactionId(pastedText);
     if (!txnId) {
@@ -531,12 +523,12 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
   if (req.adminRole !== 'SUPER') {
     return res.status(403).json({ success: false, message: "ይህን ለማድረግ የስርዓት አስተዳዳሪ ስልጣን ያስፈልጋል!" });
   }
-  const { ticketPrice, winnerPercentage, manualWinningNumber, manualWinningNumber10, manualWinningNumber20, activeAdmins } = req.body;
+  const { ticketPrice, winnerPercentage, manualWinningNumber, manualWinningNumber10, manualWinningNumber20, manualWinningNumber50, manualWinningNumber100, activeAdmins } = req.body;
   try {
     let settings = await getSettings();
     if (ticketPrice !== undefined) {
       const newPrice = Number(ticketPrice);
-      if (newPrice === 10 || newPrice === 20) {
+      if ([10, 20, 50, 100].includes(newPrice)) {
         settings.ticketPrice = newPrice;
       }
     }
@@ -544,18 +536,13 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
       settings.winnerPercentage = Number(winnerPercentage);
       settings.houseCommissionPercentage = 100 - Number(winnerPercentage);
     }
-    if (manualWinningNumber !== undefined) {
-      settings.manualWinningNumber = manualWinningNumber !== null ? Number(manualWinningNumber) : null;
-    }
-    if (manualWinningNumber10 !== undefined) {
-      settings.manualWinningNumber10 = manualWinningNumber10 !== null ? Number(manualWinningNumber10) : null;
-    }
-    if (manualWinningNumber20 !== undefined) {
-      settings.manualWinningNumber20 = manualWinningNumber20 !== null ? Number(manualWinningNumber20) : null;
-    }
-    if (activeAdmins !== undefined) {
-      settings.activeAdmins = activeAdmins;
-    }
+    if (manualWinningNumber !== undefined) settings.manualWinningNumber = manualWinningNumber !== null ? Number(manualWinningNumber) : null;
+    if (manualWinningNumber10 !== undefined) settings.manualWinningNumber10 = manualWinningNumber10 !== null ? Number(manualWinningNumber10) : null;
+    if (manualWinningNumber20 !== undefined) settings.manualWinningNumber20 = manualWinningNumber20 !== null ? Number(manualWinningNumber20) : null;
+    if (manualWinningNumber50 !== undefined) settings.manualWinningNumber50 = manualWinningNumber50 !== null ? Number(manualWinningNumber50) : null;
+    if (manualWinningNumber100 !== undefined) settings.manualWinningNumber100 = manualWinningNumber100 !== null ? Number(manualWinningNumber100) : null;
+    if (activeAdmins !== undefined) settings.activeAdmins = activeAdmins;
+
     await settings.save();
     cachedSettings = settings;
     lastSettingsFetch = Date.now();
@@ -880,8 +867,8 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- Independent Game Loops for Stakes 10 and 20 ---
-[10, 20].forEach(stake => {
+// --- Independent Game Loops for Stakes 10, 20, 50, and 100 ---
+[10, 20, 50, 100].forEach(stake => {
   const numericStake = Number(stake);
   setInterval(async () => {
     const state = gameStates[numericStake];
@@ -903,13 +890,12 @@ setInterval(() => {
         let winnerUser = null;
 
         if (state.selectedNumbers.length > 0) {
-          const manualKey = numericStake === 10 ? 'manualWinningNumber10' : 'manualWinningNumber20';
-          let activeManualWin = settings[manualKey] !== null ? settings[manualKey] : (numericStake === 10 ? null : settings.manualWinningNumber);
+          const manualKey = `manualWinningNumber${numericStake}`;
+          let activeManualWin = settings[manualKey] !== null ? settings[manualKey] : settings.manualWinningNumber;
           
           if (activeManualWin !== null && activeManualWin !== undefined) {
             winNum = activeManualWin;
             settings[manualKey] = null;
-            if (numericStake !== 10) settings.manualWinningNumber = null;
             await settings.save();
             cachedSettings = settings;
           } else {
@@ -980,29 +966,24 @@ io.on('connection', async (socket) => {
 
   const activeCount = new Set(activeUsersMap.values()).size;
   const registeredCount = registeredUsersSet.size;
-  const stats10 = await getGameStats(10);
-  const stats20 = await getGameStats(20);
   const settings = await getSettings();
 
+  const stakesData = {};
+  for (const st of [10, 20, 50, 100]) {
+    const stStats = await getGameStats(st);
+    stakesData[`stake${st}`] = {
+      gameId: gameStates[st].currentGameId,
+      selectedNumbers: gameStates[st].selectedNumbers,
+      timeLeft: gameStates[st].timeLeft,
+      gamePhase: gameStates[st].gamePhase,
+      winningNumber: gameStates[st].winningNumber,
+      totalPlayers: stStats.totalPlayers,
+      derash: stStats.derash
+    };
+  }
+
   socket.emit('init_state', {
-    stake10: {
-      gameId: gameStates[10].currentGameId,
-      selectedNumbers: gameStates[10].selectedNumbers,
-      timeLeft: gameStates[10].timeLeft,
-      gamePhase: gameStates[10].gamePhase,
-      winningNumber: gameStates[10].winningNumber,
-      totalPlayers: stats10.totalPlayers,
-      derash: stats10.derash
-    },
-    stake20: {
-      gameId: gameStates[20].currentGameId,
-      selectedNumbers: gameStates[20].selectedNumbers,
-      timeLeft: gameStates[20].timeLeft,
-      gamePhase: gameStates[20].gamePhase,
-      winningNumber: gameStates[20].winningNumber,
-      totalPlayers: stats20.totalPlayers,
-      derash: stats20.derash
-    },
+    ...stakesData,
     ticketPrice: settings.ticketPrice
   });
 
