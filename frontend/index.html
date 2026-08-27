@@ -1,327 +1,37 @@
 <!DOCTYPE html>
-<html lang="am">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
     <title>Fetan Lottery</title>
+
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <meta name="description" content="Fetan Lottery - Play and win instantly." />
+    <meta name="theme-color" content="#ffffff" />
+
+    <meta property="og:title" content="Fetan Lottery" />
+    <meta property="og:description" content="Play and win instantly with Fetan Lottery." />
+    <meta property="og:type" content="website" />
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-        body { font-family: 'Poppins', sans-serif; background-color: #0b0f19; color: #ffffff; }
-        .glass-card { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .number-btn { transition: all 0.2s ease; }
-        .number-btn.selected { background: #10B981 !important; color: white !important; transform: scale(1.05); }
+      .admin-stats-badge {
+        font-size: 11px;
+        color: #666;
+        background: #f1f1f1;
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+      }
     </style>
-</head>
-<body class="flex flex-col min-h-screen pb-20">
-
-    <!-- Top Bar -->
-    <header class="flex justify-between items-center p-4 border-b border-gray-800 bg-[#111827]">
-        <div class="flex items-center space-x-2">
-            <span class="text-xl font-bold text-yellow-500">Fetan Lottery</span>
-        </div>
-        <div class="flex items-center space-x-3">
-            <div class="bg-gray-800 px-3 py-1.5 rounded-full text-xs flex items-center space-x-1 border border-gray-700">
-                <i class="fa-solid fa-wallet text-yellow-400"></i>
-                <span id="main-balance" class="font-bold text-white">0.00</span> <span class="text-gray-400">ETB</span>
-            </div>
-            <div class="bg-gray-800 px-3 py-1.5 rounded-full text-xs flex items-center space-x-1 border border-gray-700">
-                <i class="fa-solid fa-ticket text-emerald-400"></i>
-                <span id="play-balance" class="font-bold text-white">0.00</span> <span class="text-gray-400">Play</span>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Container -->
-    <main class="flex-grow p-4 max-w-md mx-auto w-full">
-        
-        <!-- HOME SECTION -->
-        <section id="section-home" class="space-y-6">
-            <div class="text-center py-4">
-                <h1 class="text-2xl font-bold">Welcome to <span class="text-yellow-500">Fetan Lottery</span></h1>
-                <p class="text-xs text-gray-400 mt-1">ይምረጡ እናዕል አሸናፊ ይሁኑ!</p>
-            </div>
-
-            <!-- Choose Stake Box (Play 10 & Play 20) -->
-            <div class="glass-card p-5 rounded-2xl border border-red-500/30 space-y-4">
-                <h3 class="text-center text-sm font-semibold text-yellow-400 uppercase tracking-wider">Choose Stake</h3>
-                
-                <button onclick="openGame(10)" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-95">
-                    <i class="fa-solid fa-play"></i>
-                    <span>Play 10 ETB</span>
-                </button>
-
-                <button onclick="openGame(20)" class="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-95">
-                    <i class="fa-solid fa-play"></i>
-                    <span>Play 20 ETB</span>
-                </button>
-            </div>
-
-            <!-- Weekly Lottery Box (Play 50 & Play 100) -->
-            <div class="glass-card p-5 rounded-2xl border border-purple-500/30 space-y-4">
-                <h3 class="text-center text-sm font-semibold text-purple-400 uppercase tracking-wider">ሳምንታዊ ሎተሪ (Weekly)</h3>
-                
-                <button onclick="openGame(50)" class="w-full py-3.5 px-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-95">
-                    <i class="fa-solid fa-trophy"></i>
-                    <span>Play 50 ETB</span>
-                </button>
-
-                <button onclick="openGame(100)" class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-95">
-                    <i class="fa-solid fa-crown"></i>
-                    <span>Play 100 ETB</span>
-                </button>
-            </div>
-        </section>
-
-        <!-- GAME ROOM SECTION (Dynamic for 10, 20, 50, 100) -->
-        <section id="section-game" class="hidden space-y-4">
-            <div class="flex items-center justify-between bg-gray-900 p-3 rounded-xl border border-gray-800">
-                <button onclick="closeGame()" class="text-gray-400 hover:text-white px-2 py-1"><i class="fa-solid fa-arrow-left"></i> ተመለስ</button>
-                <div class="text-center">
-                    <span id="game-title-stake" class="text-sm font-bold text-yellow-400">Play 10 ETB</span>
-                    <div class="text-xs text-gray-400" id="game-id-display">FL-10-XXXX</div>
-                </div>
-                <div class="bg-red-500/20 text-red-400 px-2.5 py-1 rounded-full text-xs font-bold border border-red-500/30" id="timer-display">50s</div>
-            </div>
-
-            <!-- Stats Banner -->
-            grid grid-cols-2 gap-3 text-center">
-                <div class="glass-card p-3 rounded-xl">
-                    <div class="text-xs text-gray-400">ጠቅላላ ተጫዋቾች</div>
-                    <div id="game-total-players" class="text-lg font-bold text-white">0</div>
-                </div>
-                <div class="glass-card p-3 rounded-xl">
-                    <div class="text-xs text-gray-400">ደራሽ (Prize)</div>
-                    <div id="game-derash" class="text-lg font-bold text-emerald-400">0 ETB</div>
-                </div>
-            </div>
-
-            <!-- Number Board Grid -->
-            <div class="glass-card p-4 rounded-2xl">
-                <div id="numbers-grid" class="grid grid-cols-5 gap-2 max-h-[350px] overflow-y-auto p-1">
-                    <!-- Numbers 1 to 50 will be generated via JS -->
-                </div>
-            </div>
-
-            <button id="action-btn" onclick="confirmSelection()" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg transition">
-                ቁጥር ምረጥ
-            </button>
-        </section>
-
-        <!-- HISTORY SECTION -->
-        <section id="section-history" class="hidden space-y-4">
-            <h2 class="text-xl font-bold">የጨዋታ ታሪክ (History)</h2>
-            <div id="history-list" class="space-y-2">
-                <!-- History items populated dynamically -->
-            </div>
-        </section>
-
-        <!-- WALLET SECTION -->
-        <section id="section-wallet" class="hidden space-y-4">
-            <h2 class="text-xl font-bold">ቦርሳ (Wallet & Deposit)</h2>
-            <div class="glass-card p-4 rounded-xl space-y-3">
-                <p class="text-xs text-gray-300">በቴሌብር (Telebirr) የከፈሉትን SMS እዚህ በመለጠፍ አካውንትዎን ይሙሉ፡</p>
-                <textarea id="deposit-sms" rows="4" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-yellow-500" placeholder="የቴሌብር SMS እዚህ ይለጥፉ..."></textarea>
-                <input type="number" id="deposit-amount" placeholder="መጠን (ETB)" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-yellow-500">
-                <button onclick="submitDeposit()" class="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-gray-950 font-bold rounded-xl transition">ደፖዚት ጠይቅ</button>
-            </div>
-            
-            <div class="glass-card p-4 rounded-xl space-y-3">
-                <p class="text-xs text-gray-300">ገንዘብ ማውጣት (Withdrawal):</p>
-                <input type="number" id="withdraw-amount" placeholder="የሚወጣው መጠን" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-yellow-500">
-                <input type="text" id="withdraw-phone" placeholder="ስልክ ቁጥር (09...)" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-yellow-500">
-                <button onclick="submitWithdraw()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition">የውል ጥያቄ ላክ</button>
-            </div>
-        </section>
-
-        <!-- PROFILE SECTION -->
-        <section id="section-profile" class="hidden space-y-4">
-            <h2 class="text-xl font-bold">መገለጫ (Profile)</h2>
-            <div class="glass-card p-4 rounded-xl space-y-3 text-sm">
-                <div class="flex justify-between border-b border-gray-800 pb-2">
-                    <span class="text-gray-400">User ID:</span>
-                    <span id="prof-userid" class="font-mono">--</span>
-                </div>
-                <div class="flex justify-between border-b border-gray-800 pb-2">
-                    <span class="text-gray-400">ስም:</span>
-                    <span id="prof-name">--</span>
-                </div>
-                <div class="flex justify-between border-b border-gray-800 pb-2">
-                    <span class="text-gray-400">ያሸነፏቸው ጨዋታዎች:</span>
-                    <span id="prof-won" class="text-emerald-400 font-bold">0</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- ADMIN SECTION (Active & Registered Users here in small format) -->
-        <section id="section-admin" class="hidden space-y-4">
-            <h2 class="text-xl font-bold text-yellow-500">አድሚን ፓነል (Admin Page)</h2>
-            
-            <!-- Small Active & Registered Users Card -->
-            <div class="grid grid-cols-2 gap-3">
-                <div class="glass-card p-3 rounded-xl text-center border border-gray-700">
-                    <div class="text-[11px] text-gray-400">Active Users</div>
-                    <div id="admin-active-users" class="text-base font-bold text-emerald-400">0</div>
-                </div>
-                <div class="glass-card p-3 rounded-xl text-center border border-gray-700">
-                    <div class="text-[11px] text-gray-400">Registered Users</div>
-                    <div id="admin-reg-users" class="text-base font-bold text-yellow-400">0</div>
-                </div>
-            </div>
-
-            <div class="glass-card p-4 rounded-xl space-y-3">
-                <h3 class="text-sm font-semibold text-gray-300">የአስተዳደር ቅንብሮች</h3>
-                <input type="password" id="admin-key-input" placeholder="Admin Key ያስገቡ" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-white">
-                <button onclick="loadAdminStats()" class="w-full py-2.5 bg-yellow-500 hover:bg-yellow-400 text-gray-950 font-bold rounded-xl text-xs transition">ስታቲስቲክስ አሳይ</button>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- Bottom Navigation Bar -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-[#111827] border-t border-gray-800 flex justify-around py-2.5 z-50">
-        <button onclick="switchTab('home')" class="flex flex-col items-center text-yellow-500 text-xs space-y-1" id="nav-home">
-            <i class="fa-solid fa-gamepad text-lg"></i>
-            <span>Game</span>
-        </button>
-        <button onclick="switchTab('history')" class="flex flex-col items-center text-gray-400 text-xs space-y-1" id="nav-history">
-            <i class="fa-solid fa-clock-rotate-left text-lg"></i>
-            <span>History</span>
-        </button>
-        <button onclick="switchTab('wallet')" class="flex flex-col items-center text-gray-400 text-xs space-y-1" id="nav-wallet">
-            <i class="fa-solid fa-wallet text-lg"></i>
-            <span>Wallet</span>
-        </button>
-        <button onclick="switchTab('profile')" class="flex flex-col items-center text-gray-400 text-xs space-y-1" id="nav-profile">
-            <i class="fa-solid fa-user text-lg"></i>
-            <span>Profile</span>
-        </button>
-        <button onclick="switchTab('admin')" class="flex flex-col items-center text-gray-400 text-xs space-y-1" id="nav-admin">
-            <i class="fa-solid fa-gear text-lg"></i>
-            <span>Admin</span>
-        </button>
-    </nav>
-
-    <script>
-        const socket = io();
-        let currentStake = 10;
-        let selectedNumber = null;
-        let tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user || { id: 'GUEST_USER', first_name: 'Guest' };
-
-        function switchTab(tabId) {
-            ['home', 'game', 'history', 'wallet', 'profile', 'admin'].forEach(t => {
-                document.getElementById(`section-${t}`).classList.add('hidden');
-                const nav = document.getElementById(`nav-${t}`);
-                if(nav) nav.classList.replace('text-yellow-500', 'text-gray-400');
-            });
-            document.getElementById(`section-${tabId}`).classList.remove('hidden');
-            const activeNav = document.getElementById(`nav-${tabId}`);
-            if(activeNav) activeNav.classList.replace('text-gray-400', 'text-yellow-500');
-        }
-
-        function openGame(stake) {
-            currentStake = stake;
-            document.getElementById('game-title-stake').innerText = `Play ${stake} ETB`;
-            switchTab('game');
-            buildBoard();
-        }
-
-        function closeGame() {
-            switchTab('home');
-        }
-
-        function buildBoard() {
-            const grid = document.getElementById('numbers-grid');
-            grid.innerHTML = '';
-            for(let i = 1; i <= 50; i++) {
-                const btn = document.createElement('button');
-                btn.className = `number-btn p-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-sm text-center border border-gray-700`;
-                btn.innerText = i;
-                btn.onclick = () => selectNumber(i, btn);
-                grid.appendChild(btn);
-            }
-        }
-
-        function selectNumber(num, btnElement) {
-            document.querySelectorAll('.number-btn').forEach(b => b.classList.remove('selected'));
-            btnElement.classList.add('selected');
-            selectedNumber = num;
-            
-            socket.emit('select_number', {
-                stake: currentStake,
-                numberChosen: num,
-                userId: tgUser.id,
-                userName: tgUser.first_name
-            });
-        }
-
-        socket.on('timer_tick', (data) => {
-            if(data.stake === currentStake) {
-                document.getElementById('timer-display').innerText = `${data.timeLeft}s`;
-                document.getElementById('game-id-display').innerText = data.gameId;
-            }
-        });
-
-        socket.on('board_updated', (data) => {
-            if(data.stake === currentStake) {
-                document.getElementById('game-total-players').innerText = data.totalPlayers;
-                document.getElementById('game-derash').innerText = `${data.derash} ETB`;
-            }
-        });
-
-        socket.on('balance_updated', (data) => {
-            document.getElementById('main-balance').innerText = data.balance.toFixed(2);
-            document.getElementById('play-balance').innerText = data.playWallet.toFixed(2);
-        });
-
-        function submitDeposit() {
-            const sms = document.getElementById('deposit-sms').value;
-            const amount = document.getElementById('deposit-amount').value;
-            fetch('/api/deposit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: tgUser.id, userName: tgUser.first_name, amount, pastedText: sms })
-            }).then(res => res.json()).then(data => alert(data.message));
-        }
-
-        function submitWithdraw() {
-            const amount = document.getElementById('withdraw-amount').value;
-            const phone = document.getElementById('withdraw-phone').value;
-            fetch('/api/withdraw-request', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: tgUser.id, userName: tgUser.first_name, amount, phone })
-            }).then(res => res.json()).then(data => alert(data.message));
-        }
-
-        function loadAdminStats() {
-            const adminKey = document.getElementById('admin-key-input').value;
-            fetch('/api/admin/financial-stats', {
-                headers: { 'admin-key': adminKey }
-            }).then(res => res.json()).then(data => {
-                if(data.success) {
-                    document.getElementById('admin-active-users').innerText = data.stats.activePlayers;
-                    document.getElementById('admin-reg-users').innerText = data.stats.totalRegistered;
-                    alert('ስታቲስቲክስ በተሳካ ሁኔታ ተጭኗል!');
-                } else {
-                    alert(data.message);
-                }
-            });
-        }
-
-        // Initial fetch user data
-        fetch(`/api/user?id=${tgUser.id}`)
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('main-balance').innerText = (data.mainWallet || 0).toFixed(2);
-                document.getElementById('play-balance').innerText = (data.playWallet || 0).toFixed(2);
-                document.getElementById('prof-userid').innerText = tgUser.id;
-                document.getElementById('prof-name').innerText = tgUser.first_name || 'User';
-                document.getElementById('prof-won').innerText = data.gamesWon || 0;
-            });
-    </script>
-</body>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
