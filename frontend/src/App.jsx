@@ -1340,13 +1340,13 @@ export default function App() {
       <div style={{ width: '100%', backgroundColor: '#0e0e24', borderTop: '1px solid #1f1f3d', display: 'flex', justifyContent: 'space-around', padding: '8px 0', flexShrink: 0 }}>
         <button onClick={() => { setCurrentTab('game'); setCurrentScreen('home'); }} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
           <span style={{ fontSize: '18px' }}>🎮</span>
-          <span>ጨዋታ</span>
+          <span>Game</span>
         </button>
         <button onClick={() => setCurrentTab('history')} style={{ background: 'none', border: 'none', color: currentTab === 'history' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
           <span style={{ fontSize: '18px' }}>📜</span>
-          <span>ታሪክ</span>
+          <span>History</span>
         </button>
-        <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color: currentTab === 'wallet' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column5', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+        <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color: currentTab === 'wallet' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
           <span style={{ fontSize: '18px' }}>💳</span>
           <span>Wallet</span>
         </button>
