@@ -69,7 +69,7 @@ export default function App() {
   }), [userId]);
 
   const [currentTab, setCurrentTab] = useState('game');
-  const [currentScreen, setCurrentScreen] = useState('home'); // 'home', 'board50', 'board100'
+  const [currentScreen, setCurrentScreen] = useState('home'); // 'home', 'board10', 'board20'
   const [registeredCount, setRegisteredCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
   const [walletTab, setWalletTab] = useState('balance');
@@ -85,31 +85,31 @@ export default function App() {
     return `FL-${randomNum}`;
   };
 
-  // SEPARATE STATES FOR STAKE 50 AND STAKE 100 (COMPLETELY INDEPENDENT)
-  const [selectedNumbers50, setSelectedNumbers50] = useState([]);
-  const [allPickedNumbers50, setAllPickedNumbers50] = useState([]);
-  const [playerCount50, setPlayerCount50] = useState(0);
-  const [derash50, setDerash50] = useState(0);
-  const [phase50, setPhase50] = useState('selecting');
-  const [selectionTime50, setSelectionTime50] = useState('ቅዳሜ ማታ 12:00');
-  const [winningNumber50, setWinningNumber50] = useState('?');
-  const [winnerInfo50, setWinnerInfo50] = useState(null);
-  const [currentGameId50, setCurrentGameId50] = useState(generateRandomGameId());
+  // SEPARATE STATES FOR STAKE 10 AND STAKE 20 (COMPLETELY INDEPENDENT)
+  const [selectedNumbers10, setSelectedNumbers10] = useState([]);
+  const [allPickedNumbers10, setAllPickedNumbers10] = useState([]);
+  const [playerCount10, setPlayerCount10] = useState(0);
+  const [derash10, setDerash10] = useState(0);
+  const [phase10, setPhase10] = useState('selecting');
+  const [selectionTime10, setSelectionTime10] = useState(50);
+  const [winningNumber10, setWinningNumber10] = useState('?');
+  const [winnerInfo10, setWinnerInfo10] = useState(null);
+  const [currentGameId10, setCurrentGameId10] = useState(generateRandomGameId());
 
-  const [selectedNumbers100, setSelectedNumbers100] = useState([]);
-  const [allPickedNumbers100, setAllPickedNumbers100] = useState([]);
-  const [playerCount100, setPlayerCount100] = useState(0);
-  const [derash100, setDerash100] = useState(0);
-  const [phase100, setPhase100] = useState('selecting');
-  const [selectionTime100, setSelectionTime100] = useState('ቅዳሜ ማታ 12:00');
-  const [winningNumber100, setWinningNumber100] = useState('?');
-  const [winnerInfo100, setWinnerInfo100] = useState(null);
-  const [currentGameId100, setCurrentGameId100] = useState(generateRandomGameId());
+  const [selectedNumbers20, setSelectedNumbers20] = useState([]);
+  const [allPickedNumbers20, setAllPickedNumbers20] = useState([]);
+  const [playerCount20, setPlayerCount20] = useState(0);
+  const [derash20, setDerash20] = useState(0);
+  const [phase20, setPhase20] = useState('selecting');
+  const [selectionTime20, setSelectionTime20] = useState(50);
+  const [winningNumber20, setWinningNumber20] = useState('?');
+  const [winnerInfo20, setWinnerInfo20] = useState(null);
+  const [currentGameId20, setCurrentGameId20] = useState(generateRandomGameId());
 
-  const myPickedSet50 = useMemo(() => new Set(selectedNumbers50), [selectedNumbers50]);
-  const allPickedSet50 = useMemo(() => new Set(allPickedNumbers50), [allPickedNumbers50]);
-  const myPickedSet100 = useMemo(() => new Set(selectedNumbers100), [selectedNumbers100]);
-  const allPickedSet100 = useMemo(() => new Set(allPickedNumbers100), [allPickedNumbers100]);
+  const myPickedSet10 = useMemo(() => new Set(selectedNumbers10), [selectedNumbers10]);
+  const allPickedSet10 = useMemo(() => new Set(allPickedNumbers10), [allPickedNumbers10]);
+  const myPickedSet20 = useMemo(() => new Set(selectedNumbers20), [selectedNumbers20]);
+  const allPickedSet20 = useMemo(() => new Set(allPickedNumbers20), [allPickedNumbers20]);
 
   // DEPOSIT & WITHDRAW STATES
   const [depAmount, setDepAmount] = useState('200');
@@ -135,7 +135,7 @@ export default function App() {
 
   // SYSTEM SETTINGS STATE
   const [sysSettings, setSysSettings] = useState({
-    ticketPrice: 50,
+    ticketPrice: 10,
     winnerPercentage: 80,
     manualWinningNumber: null,
     activeAdmins: { admin1: true, admin2: true }
@@ -146,23 +146,23 @@ export default function App() {
     return Array.from({ length: 1000 }, (_, i) => i + 1);
   }, []);
 
-  const updateBoardStats50 = useCallback((allSelectedList) => {
+  const updateBoardStats10 = useCallback((allSelectedList) => {
     if (allSelectedList && Array.isArray(allSelectedList)) {
       const uniquePlayers = new Set(
         allSelectedList.map(item => typeof item === 'object' ? String(item.userId) : String(item))
       ).size;
-      setPlayerCount50(uniquePlayers);
-      setDerash50(Math.floor(allSelectedList.length * 50 * (sysSettings.winnerPercentage / 100)));
+      setPlayerCount10(uniquePlayers);
+      setDerash10(Math.floor(allSelectedList.length * 10 * (sysSettings.winnerPercentage / 100)));
     }
   }, [sysSettings.winnerPercentage]);
 
-  const updateBoardStats100 = useCallback((allSelectedList) => {
+  const updateBoardStats20 = useCallback((allSelectedList) => {
     if (allSelectedList && Array.isArray(allSelectedList)) {
       const uniquePlayers = new Set(
         allSelectedList.map(item => typeof item === 'object' ? String(item.userId) : String(item))
       ).size;
-      setPlayerCount100(uniquePlayers);
-      setDerash100(Math.floor(allSelectedList.length * 100 * (sysSettings.winnerPercentage / 100)));
+      setPlayerCount20(uniquePlayers);
+      setDerash20(Math.floor(allSelectedList.length * 20 * (sysSettings.winnerPercentage / 100)));
     }
   }, [sysSettings.winnerPercentage]);
 
@@ -329,104 +329,104 @@ export default function App() {
     }
   };
 
-  const derash50Ref = useRef(derash50);
-  useEffect(() => { derash50Ref.current = derash50; }, [derash50]);
+  const derash10Ref = useRef(derash10);
+  useEffect(() => { derash10Ref.current = derash10; }, [derash10]);
 
-  const derash100Ref = useRef(derash100);
-  useEffect(() => { derash100Ref.current = derash100; }, [derash100]);
+  const derash20Ref = useRef(derash20);
+  useEffect(() => { derash20Ref.current = derash20; }, [derash20]);
 
   useEffect(() => {
     fetchUserData();
-    let spinTimeout50, resultTimeout50;
-    let spinTimeout100, resultTimeout100;
+    let spinTimeout10, resultTimeout10;
+    let spinTimeout20, resultTimeout20;
 
     socket.on('init_state', (data) => {
       if (!data) return;
-      const gameStake = data.ticketPrice || 50;
+      const gameStake = data.ticketPrice || 10;
       
-      if (gameStake === 100) {
-        setPhase100(data.gamePhase || 'selecting');
-        if (data.timeLeft !== undefined) setSelectionTime100(data.timeLeft);
-        setWinningNumber100(data.winningNumber || '?');
+      if (gameStake === 20) {
+        setPhase20(data.gamePhase || 'selecting');
+        setSelectionTime20(data.timeLeft !== undefined ? data.timeLeft : 50);
+        setWinningNumber20(data.winningNumber || '?');
         if (data.gameId) {
-          setCurrentGameId100(data.gameId);
+          setCurrentGameId20(data.gameId);
         } else {
-          setCurrentGameId100(generateRandomGameId());
+          setCurrentGameId20(generateRandomGameId());
         }
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
           const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
-          setAllPickedNumbers100(allPicked);
+          setAllPickedNumbers20(allPicked);
           const myPicked = data.selectedNumbers
             .filter(n => typeof n === 'object' && String(n.userId) === String(userId))
             .map(n => n.number);
-          setSelectedNumbers100(myPicked);
-          updateBoardStats100(data.selectedNumbers);
+          setSelectedNumbers20(myPicked);
+          updateBoardStats20(data.selectedNumbers);
         }
       } else {
-        setPhase50(data.gamePhase || 'selecting');
-        if (data.timeLeft !== undefined) setSelectionTime50(data.timeLeft);
-        setWinningNumber50(data.winningNumber || '?');
+        setPhase10(data.gamePhase || 'selecting');
+        setSelectionTime10(data.timeLeft !== undefined ? data.timeLeft : 50);
+        setWinningNumber10(data.winningNumber || '?');
         if (data.gameId) {
-          setCurrentGameId50(data.gameId);
+          setCurrentGameId10(data.gameId);
         } else {
-          setCurrentGameId50(generateRandomGameId());
+          setCurrentGameId10(generateRandomGameId());
         }
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
           const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
-          setAllPickedNumbers50(allPicked);
+          setAllPickedNumbers10(allPicked);
           const myPicked = data.selectedNumbers
             .filter(n => typeof n === 'object' && String(n.userId) === String(userId))
             .map(n => n.number);
-          setSelectedNumbers50(myPicked);
-          updateBoardStats50(data.selectedNumbers);
+          setSelectedNumbers10(myPicked);
+          updateBoardStats10(data.selectedNumbers);
         }
       }
     });
 
     socket.on('timer_tick', (data) => {
       if (!data) return;
-      const gameStake = data.ticketPrice || 50;
+      const gameStake = data.ticketPrice || 10;
       
-      if (gameStake === 100) {
-        if (data.timeLeft) setSelectionTime100(data.timeLeft);
-        if (data.gamePhase) setPhase100(data.gamePhase);
-        if (data.gameId) setCurrentGameId100(data.gameId);
+      if (gameStake === 20) {
+        setSelectionTime20(data.timeLeft);
+        if (data.gamePhase) setPhase20(data.gamePhase);
+        if (data.gameId) setCurrentGameId20(data.gameId);
       } else {
-        if (data.timeLeft) setSelectionTime50(data.timeLeft);
-        if (data.gamePhase) setPhase50(data.gamePhase);
-        if (data.gameId) setCurrentGameId50(data.gameId);
+        setSelectionTime10(data.timeLeft);
+        if (data.gamePhase) setPhase10(data.gamePhase);
+        if (data.gameId) setCurrentGameId10(data.gameId);
       }
     });
 
     socket.on('board_updated', (data) => {
       if (!data) return;
-      const gameStake = data.ticketPrice || 50;
+      const gameStake = data.ticketPrice || 10;
 
-      if (gameStake === 100) {
+      if (gameStake === 20) {
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
           const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
-          setAllPickedNumbers100(allPicked);
+          setAllPickedNumbers20(allPicked);
           const myPicked = data.selectedNumbers
             .filter(n => typeof n === 'object' && String(n.userId) === String(userId))
             .map(n => n.number);
-          setSelectedNumbers100(myPicked);
-          updateBoardStats100(data.selectedNumbers);
+          setSelectedNumbers20(myPicked);
+          updateBoardStats20(data.selectedNumbers);
         } else {
-          setPlayerCount100(data.totalPlayers || 0);
-          setDerash100(data.derash || 0);
+          setPlayerCount20(data.totalPlayers || 0);
+          setDerash20(data.derash || 0);
         }
       } else {
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
           const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
-          setAllPickedNumbers50(allPicked);
+          setAllPickedNumbers10(allPicked);
           const myPicked = data.selectedNumbers
             .filter(n => typeof n === 'object' && String(n.userId) === String(userId))
             .map(n => n.number);
-          setSelectedNumbers50(myPicked);
-          updateBoardStats50(data.selectedNumbers);
+          setSelectedNumbers10(myPicked);
+          updateBoardStats10(data.selectedNumbers);
         } else {
-          setPlayerCount50(data.totalPlayers || 0);
-          setDerash50(data.derash || 0);
+          setPlayerCount10(data.totalPlayers || 0);
+          setDerash10(data.derash || 0);
         }
       }
     });
@@ -452,21 +452,21 @@ export default function App() {
 
     socket.on('game_result', (data) => {
       if (!data || data.winningNumber === 'NONE') return;
-      const gameStake = data.ticketPrice || 50;
+      const gameStake = data.ticketPrice || 10;
 
-      if (gameStake === 100) {
-        setPhase100('spinning');
-        setWinningNumber100('SPINNING');
-        spinTimeout100 = setTimeout(() => {
-          setPhase100('result');
+      if (gameStake === 20) {
+        setPhase20('spinning');
+        setWinningNumber20('SPINNING');
+        spinTimeout20 = setTimeout(() => {
+          setPhase20('result');
           const winNum = data.winningNumber;
-          setWinningNumber100(winNum);
+          setWinningNumber20(winNum);
           const winItem = data.selectedNumbers?.find(
             n => typeof n === 'object' && String(n.number) === String(winNum)
           );
-          const winAmount = data.derash !== undefined ? data.derash : derash100Ref.current;
+          const winAmount = data.derash !== undefined ? data.derash : derash20Ref.current;
           if (winItem) {
-            setWinnerInfo100({
+            setWinnerInfo20({
               number: winNum,
               userName: winItem.userName || `user_${winItem.userId}`,
               derash: winAmount
@@ -476,34 +476,34 @@ export default function App() {
               setGamesWon(prev => prev + 1);
             }
           } else {
-            setWinnerInfo100({ number: winNum, userName: 'ማንንም አልመረጠም', derash: 0 });
+            setWinnerInfo20({ number: winNum, userName: 'ማንንም አልመረጠም', derash: 0 });
           }
           fetchUserData();
-          resultTimeout100 = setTimeout(() => {
-            setSelectedNumbers100([]);
-            setAllPickedNumbers100([]);
-            setWinningNumber100('?');
-            setWinnerInfo100(null);
-            setPhase100('selecting');
-            setSelectionTime100('ቅዳሜ ማታ 12:00');
-            setPlayerCount100(0);
-            setDerash100(0);
-            setCurrentGameId100(data.nextGameId || generateRandomGameId());
+          resultTimeout20 = setTimeout(() => {
+            setSelectedNumbers20([]);
+            setAllPickedNumbers20([]);
+            setWinningNumber20('?');
+            setWinnerInfo20(null);
+            setPhase20('selecting');
+            setSelectionTime20(50);
+            setPlayerCount20(0);
+            setDerash20(0);
+            setCurrentGameId20(data.nextGameId || generateRandomGameId());
           }, 4000);
         }, 1500);
       } else {
-        setPhase50('spinning');
-        setWinningNumber50('SPINNING');
-        spinTimeout50 = setTimeout(() => {
-          setPhase50('result');
+        setPhase10('spinning');
+        setWinningNumber10('SPINNING');
+        spinTimeout10 = setTimeout(() => {
+          setPhase10('result');
           const winNum = data.winningNumber;
-          setWinningNumber50(winNum);
+          setWinningNumber10(winNum);
           const winItem = data.selectedNumbers?.find(
             n => typeof n === 'object' && String(n.number) === String(winNum)
           );
-          const winAmount = data.derash !== undefined ? data.derash : derash50Ref.current;
+          const winAmount = data.derash !== undefined ? data.derash : derash10Ref.current;
           if (winItem) {
-            setWinnerInfo50({
+            setWinnerInfo10({
               number: winNum,
               userName: winItem.userName || `user_${winItem.userId}`,
               derash: winAmount
@@ -513,50 +513,50 @@ export default function App() {
               setGamesWon(prev => prev + 1);
             }
           } else {
-            setWinnerInfo50({ number: winNum, userName: 'ማንንም አልመረጠም', derash: 0 });
+            setWinnerInfo10({ number: winNum, userName: 'ማንንም አልመረጠም', derash: 0 });
           }
           fetchUserData();
-          resultTimeout50 = setTimeout(() => {
-            setSelectedNumbers50([]);
-            setAllPickedNumbers50([]);
-            setWinningNumber50('?');
-            setWinnerInfo50(null);
-            setPhase50('selecting');
-            setSelectionTime50('ቅዳሜ ማታ 12:00');
-            setPlayerCount50(0);
-            setDerash50(0);
-            setCurrentGameId50(data.nextGameId || generateRandomGameId());
+          resultTimeout10 = setTimeout(() => {
+            setSelectedNumbers10([]);
+            setAllPickedNumbers10([]);
+            setWinningNumber10('?');
+            setWinnerInfo10(null);
+            setPhase10('selecting');
+            setSelectionTime10(50);
+            setPlayerCount10(0);
+            setDerash10(0);
+            setCurrentGameId10(data.nextGameId || generateRandomGameId());
           }, 4000);
         }, 1500);
       }
     });
 
     socket.on('reset_game', (data) => {
-      const gameStake = data?.ticketPrice || 50;
-      if (gameStake === 100) {
-        clearTimeout(spinTimeout100);
-        clearTimeout(resultTimeout100);
-        setSelectedNumbers100([]);
-        setAllPickedNumbers100([]);
-        setWinningNumber100('?');
-        setWinnerInfo100(null);
-        setPhase100(data?.gamePhase || 'selecting');
-        setSelectionTime100('ቅዳሜ ማታ 12:00');
-        setPlayerCount100(0);
-        setDerash100(0);
-        setCurrentGameId100(data?.gameId || generateRandomGameId());
+      const gameStake = data?.ticketPrice || 10;
+      if (gameStake === 20) {
+        clearTimeout(spinTimeout20);
+        clearTimeout(resultTimeout20);
+        setSelectedNumbers20([]);
+        setAllPickedNumbers20([]);
+        setWinningNumber20('?');
+        setWinnerInfo20(null);
+        setPhase20(data?.gamePhase || 'selecting');
+        setSelectionTime20(data?.timeLeft || 50);
+        setPlayerCount20(0);
+        setDerash20(0);
+        setCurrentGameId20(data?.gameId || generateRandomGameId());
       } else {
-        clearTimeout(spinTimeout50);
-        clearTimeout(resultTimeout50);
-        setSelectedNumbers50([]);
-        setAllPickedNumbers50([]);
-        setWinningNumber50('?');
-        setWinnerInfo50(null);
-        setPhase50(data?.gamePhase || 'selecting');
-        setSelectionTime50('ቅዳሜ ማታ 12:00');
-        setPlayerCount50(0);
-        setDerash50(0);
-        setCurrentGameId50(data?.gameId || generateRandomGameId());
+        clearTimeout(spinTimeout10);
+        clearTimeout(resultTimeout10);
+        setSelectedNumbers10([]);
+        setAllPickedNumbers10([]);
+        setWinningNumber10('?');
+        setWinnerInfo10(null);
+        setPhase10(data?.gamePhase || 'selecting');
+        setSelectionTime10(data?.timeLeft || 50);
+        setPlayerCount10(0);
+        setDerash10(0);
+        setCurrentGameId10(data?.gameId || generateRandomGameId());
       }
     });
 
@@ -570,56 +570,63 @@ export default function App() {
       socket.off('error_message');
       socket.off('balance_updated');
       socket.off('new_transaction');
-      clearTimeout(spinTimeout50);
-      clearTimeout(resultTimeout50);
-      clearTimeout(spinTimeout100);
-      clearTimeout(resultTimeout100);
+      clearTimeout(spinTimeout10);
+      clearTimeout(resultTimeout10);
+      clearTimeout(spinTimeout20);
+      clearTimeout(resultTimeout20);
     };
-  }, [socket, userId, updateBoardStats50, updateBoardStats100, fetchUserData, fetchAdminData, isAdmin]);
+  }, [socket, userId, updateBoardStats10, updateBoardStats20, fetchUserData, fetchAdminData, isAdmin]);
 
   const toggleNumber = useCallback((num, stake) => {
-    const isStake100 = stake === 100;
-    const currentPhase = isStake100 ? phase100 : phase50;
-    const mySet = isStake100 ? myPickedSet100 : myPickedSet50;
+    const isStake20 = stake === 20;
+    const currentPhase = isStake20 ? phase20 : phase10;
+    const mySet = isStake20 ? myPickedSet20 : myPickedSet10;
 
     if (currentPhase !== 'selecting') return;
     if (isBanned) return alert("አካውንትዎ ስለታገደ መደብ ጨዋታ መጫወት አይችሉም!");
 
-    // አንዴ እጣ ቁጥር ከገዙ ዲሰሌክት ማድረግ አይችሉም (የተመረጠ ከሆነ ከዚህ በታች እንዳይጠፋ ይከለከላል)
-    if (mySet.has(num)) {
-      return alert("⚠️ አንዴ እጣ ቁጥር ከገዙ በኋላ ዲሰሌክት ማድረግ (ማጥፋት) አይችሉም!");
-    }
-
     const totalAvailableBalance = Number(mainWallet) + Number(playWallet);
 
-    if (totalAvailableBalance < Number(stake)) {
-      const msg = "⚠️ በቂ ሂሳብ የለዎትም! እባክዎ አካውንት ላይ ገንዘብ ይሙሉ፤";
-      if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showAlert) {
-        window.Telegram.WebApp.showAlert(msg);
+    if (mySet.has(num)) {
+      if (isStake20) {
+        setSelectedNumbers20(prev => prev.filter(n => n !== num));
+        setAllPickedNumbers20(prev => prev.filter(n => n !== num));
       } else {
-        alert(msg);
+        setSelectedNumbers10(prev => prev.filter(n => n !== num));
+        setAllPickedNumbers10(prev => prev.filter(n => n !== num));
       }
-      return;
-    }
-
-    if (Number(playWallet) >= Number(stake)) {
-      setPlayWallet(prev => Number(prev) - Number(stake));
+      setMainWallet(prev => Number(prev) + Number(stake));
+      socket.emit('deselect_number', { numberChosen: num, userId, stake });
     } else {
-      const remainingStake = Number(stake) - Number(playWallet);
-      setPlayWallet(0);
-      setMainWallet(prev => Number(prev) - Number(remainingStake));
-    }
+      if (totalAvailableBalance < Number(stake)) {
+        const msg = "⚠️ በቂ ሂሳብ የለዎትም! እባክዎ አካውንት ላይ ገንዘብ ይሙሉ፤";
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showAlert) {
+          window.Telegram.WebApp.showAlert(msg);
+        } else {
+          alert(msg);
+        }
+        return;
+      }
 
-    if (isStake100) {
-      setSelectedNumbers100(prev => [...prev, num]);
-      setAllPickedNumbers100(prev => [...prev, num]);
-    } else {
-      setSelectedNumbers50(prev => [...prev, num]);
-      setAllPickedNumbers50(prev => [...prev, num]);
-    }
+      if (Number(playWallet) >= Number(stake)) {
+        setPlayWallet(prev => Number(prev) - Number(stake));
+      } else {
+        const remainingStake = Number(stake) - Number(playWallet);
+        setPlayWallet(0);
+        setMainWallet(prev => Number(prev) - Number(remainingStake));
+      }
 
-    socket.emit('select_number', { numberChosen: num, userId, userName, stake });
-  }, [phase50, phase100, isBanned, myPickedSet50, myPickedSet100, mainWallet, playWallet, socket, userId, userName]);
+      if (isStake20) {
+        setSelectedNumbers20(prev => [...prev, num]);
+        setAllPickedNumbers20(prev => [...prev, num]);
+      } else {
+        setSelectedNumbers10(prev => [...prev, num]);
+        setAllPickedNumbers10(prev => [...prev, num]);
+      }
+
+      socket.emit('select_number', { numberChosen: num, userId, userName, stake });
+    }
+  }, [phase10, phase20, isBanned, myPickedSet10, myPickedSet20, mainWallet, playWallet, socket, userId, userName]);
 
   const handleDeposit = async () => {
     if (!depAmount || Number(depAmount) <= 0) return alert("እባክዎ ትክክለኛ መጠን ይስጡ!");
@@ -755,18 +762,28 @@ export default function App() {
                 )}
                 <div style={{ width: '100%', backgroundColor: '#15152a', border: '1px solid #ef4444', borderRadius: '16px', padding: '24px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)', marginBottom: '20px', boxSizing: 'border-box' }}>
                   <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px', textAlign: 'center' }}>Choose Stake</div>
-                  <button onClick={() => setCurrentScreen('board50')} style={{ width: '100%', backgroundColor: '#22c55e', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px', textAlign: 'center' }}>
-                    ► Play 50
+                  <button onClick={() => setCurrentScreen('board10')} style={{ width: '100%', backgroundColor: '#22c55e', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px', textAlign: 'center' }}>
+                    ► Play 10 ETB
                   </button>
-                  <button onClick={() => setCurrentScreen('board100')} style={{ width: '100%', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>
-                    ► Play 100
+                  <button onClick={() => setCurrentScreen('board20')} style={{ width: '100%', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>
+                    ► Play 20 ETB
                   </button>
+                </div>
+                <div style={{ width: '100%', backgroundColor: '#1b1b38', borderRadius: '16px', padding: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', boxSizing: 'border-box', border: '1px solid #2d2d50', alignItems: 'center' }}>
+                  <div style={{ width: '100%' }}>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{activeCount}</div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Active Users</div>
+                  </div>
+                  <div style={{ width: '100%', borderTop: '1px solid #2d2d50', paddingTop: '12px' }}>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{registeredCount}</div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Registered Users</div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* SEPARATE BOARD FOR PLAY 50 */}
-            {currentScreen === 'board50' && (
+            {/* SEPARATE BOARD FOR 10 ETB */}
+            {currentScreen === 'board10' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', backgroundColor: '#0a0a16', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%' }}>
                   <button onClick={() => setCurrentScreen('home')} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -779,32 +796,32 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div>
-                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId50}</div>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId10}</div>
                   </div>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div>
-                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount50}</div>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount10}</div>
                   </div>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
-                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>50 ETB</div>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>10 ETB</div>
                   </div>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div>
-                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash50} ETB</div>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash10} ETB</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: phase50 === 'spinning' ? (allPickedNumbers50.length > 0 ? '#dc2626' : '#6b7280') : '#22c55e', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
-                      {phase50 === 'spinning' ? (allPickedNumbers50.length > 0 ? 'ቁጥር እያሽከረከረ ነው...' : '⚠️ ማንንም ቁጥር አልመረጠም!') : 'የሚወጣበት: ' + selectionTime50}
+                    <div style={{ backgroundColor: phase10 === 'spinning' ? (allPickedNumbers10.length > 0 ? '#dc2626' : '#6b7280') : '#22c55e', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
+                      {phase10 === 'spinning' ? (allPickedNumbers10.length > 0 ? 'ቁጥር እያሽከረከረ ነው...' : '⚠️ ማንንም ቁጥር አልመረጠም!') : 'የመመረጫ ጊዜ ' + selectionTime10 + ' S'}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
                       {visibleNumbers.map((num) => {
-                        const isMine = myPickedSet50.has(num);
-                        const isOthers = allPickedSet50.has(num) && !isMine;
-                        const hasEnoughMoney = (Number(mainWallet) + Number(playWallet)) >= 50;
-                        const isDisabled = phase50 !== 'selecting' || isBanned || (!hasEnoughMoney && !isMine);
+                        const isMine = myPickedSet10.has(num);
+                        const isOthers = allPickedSet10.has(num) && !isMine;
+                        const hasEnoughMoney = (Number(mainWallet) + Number(playWallet)) >= 10;
+                        const isDisabled = phase10 !== 'selecting' || isBanned || (!hasEnoughMoney && !isMine);
                         return (
                           <NumberButton
                             key={num}
@@ -812,7 +829,7 @@ export default function App() {
                             disabled={isDisabled}
                             isMine={isMine}
                             isOthers={isOthers}
-                            onClick={() => toggleNumber(num, 50)}
+                            onClick={() => toggleNumber(num, 10)}
                           />
                         );
                       })}
@@ -821,18 +838,18 @@ export default function App() {
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
                     <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                       <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}>
-                        📌 የተመረጡ ቁጥሮች ({selectedNumbers50.length}):
+                        📌 የተመረጡ ቁጥሮች ({selectedNumbers10.length}):
                       </div>
                       <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.2', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
-                        {selectedNumbers50.length > 0 ? selectedNumbers50.join(', ') : 'እስካሁን ማንንም አልመረጠም'}
+                        {selectedNumbers10.length > 0 ? selectedNumbers10.join(', ') : 'እስካሁን ማንንም አልመረጠም'}
                       </div>
                     </div>
                     <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
                       <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}>
                         የቁጥር ማውጫ
                       </div>
-                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: '#0d0d1a', border: winningNumber50 === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber50 !== '?' && winningNumber50 !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: winningNumber50 === 'SPINNING' ? '0 0 20px rgba(0, 242, 254, 0.6)' : (winningNumber50 !== '?' && winningNumber50 !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'), transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' }}>
-                        {winningNumber50 === 'SPINNING' ? (
+                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: '#0d0d1a', border: winningNumber10 === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber10 !== '?' && winningNumber10 !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: winningNumber10 === 'SPINNING' ? '0 0 20px rgba(0, 242, 254, 0.6)' : (winningNumber10 !== '?' && winningNumber10 !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'), transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' }}>
+                        {winningNumber10 === 'SPINNING' ? (
                           <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="80" height="80" viewBox="0 0 100 100">
                               <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="4" />
@@ -841,7 +858,7 @@ export default function App() {
                               <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
                             </svg>
                           </div>
-                        ) : winningNumber50 === 'NONE' ? (
+                        ) : winningNumber10 === 'NONE' ? (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>
                               እስካሁን ማንንም አልወጣም
@@ -849,26 +866,26 @@ export default function App() {
                           </div>
                         ) : (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                            <span style={{ fontSize: winningNumber50 === '?' ? '42px' : '38px', fontWeight: 'bold', color: winningNumber50 === '?' ? '#ffffff' : '#00ffcc', textShadow: winningNumber50 === '?' ? 'none' : '0 0 12px #00ffcc', lineHeight: '1', display: 'inline-block', margin: '0', padding: '0' }}>
-                              {winningNumber50}
+                            <span style={{ fontSize: winningNumber10 === '?' ? '42px' : '38px', fontWeight: 'bold', color: winningNumber10 === '?' ? '#ffffff' : '#00ffcc', textShadow: winningNumber10 === '?' ? 'none' : '0 0 12px #00ffcc', lineHeight: '1', display: 'inline-block', margin: '0', padding: '0' }}>
+                              {winningNumber10}
                             </span>
                           </div>
                         )}
                       </div>
                     </div>
-                    {winnerInfo50 && (
+                    {winnerInfo10 && (
                       <div style={{ marginTop: '4px', padding: '8px', backgroundColor: '#064e3b', border: '2px solid #10b981', borderRadius: '10px', textAlign: 'center', boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)' }}>
                         <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#34d399' }}>
                           🎉 አሸናፊ አሸነፈ!
                         </div>
                         <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '2px 0' }}>
-                          👤 {winnerInfo50.userName}
+                          👤 {winnerInfo10.userName}
                         </div>
                         <div style={{ fontSize: '13px', fontWeight: '900', color: '#facc15' }}>
-                          ቁጥር: #{winnerInfo50.number}
+                          ቁጥር: #{winnerInfo10.number}
                         </div>
                         <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '2px' }}>
-                          የደርሽ ብር: {winnerInfo50.derash} ETB
+                          የደርሽ ብር: {winnerInfo10.derash} ETB
                         </div>
                       </div>
                     )}
@@ -877,8 +894,8 @@ export default function App() {
               </div>
             )}
 
-            {/* SEPARATE BOARD FOR PLAY 100 */}
-            {currentScreen === 'board100' && (
+            {/* SEPARATE BOARD FOR 20 ETB */}
+            {currentScreen === 'board20' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', backgroundColor: '#0a0a16', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%' }}>
                   <button onClick={() => setCurrentScreen('home')} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -891,32 +908,32 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div>
-                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId100}</div>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId20}</div>
                   </div>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div>
-                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount100}</div>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount20}</div>
                   </div>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div>
-                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0284c7' }}>100 ETB</div>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0284c7' }}>20 ETB</div>
                   </div>
                   <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div>
-                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash100} ETB</div>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash20} ETB</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: phase100 === 'spinning' ? (allPickedNumbers100.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
-                      {phase100 === 'spinning' ? (allPickedNumbers100.length > 0 ? 'ቁጥር እያሽከረከረ ነው...' : '⚠️ ማንንም ቁጥር አልመረጠም!') : 'የሚወጣበት: ' + selectionTime100}
+                    <div style={{ backgroundColor: phase20 === 'spinning' ? (allPickedNumbers20.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
+                      {phase20 === 'spinning' ? (allPickedNumbers20.length > 0 ? 'ቁጥር እያሽከረከረ ነው...' : '⚠️ ማንንም ቁጥር አልመረጠም!') : 'የመመረጫ ጊዜ ' + selectionTime20 + ' S'}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
                       {visibleNumbers.map((num) => {
-                        const isMine = myPickedSet100.has(num);
-                        const isOthers = allPickedSet100.has(num) && !isMine;
-                        const hasEnoughMoney = (Number(mainWallet) + Number(playWallet)) >= 100;
-                        const isDisabled = phase100 !== 'selecting' || isBanned || (!hasEnoughMoney && !isMine);
+                        const isMine = myPickedSet20.has(num);
+                        const isOthers = allPickedSet20.has(num) && !isMine;
+                        const hasEnoughMoney = (Number(mainWallet) + Number(playWallet)) >= 20;
+                        const isDisabled = phase20 !== 'selecting' || isBanned || (!hasEnoughMoney && !isMine);
                         return (
                           <NumberButton
                             key={num}
@@ -924,7 +941,7 @@ export default function App() {
                             disabled={isDisabled}
                             isMine={isMine}
                             isOthers={isOthers}
-                            onClick={() => toggleNumber(num, 100)}
+                            onClick={() => toggleNumber(num, 20)}
                           />
                         );
                       })}
@@ -933,18 +950,18 @@ export default function App() {
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
                     <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                       <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}>
-                        📌 የተመረጡ ቁጥሮች ({selectedNumbers100.length}):
+                        📌 የተመረጡ ቁጥሮች ({selectedNumbers20.length}):
                       </div>
                       <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.2', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
-                        {selectedNumbers100.length > 0 ? selectedNumbers100.join(', ') : 'እስካሁን ማንንም አልመረጠም'}
+                        {selectedNumbers20.length > 0 ? selectedNumbers20.join(', ') : 'እስካሁን ማንንም አልመረጠም'}
                       </div>
                     </div>
                     <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
                       <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}>
                         የቁጥር ማውጫ
                       </div>
-                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: '#0d0d1a', border: winningNumber100 === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber100 !== '?' && winningNumber100 !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: winningNumber100 === 'SPINNING' ? '0 0 20px rgba(0, 242, 254, 0.6)' : (winningNumber100 !== '?' && winningNumber100 !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'), transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' }}>
-                        {winningNumber100 === 'SPINNING' ? (
+                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: '#0d0d1a', border: winningNumber20 === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber20 !== '?' && winningNumber20 !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: winningNumber20 === 'SPINNING' ? '0 0 20px rgba(0, 242, 254, 0.6)' : (winningNumber20 !== '?' && winningNumber20 !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'), transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' }}>
+                        {winningNumber20 === 'SPINNING' ? (
                           <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="80" height="80" viewBox="0 0 100 100">
                               <circle cx="50" cy="50" r="40" fill="none" stroke="#00f2fe" strokeWidth="4" />
@@ -953,7 +970,7 @@ export default function App() {
                               <circle cx="50" cy="50" r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="2" />
                             </svg>
                           </div>
-                        ) : winningNumber100 === 'NONE' ? (
+                        ) : winningNumber20 === 'NONE' ? (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>
                               እስካሁን ማንንም አልወጣም
@@ -961,26 +978,26 @@ export default function App() {
                           </div>
                         ) : (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                            <span style={{ fontSize: winningNumber100 === '?' ? '42px' : '38px', fontWeight: 'bold', color: winningNumber100 === '?' ? '#ffffff' : '#00ffcc', textShadow: winningNumber100 === '?' ? 'none' : '0 0 12px #00ffcc', lineHeight: '1', display: 'inline-block', margin: '0', padding: '0' }}>
-                              {winningNumber100}
+                            <span style={{ fontSize: winningNumber20 === '?' ? '42px' : '38px', fontWeight: 'bold', color: winningNumber20 === '?' ? '#ffffff' : '#00ffcc', textShadow: winningNumber20 === '?' ? 'none' : '0 0 12px #00ffcc', lineHeight: '1', display: 'inline-block', margin: '0', padding: '0' }}>
+                              {winningNumber20}
                             </span>
                           </div>
                         )}
                       </div>
                     </div>
-                    {winnerInfo100 && (
+                    {winnerInfo20 && (
                       <div style={{ marginTop: '4px', padding: '8px', backgroundColor: '#064e3b', border: '2px solid #10b981', borderRadius: '10px', textAlign: 'center', boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)' }}>
                         <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#34d399' }}>
                           🎉 አሸናፊ አሸነፈ!
                         </div>
                         <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '2px 0' }}>
-                          👤 {winnerInfo100.userName}
+                          👤 {winnerInfo20.userName}
                         </div>
                         <div style={{ fontSize: '13px', fontWeight: '900', color: '#facc15' }}>
-                          ቁጥር: #{winnerInfo100.number}
+                          ቁጥር: #{winnerInfo20.number}
                         </div>
                         <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '2px' }}>
-                          የደርሽ ብር: {winnerInfo100.derash} ETB
+                          የደርሽ ብር: {winnerInfo20.derash} ETB
                         </div>
                       </div>
                     )}
@@ -1129,19 +1146,6 @@ export default function App() {
               </h1>
               <button onClick={fetchAdminData} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}>🔄 Refresh</button>
             </div>
-            
-            {/* Active and Registered Users counts displayed on Admin panel only */}
-            <div style={{ width: '100%', backgroundColor: '#1b1b38', borderRadius: '12px', padding: '12px', textAlign: 'center', display: 'flex', justifyContent: 'space-around', gap: '10px', boxSizing: 'border-box', border: '1px solid #2d2d50', marginBottom: '16px' }}>
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#38bdf8' }}>{activeCount}</div>
-                <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '2px' }}>Active Users</div>
-              </div>
-              <div style={{ borderLeft: '1px solid #2d2d50', paddingLeft: '10px' }}>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#22c55e' }}>{registeredCount}</div>
-                <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '2px' }}>Registered Users</div>
-              </div>
-            </div>
-
             <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
               <button onClick={() => setAdminTab('requests')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'requests' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>🗂️ Transactions</button>
               {isSuperAdmin && (
@@ -1188,7 +1192,8 @@ export default function App() {
                         <div style={{ fontSize: '11px', color: '#9ca3af' }}>👤 User: {tx.userName} (ID: {tx.userId})</div>
                         {tx.phone && <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>📱 Phone: {tx.phone}</div>}
                         {tx.transactionId && <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>🔑 Txn ID: {tx.transactionId}</div>}
-                        {tx.processedBy && <div style={{ fontSize: '10px', color: '#a7f3d0', marginTop: '2px' }}>ፈጻሚ: {tx.processedBy}</div>}
+                        {tx.processedBy && <div style={{ fontSize: '10px', color: '#a7f3d0', marginTop: '2px' 
+                        }} >ፈጻሚ: {tx.processedBy}</div>}
                         <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>⏱️ Time: {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}</div>
                         {tx.pastedText && (
                           <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#0f172a', borderRadius: '6px', border: '1px solid #1e293b' }}>
@@ -1330,11 +1335,11 @@ export default function App() {
           <span style={{ fontSize: '18px' }}>📜</span>
           <span>ታሪክ</span>
         </button>
-        <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color: currentTab === 'wallet' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+        <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color: currentTab === 'wallet' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column5', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
           <span style={{ fontSize: '18px' }}>💳</span>
           <span>Wallet</span>
         </button>
-        <button onClick={() => setCurrentTab('profile')} style={{ background: 'none', border: 'none', color: currentTab === 'profile' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+        <button onClick={() => setCurrentTab('profile')} style={{ background: 'none', border: '1px solid transparent', background: 'none', border: 'none', color: currentTab === 'profile' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
           <span style={{ fontSize: '18px' }}>👤</span>
           <span>Profile</span>
         </button>

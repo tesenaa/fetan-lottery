@@ -101,8 +101,6 @@ const systemSettingsSchema = new mongoose.Schema({
   manualWinningNumber: { type: Number, default: null },
   manualWinningNumber10: { type: Number, default: null },
   manualWinningNumber20: { type: Number, default: null },
-  manualWinningNumber50: { type: Number, default: null },
-  manualWinningNumber100: { type: Number, default: null },
   activeAdmins: {
     admin1: { type: Boolean, default: true },
     admin2: { type: Boolean, default: true }
@@ -132,20 +130,7 @@ function generateGameId(stake) {
   return `FL-${stake}-${randomNum}`;
 }
 
-// --- Independent Game States for stakes 10, 20, 50, and 100 ---
-// ሳምንታዊ ሎተሪዎችን (50 እና 100) በሚቀጥለው ቅዳሜ ማታ 12:00 ሰአት እንዲያልቅ እናስላለን
-function getSecondsUntilNextSaturdayMidnight() {
-  const now = new Date();
-  const resultDate = new Date(now);
-  resultDate.setDate(now.getDate() + ((6 + 7 - now.getDay()) % 7));
-  resultDate.setHours(24, 0, 0, 0); // ቅዳሜ ማታ 12:00 (እሁድ መባቻ)
-  
-  if (resultDate <= now) {
-    resultDate.setDate(resultDate.getDate() + 7);
-  }
-  return Math.floor((resultDate - now) / 1000);
-}
-
+// --- Completely Independent Game States for stake 10 and 20 ---
 const gameStates = {
   10: {
     currentGameId: generateGameId(10),
@@ -159,22 +144,6 @@ const gameStates = {
     currentGameId: generateGameId(20),
     selectedNumbers: [],
     timeLeft: 50,
-    gamePhase: 'selecting',
-    winningNumber: null,
-    boardUpdateTimeout: null
-  },
-  50: {
-    currentGameId: generateGameId(50),
-    selectedNumbers: [],
-    timeLeft: getSecondsUntilNextSaturdayMidnight(),
-    gamePhase: 'selecting',
-    winningNumber: null,
-    boardUpdateTimeout: null
-  },
-  100: {
-    currentGameId: generateGameId(100),
-    selectedNumbers: [],
-    timeLeft: getSecondsUntilNextSaturdayMidnight(),
     gamePhase: 'selecting',
     winningNumber: null,
     boardUpdateTimeout: null
@@ -201,8 +170,6 @@ async function getSettings() {
       manualWinningNumber: null,
       manualWinningNumber10: null,
       manualWinningNumber20: null,
-      manualWinningNumber50: null,
-      manualWinningNumber100: null,
       activeAdmins: { admin1: true, admin2: true }
     });
   }
@@ -564,12 +531,12 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
   if (req.adminRole !== 'SUPER') {
     return res.status(403).json({ success: false, message: "ይህን ለማድረግ የስርዓት አስተዳዳሪ ስልጣን ያስፈልጋል!" });
   }
-  const { ticketPrice, winnerPercentage, manualWinningNumber, manualWinningNumber10, manualWinningNumber20, manualWinningNumber50, manualWinningNumber100, activeAdmins } = req.body;
+  const { ticketPrice, winnerPercentage, manualWinningNumber, manualWinningNumber10, manualWinningNumber20, activeAdmins } = req.body;
   try {
     let settings = await getSettings();
     if (ticketPrice !== undefined) {
       const newPrice = Number(ticketPrice);
-      if ([10, 20, 50, 100].includes(newPrice)) {
+      if (newPrice === 10 || newPrice === 20) {
         settings.ticketPrice = newPrice;
       }
     }
@@ -585,12 +552,6 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
     }
     if (manualWinningNumber20 !== undefined) {
       settings.manualWinningNumber20 = manualWinningNumber20 !== null ? Number(manualWinningNumber20) : null;
-    }
-    if (manualWinningNumber50 !== undefined) {
-      settings.manualWinningNumber50 = manualWinningNumber50 !== null ? Number(manualWinningNumber50) : null;
-    }
-    if (manualWinningNumber100 !== undefined) {
-      settings.manualWinningNumber100 = manualWinningNumber100 !== null ? Number(manualWinningNumber100) : null;
     }
     if (activeAdmins !== undefined) {
       settings.activeAdmins = activeAdmins;
@@ -741,18 +702,9 @@ app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
       }
     });
     const dailyStats = await DailyStat.find().sort({ dateStr: -1 }).limit(10);
-    
-    // Active and Registered user counts for Admin Panel
-    const activeCount = new Set(activeUsersMap.values()).size;
-    const registeredCount = registeredUsersSet.size;
-
     res.json({
       success: true,
       stats: {
-        activePlayers: activeCount,
-        activePlayersFormatted: formatUserCount(activeCount),
-        totalRegistered: registeredCount,
-        totalRegisteredFormatted: formatUserCount(registeredCount),
         totalDeposit: totalDeposits[0]?.total || 0,
         totalWithdrawal: totalWithdrawals[0]?.total || 0,
         pendingDepositCount: pendingDeposits[0]?.count || 0,
@@ -928,8 +880,8 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- Independent Game Loops for Stakes 10, 20, 50, and 100 ---
-[10, 20, 50, 100].forEach(stake => {
+// --- Independent Game Loops for Stakes 10 and 20 ---
+[10, 20].forEach(stake => {
   const numericStake = Number(stake);
   setInterval(async () => {
     const state = gameStates[numericStake];
@@ -951,7 +903,7 @@ setInterval(() => {
         let winnerUser = null;
 
         if (state.selectedNumbers.length > 0) {
-          const manualKey = `manualWinningNumber${numericStake}`;
+          const manualKey = numericStake === 10 ? 'manualWinningNumber10' : 'manualWinningNumber20';
           let activeManualWin = settings[manualKey] !== null ? settings[manualKey] : (numericStake === 10 ? null : settings.manualWinningNumber);
           
           if (activeManualWin !== null && activeManualWin !== undefined) {
@@ -1002,15 +954,14 @@ setInterval(() => {
 
         setTimeout(() => {
           state.selectedNumbers = [];
-          // ለሳምንታዊ (50 እና 100) ቀጣዩ ሰአት ቅዳሜ ማታ 12:00 እስኪሆን ድረስ ይሰላል፣ ለቀቀሮዎቹ (10 እና 20) 50 ሰከንድ ይሆናል
-          state.timeLeft = (numericStake === 50 || numericStake === 100) ? getSecondsUntilNextSaturdayMidnight() : 50;
+          state.timeLeft = 50;
           state.gamePhase = 'selecting';
           state.winningNumber = '?';
           state.currentGameId = nextGameId;
           
           io.emit('reset_game', {
             stake: numericStake,
-            timeLeft: state.timeLeft,
+            timeLeft: 50,
             gamePhase: 'selecting',
             gameId: state.currentGameId
           });
@@ -1031,8 +982,6 @@ io.on('connection', async (socket) => {
   const registeredCount = registeredUsersSet.size;
   const stats10 = await getGameStats(10);
   const stats20 = await getGameStats(20);
-  const stats50 = await getGameStats(50);
-  const stats100 = await getGameStats(100);
   const settings = await getSettings();
 
   socket.emit('init_state', {
@@ -1054,25 +1003,14 @@ io.on('connection', async (socket) => {
       totalPlayers: stats20.totalPlayers,
       derash: stats20.derash
     },
-    stake50: {
-      gameId: gameStates[50].currentGameId,
-      selectedNumbers: gameStates[50].selectedNumbers,
-      timeLeft: gameStates[50].timeLeft,
-      gamePhase: gameStates[50].gamePhase,
-      winningNumber: gameStates[50].winningNumber,
-      totalPlayers: stats50.totalPlayers,
-      derash: stats50.derash
-    },
-    stake100: {
-      gameId: gameStates[100].currentGameId,
-      selectedNumbers: gameStates[100].selectedNumbers,
-      timeLeft: gameStates[100].timeLeft,
-      gamePhase: gameStates[100].gamePhase,
-      winningNumber: gameStates[100].winningNumber,
-      totalPlayers: stats100.totalPlayers,
-      derash: stats100.derash
-    },
     ticketPrice: settings.ticketPrice
+  });
+
+  io.emit('stats_updated', {
+    activePlayers: activeCount,
+    activePlayersFormatted: formatUserCount(activeCount),
+    totalRegistered: registeredCount,
+    totalRegisteredFormatted: formatUserCount(registeredCount)
   });
 
   socket.on('select_number', async (data) => {
@@ -1159,13 +1097,6 @@ io.on('connection', async (socket) => {
 
   socket.on('deselect_number', async (data) => {
     const stake = Number(data.stake) || 10;
-    
-    // የሳምንታዊ ሎተሪዎች (Play 50 እና Play 100) ከተመረጡ በኋላ ዲሰሌክት ማድረግ (Deselect) ፈጽሞ አይቻልም
-    if (stake === 50 || stake === 100) {
-      socket.emit('error_message', { message: 'ሳምንታዊ እጣዎች ከገዙ በኋላ ዲሰሌክት ማድረግ አይችሉም!' });
-      return;
-    }
-
     const state = gameStates[stake];
     if (!state || state.gamePhase !== 'selecting') return;
 
