@@ -57,9 +57,10 @@ export default function GameScreen({
   });
 
   // የታይመር እና የፊዝ (Phase) ሎጂክ (ባዶ dependency በመጠቀም መብረቅ/መሰንቀጠጥ ሙሉ በሙሉ ጠፍቷል)
+ // የታይመር እና የፊዝ (Phase) ሎጂክ
   useEffect(() => {
     const interval = setInterval(() => {
-      // Play 10 ሎጂክ (50s select -> 6s spin -> 4s winner -> restart)
+      // Play 10 ሎጂክ
       setGame10(prev => {
         if (prev.phase === 'selecting') {
           if (prev.timer > 1) {
@@ -94,7 +95,7 @@ export default function GameScreen({
         return prev;
       });
 
-      // Play 20 ሎጂክ (50s select -> 6s spin -> 4s winner -> restart)
+      // Play 20 ሎጂክ
       setGame20(prev => {
         if (prev.phase === 'selecting') {
           if (prev.timer > 1) {
@@ -129,7 +130,7 @@ export default function GameScreen({
         return prev;
       });
 
-      // Play 50 እና Play 100 ታይመሮች
+      // Play 50 እና Play 100 ሳምንታዊ ታይመሮች
       setTimers(prev => ({
         50: prev[50] > 0 ? prev[50] - 1 : 300,
         100: prev[100] > 0 ? prev[100] - 1 : 300
