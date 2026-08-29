@@ -21,15 +21,25 @@ export default function GameScreen({
   visibleNumbers,
   toggleNumber
 }) {
-  // ለእያንዳንዱ ጨዋታ እራሳቸውን የቻሉ ነጻ ታይመሮች (Independent Timers)
+  // ለእያንዳንዱ ጨዋታ እራሳቸውን የቻሉ ነጻ ታይመሮች (Independent Timers) - Play 10 እና Play 20 50 ሰከንድ ተደርገዋል
   const [timers, setTimers] = useState({
-    10: selectionTime10 || 120,
-    20: selectionTime20 || 120,
-    50: selectionTime50 || 300,
-    100: selectionTime100 || 300
+    10: selectionTime10 ?? 50,
+    20: selectionTime20 ?? 50,
+    50: selectionTime50 ?? 300,
+    100: selectionTime100 ?? 300
   });
 
-  // Play 10 ጌም አይዲ በትክክል 6 ዲጂት ብቻ እንዲሆን (6-Digit Game ID for Play 10)
+  // ከባክኤንድ የሚመጡትን ታይመሮች ዋጋዎች ከኮንፖነንቱ ስቴት ጋር ማቀናጀት (Syncing with props)
+  useEffect(() => {
+    setTimers({
+      10: selectionTime10 !== undefined && selectionTime10 !== null ? selectionTime10 : 50,
+      20: selectionTime20 !== undefined && selectionTime20 !== null ? selectionTime20 : 50,
+      50: selectionTime50 !== undefined && selectionTime50 !== null ? selectionTime50 : 300,
+      100: selectionTime100 !== undefined && selectionTime100 !== null ? selectionTime100 : 300
+    });
+  }, [selectionTime10, selectionTime20, selectionTime50, selectionTime100]);
+
+  // Play 10 እና Play 20 ጌም አይዲዎች
   const [gameIds, setGameIds] = useState({
     10: Math.floor(100000 + Math.random() * 900000).toString(),
     20: currentGameId20 || 'FL20-' + Math.floor(1000 + Math.random() * 9000),
@@ -41,8 +51,8 @@ export default function GameScreen({
   useEffect(() => {
     const timerInterval = setInterval(() => {
       setTimers(prev => ({
-        10: prev[10] > 0 ? prev[10] - 1 : 120,
-        20: prev[20] > 0 ? prev[20] - 1 : 120,
+        10: prev[10] > 0 ? prev[10] - 1 : 50,
+        20: prev[20] > 0 ? prev[20] - 1 : 50,
         50: prev[50] > 0 ? prev[50] - 1 : 300,
         100: prev[100] > 0 ? prev[100] - 1 : 300
       }));
