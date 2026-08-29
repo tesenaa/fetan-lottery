@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { io } from 'socket.io-client';
 import GameScreen from './components/GameScreen';
 import History from './components/History';
-import Wallet from './components/Wallet';
+import Wallet from './components/wallet';
 import Profile from './components/Profile';
 import Admin from './components/Admin';
 
