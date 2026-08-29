@@ -152,6 +152,7 @@ const gameStates = {
 
 const registeredUsersSet = new Set();
 const activeUsersMap = new Map();
+
 let cachedSettings = null;
 let lastSettingsFetch = 0;
 const SETTINGS_CACHE_TTL = 10000;
@@ -183,14 +184,14 @@ function broadcastBoard(stake) {
   const state = gameStates[numericStake];
   if (!state) return;
   if (state.boardUpdateTimeout) return;
-  
+
   state.boardUpdateTimeout = setTimeout(async () => {
     state.boardUpdateTimeout = null;
     const uniquePlayers = new Set(state.selectedNumbers.map(n => String(n.userId))).size;
     const settings = await getSettings();
     const totalCollected = state.selectedNumbers.length * numericStake;
     const derash = Math.floor(totalCollected * (settings.winnerPercentage / 100));
-    
+
     io.emit('board_updated', {
       stake: numericStake,
       selectedNumbers: state.selectedNumbers,
@@ -232,7 +233,7 @@ async function checkAdminAuth(req, res, next) {
     req.adminRole = 'ADMIN_2';
     return next();
   }
-  return res.status(403).json({ success: false, message: "ባለቤቱ አልተፈቀደም ወይም አስተዳዳሪ አይደለም!" });
+  return res.status(403).json({ success: false, message: "ባለቤቱ አልተረጋገጠም ወይም አስተዳዳሪ አይደለም!" });
 }
 
 function formatUserCount(num) {
@@ -275,7 +276,7 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
     });
     if (isPhoneProvided && bot) {
       try {
-        await bot.api.sendMessage(uid, `🎉 *እንኳን ደስ አለዎት!*\n\nስልክ ቁጥርዎን በመመዝገብ *20 ETB* በ Play Walletዎ ላይ ተጨምሯል!`, { parse_mode: 'Markdown' });
+        await bot.api.sendMessage(uid, `🎉 *እንኳን ደስ አለዎት!*\n\nስልክ ቁጥርዎን በመመዝገብ *20 ETB* በ Play Walletዎ ላይ ተሰጥዎታል።`, { parse_mode: 'Markdown' });
       } catch (err) {}
     }
   } else if (phone && !dbUser.phoneBonusReceived) {
@@ -285,7 +286,7 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
     await dbUser.save();
     if (bot) {
       try {
-        await bot.api.sendMessage(uid, `🎉 *እንኳን ደስ አለዎት!*\n\nስልክ ቁጥርዎን በመመዝገብ *20 ETB* በ Play Walletዎ ላይ ተጨምሯል!`, { parse_mode: 'Markdown' });
+        await bot.api.sendMessage(uid, `🎉 *እንኳን ደስ አለዎት!*\n\nስልክ ቁጥርዎን በመመዝገብ *20 ETB* በ Play Walletዎ ላይ ተሰጥዎታል።`, { parse_mode: 'Markdown' });
       } catch (err) {}
     }
   } else if (phone && !dbUser.phone) {
@@ -337,26 +338,30 @@ if (bot) {
         return ctx.answerCallbackQuery({ text: '❌ ጥያቄው አልተገኘም!', show_alert: true });
       }
       if (deposit.status !== 'PENDING') {
-        return ctx.answerCallbackQuery({ text: `⚠️ ይህ ጥያቄ አስቀድሞ ${deposit.status} ሆኗል!`, show_alert: true });
+        return ctx.answerCallbackQuery({ text: `⚠️ ይህ ጥያቄ አስቀድሞ ${deposit.status} ሆኗ!`, show_alert: true });
       }
       const targetUid = String(deposit.userId);
+
       if (action === 'dep_approve') {
         deposit.status = 'APPROVED';
         deposit.processedBy = adminTgId;
         await deposit.save();
+
         await User.updateOne({ userId: targetUid }, { $inc: { mainWallet: deposit.amount } });
         await updateDailyStats(deposit.amount, 0, 0, 0);
         await notifyUserBalanceUpdate(targetUid);
+
         try {
           await bot.api.sendMessage(
             targetUid,
-            `✅ *ክፍያዎ ተረጋግጧል!*\n\n💰 *${deposit.amount} ETB* ወደ አካውንትዎ ገቢ ሆኗል።`,
+            `✅ *ክፍያው ተረጋገጠልዎ!*\n\n💰 *${deposit.amount} ETB* ወደ አካውንትዎ ገቢ ሆኗል።`,
             { parse_mode: 'Markdown' }
           );
         } catch (e) {}
+
         const user = await User.findOne({ userId: targetUid });
         await ctx.editMessageText(
-          `📥 *የደፖዚት ጥያቄ (✅ Approved by Admin: ${adminTgId})*\n\n` +
+          `📥 *የዲፖዚት ጥያቄ (✅ Approved by Admin: ${adminTgId})*\n\n` +
           `• *User:* @${user?.username || 'N/A'} (ID: \`${targetUid}\`)\n` +
           `• *Amount:* ${deposit.amount} ETB\n` +
           `• *Txn ID:* \`${deposit.transactionId || 'N/A'}\`\n` +
@@ -368,6 +373,7 @@ if (bot) {
         deposit.status = 'REJECTED';
         deposit.processedBy = adminTgId;
         await deposit.save();
+
         try {
           await bot.api.sendMessage(
             targetUid,
@@ -375,9 +381,10 @@ if (bot) {
             { parse_mode: 'Markdown' }
           );
         } catch (e) {}
+
         const user = await User.findOne({ userId: targetUid });
         await ctx.editMessageText(
-          `📥 *የደፖዚት ጥያቄ (❌ Rejected by Admin: ${adminTgId})*\n\n` +
+          `📥 *የዲፖዚት ጥያቄ (❌ Rejected by Admin: ${adminTgId})*\n\n` +
           `• *User:* @${user?.username || 'N/A'} (ID: \`${targetUid}\`)\n` +
           `• *Amount:* ${deposit.amount} ETB\n` +
           `• *Txn ID:* \`${deposit.transactionId || 'N/A'}\`\n` +
@@ -399,54 +406,61 @@ if (bot) {
     try {
       const tx = await Transaction.findById(txId);
       if (!tx) {
-        return ctx.answerCallbackQuery({ text: '❌ የውል ጥያቄው አልተገኘም!', show_alert: true });
+        return ctx.answerCallbackQuery({ text: '❌ የውጪ ጥያቄው አልተገኘም!', show_alert: true });
       }
       if (tx.status !== 'PENDING') {
-        return ctx.answerCallbackQuery({ text: `⚠️ ይህ ጥያቄ አስቀድሞ ${tx.status} ሆኗል!`, show_alert: true });
+        return ctx.answerCallbackQuery({ text: `⚠️ ይህ ጥያቄ አስቀድሞ ${tx.status} ሆኗ!`, show_alert: true });
       }
       const targetUid = String(tx.userId);
       const user = await User.findOne({ userId: targetUid });
+
       if (action === 'wit_approve') {
         tx.status = 'APPROVED';
         tx.processedBy = adminTgId;
         await tx.save();
+
         await updateDailyStats(0, tx.amount, 0, 0);
+
         try {
           await bot.api.sendMessage(
             targetUid,
-            `✅ *የውል ጥያቄዎ ፈጣን አግኝቷል!*\n\n💰 *${tx.amount} ETB* ወደ ስልክ ቁጥርዎ (${tx.phone}) ተልኳል።`,
+            `✅ *የውጪ ጥያቄዎ ፈጣን አግኝቷል!*\n\n💰 *${tx.amount} ETB* ወደ ስልክ ቁጥርዎ (${tx.phone}) ተልክዋልል።`,
             { parse_mode: 'Markdown' }
           );
         } catch (e) {}
+
         await ctx.editMessageText(
-          `📤 *የውል (Withdrawal) ጥያቄ (✅ Approved by Admin: ${adminTgId})*\n\n` +
+          `📤 *የውጪ (Withdrawal) ጥያቄ (✅ Approved by Admin: ${adminTgId})*\n\n` +
           `• *User:* @${user?.username || 'N/A'} (ID: \`${targetUid}\`)\n` +
           `• *Amount:* ${tx.amount} ETB\n` +
           `• *Phone:* \`${tx.phone}\``,
           { parse_mode: 'Markdown' }
         );
-        ctx.answerCallbackQuery({ text: '✅ የውል ጥያቄው ተሰርቷል!' });
+        ctx.answerCallbackQuery({ text: '✅ የውጪ ጥያቄው ተሰርቷል!' });
       } else if (action === 'wit_reject') {
         tx.status = 'REJECTED';
         tx.processedBy = adminTgId;
         await tx.save();
+
         await User.updateOne({ userId: targetUid }, { $inc: { mainWallet: tx.amount } });
         await notifyUserBalanceUpdate(targetUid);
+
         try {
           await bot.api.sendMessage(
             targetUid,
-            `❌ *የውል ጥያቄዎ ውድቅ ተደርጓል!*\n\n💰 *${tx.amount} ETB* ወደ ዋና አካውንትዎ ተመልሷል።`,
+            `❌ *የውጪ ጥያቄዎ ውድቅ ተደርጓል!*\n\n💰 *${tx.amount} ETB* ወደ ዋና አካውንትዎ ተመልሷል።`,
             { parse_mode: 'Markdown' }
           );
         } catch (e) {}
+
         await ctx.editMessageText(
-          `📤 *የውል (Withdrawal) ጥያቄ (❌ Rejected by Admin: ${adminTgId})*\n\n` +
+          `📤 *የውጪ (Withdrawal) ጥያቄ (❌ Rejected by Admin: ${adminTgId})*\n\n` +
           `• *User:* @${user?.username || 'N/A'} (ID: \`${targetUid}\`)\n` +
           `• *Amount:* ${tx.amount} ETB\n` +
           `• *Phone:* \`${tx.phone}\``,
           { parse_mode: 'Markdown' }
         );
-        ctx.answerCallbackQuery({ text: '❌ የውል ጥያቄው ውድቅ ተደርጎ ገንዘቡ ተመልሷል።' });
+        ctx.answerCallbackQuery({ text: '❌ የውጪ ጥያቄው ተደርጎ ገንዘቡ ተመልሷል።' });
       }
     } catch (err) {
       console.error('Withdrawal Callback error:', err);
@@ -469,16 +483,17 @@ const handleDepositRequest = async (req, res) => {
     }
     const existingPending = await Deposit.findOne({ userId: uid, status: 'PENDING' });
     if (existingPending) {
-      return res.status(400).json({ success: false, message: "⚠️ አስቀድሞ የ pendiente የደፖዚት ጥያቄ አለዎት።" });
+      return res.status(400).json({ success: false, message: "⚠️ አስቀድሞ pendiente የዲፖዚት ጥያቄ አለዎት።" });
     }
     const txnId = extractTransactionId(pastedText);
     if (!txnId) {
-      return res.status(400).json({ success: false, message: "⚠️ ከከተቱት SMS ውስጥ ትክክለኛ Transaction ID ማግኘት አልቻልኩም።" });
+      return res.status(400).json({ success: false, message: "⚠️ ከላኩት SMS ውስጥ ትክክለኛ Transaction ID ማግኘት አልተቻለም።" });
     }
     const duplicateTxn = await Deposit.findOne({ transactionId: txnId, status: { $in: ['PENDING', 'APPROVED'] } });
-    if (duplicateTxn) {
+    if (duplicateTxn, duplicateTxn) {
       return res.status(400).json({ success: false, message: "⚠️ ይህ የትራንዛክሽን ማረጋገጫ ቀድሞ ጨዋታ ላይ ውሏል!" });
     }
+
     const deposit = await Deposit.create({
       userId: uid,
       userName: userName || user.username || `User_${uid}`,
@@ -487,16 +502,19 @@ const handleDepositRequest = async (req, res) => {
       transactionId: txnId,
       status: 'PENDING'
     });
+
     if (bot && ADMIN_GROUP_ID) {
       try {
         const keyboard = new InlineKeyboard()
           .text('✅ Approve', `dep_approve:${deposit._id}`)
           .text('❌ Reject', `dep_reject:${deposit._id}`);
-        const msgText = `🔔 <b>አዲስ የደፖዚት (Deposit) ጥያቄ!</b>\n\n` +
+
+        const msgText = `🔔 <b>አዲስ የዲፖዚት (Deposit) ጥያቄ!</b>\n\n` +
           `• *User:* @${user.username || 'N/A'} (ID: \`${uid}\`)\n` +
           `• *Amount:* ${depAmount} ETB\n` +
           `• *Txn ID:* \`${txnId}\`\n` +
           `• *Pasted SMS:*\n\`${pastedText}\``;
+
         const sentMsg = await bot.api.sendMessage(ADMIN_GROUP_ID, msgText, {
           parse_mode: 'Markdown',
           disable_notification: false,
@@ -508,7 +526,7 @@ const handleDepositRequest = async (req, res) => {
         console.error('Admin telegram message error:', err.message);
       }
     }
-    return res.json({ success: true, message: "ማረጋገጫው ተላክቷል፥ እባክዎ ጥቂት ደቂቃ ይቆዩ" });
+    return res.json({ success: true, message: "ማረጋገጫዎ ተላክዟል፤ እባክዎ ትንሽ ደቂቃ ይጠብቁ" });
   } catch (err) {
     console.error("Deposit Processing Error:", err);
     res.status(500).json({ success: false, message: "የገንዘብ ማስታወቂያ ስህተት አጋጥሟል!" });
@@ -529,7 +547,7 @@ app.get('/api/admin/settings', checkAdminAuth, async (req, res) => {
 
 app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
   if (req.adminRole !== 'SUPER') {
-    return res.status(403).json({ success: false, message: "ይህን ለማድረግ የስርዓት አስተዳዳሪ ስልጣን ያስፈልጋል!" });
+    return res.status(403).json({ success: false, message: "ይህን ለማድረግ የሲስተም አስተዳዳሪ ስልጣን ይፈልጋል!" });
   }
   const { ticketPrice, winnerPercentage, manualWinningNumber, manualWinningNumber10, manualWinningNumber20, activeAdmins } = req.body;
   try {
@@ -559,11 +577,8 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
     await settings.save();
     cachedSettings = settings;
     lastSettingsFetch = Date.now();
-    io.emit('settings_updated', {
-      ticketPrice: settings.ticketPrice,
-      winnerPercentage: settings.winnerPercentage
-    });
-    res.json({ success: true, settings, message: "ቅንብሩ በሳካ ሁኔታ ተስተካክሏል!" });
+    io.emit('settings_updated', { ticketPrice: settings.ticketPrice, winnerPercentage: settings.winnerPercentage });
+    res.json({ success: true, settings, message: "ቅንብሩ በሳክስ ሁነታ ተስተካክሏል!" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -632,8 +647,8 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
   try {
     if (type === 'withdrawal') {
       const tx = await Transaction.findById(txId);
-      if (!tx) return res.status(404).json({ success: false, message: "የውል ትራንዛክሽን አልተገኘም!" });
-      if (tx.status !== 'PENDING') return res.status(400).json({ success: false, message: "ይህ ጥያቄ ቀድሞ ተሳልቷል!" });
+      if (!tx) return res.status(404).json({ success: false, message: "የውጪ ትራንዛክሽን አልተገኘም!" });
+      if (tx.status !== 'PENDING') return res.status(400).json({ success: false, message: "ይህ ጥያቄ ቀድሞ ተሻሻሏል!" });
       tx.status = action;
       tx.processedBy = adminKey;
       await tx.save();
@@ -643,11 +658,11 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
       } else if (action === 'APPROVED') {
         await updateDailyStats(0, tx.amount, 0, 0);
       }
-      return res.json({ success: true, transaction: tx, message: `የውል ጥያቄው ${action} ሆኗል!` });
+      return res.json({ success: true, transaction: tx, message: `የውጪ ጥያቄው ${action} ሆኗ!` });
     } else {
       const deposit = await Deposit.findById(txId);
       if (!deposit) return res.status(404).json({ success: false, message: "ትራንዛክሽን አልተገኘም!" });
-      if (deposit.status !== 'PENDING') return res.status(400).json({ success: false, message: "ይህ ጥያቄ ቀድሞ ተሳልቷል!" });
+      if (deposit.status !== 'PENDING') return res.status(400).json({ success: false, message: "ይህ ጥያቄ ቀድሞ ተሻሻሏል!" });
       deposit.status = action;
       deposit.processedBy = adminKey;
       await deposit.save();
@@ -656,13 +671,14 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
         await updateDailyStats(deposit.amount, 0, 0, 0);
         await notifyUserBalanceUpdate(String(deposit.userId));
       }
-      return res.json({ success: true, deposit, message: `የገቢ ትራንዛክሽን ${action} ሆኗል!` });
+      return res.json({ success: true, deposit, message: `የገባ ትራንዛክሽን ${action} ሆኗ!` });
     }
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
+// -- ሱፐር አድሚን ፋይናንሺያል እና አክቲቭ/ሬጅስተርድ ዩዘር ስታቲስቲክስ ፔጅ (Active & Registered Users ተካትቷል) --
 app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
   if (req.adminRole !== 'SUPER') {
     return res.status(403).json({ success: false, message: "የተከለከለ ክልክ!" });
@@ -691,7 +707,14 @@ app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
       { $match: { status: 'APPROVED' } },
       { $group: { _id: "$processedBy", totalAmount: { $sum: "$amount" }, count: { $sum: 1 } } }
     ]);
-    const adminStatsFormatted = { superAdmin: { amount: 0, count: 0 }, admin1: { amount: 0, count: 0 }, admin2: { amount: 0, count: 0 }, others: { amount: 0, count: 0 } };
+
+    const adminStatsFormatted = {
+      superAdmin: { amount: 0, count: 0 },
+      admin1: { amount: 0, count: 0 },
+      admin2: { amount: 0, count: 0 },
+      others: { amount: 0, count: 0 }
+    };
+
     adminBreakdown.forEach(item => {
       if (item._id === SUPER_ADMIN_ID) adminStatsFormatted.superAdmin = { amount: item.totalAmount, count: item.count };
       else if (item._id === ASSISTANT_ADMIN_1) adminStatsFormatted.admin1 = { amount: item.totalAmount, count: item.count };
@@ -701,7 +724,13 @@ app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
         adminStatsFormatted.others.count += item.count;
       }
     });
+
     const dailyStats = await DailyStat.find().sort({ dateStr: -1 }).limit(10);
+
+    // -- Active & Registered Users counts --
+    const activeCount = new Set(activeUsersMap.values()).size;
+    const registeredCount = registeredUsersSet.size;
+
     res.json({
       success: true,
       stats: {
@@ -715,7 +744,11 @@ app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
         totalGamesPlayedAmount: gameStats[0]?.totalPlayed || 0,
         totalGamesCount: gameStats[0]?.totalGames || 0,
         adminBreakdown: adminStatsFormatted,
-        dailyStats: dailyStats
+        dailyStats: dailyStats,
+        activePlayers: activeCount,
+        activePlayersFormatted: formatUserCount(activeCount),
+        totalRegistered: registeredCount,
+        totalRegisteredFormatted: formatUserCount(registeredCount)
       }
     });
   } catch (err) {
@@ -740,7 +773,7 @@ app.post('/api/admin/broadcast', checkAdminAuth, async (req, res) => {
         } catch (err) {}
       }
     }
-    res.json({ success: true, message: `መልእክቱ ለ ${sentCount} ተጠቃሚዎች ተልኳል!` });
+    res.json({ success: true, message: `መልእክቱ ለ ${sentCount} ተጠቃሚዎች ተልክዋል!` });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -753,6 +786,7 @@ app.post('/api/user/register', async (req, res) => {
   const existingInDb = await User.findOne({ userId: uid });
   const isNewUser = !existingInDb;
   const user = await getOrInitUser(uid, firstName, username, phone);
+
   if (isNewUser && referrerId && String(referrerId) !== uid) {
     const refUid = String(referrerId);
     const refUser = await getOrInitUser(refUid);
@@ -766,7 +800,7 @@ app.post('/api/user/register', async (req, res) => {
           try {
             await bot.api.sendMessage(
               refUid,
-              `🎉 *እንኳን ደስ አለዎት!*\n\n20 ሰዎችን በመጋበዝ *100 ETB* ወደ ዋናው አካውንትዎ ገቢ ሆኗል!`,
+              `🎉 *እንኳን ደስ አለዎት!*\n\n20 ሰዎችን በመጋበዝ *100 ETB* ወደ ዋናው አካውንትዎ ገቢ ሆኗ!`,
               { parse_mode: 'Markdown' }
             );
           } catch (err) {}
@@ -776,7 +810,7 @@ app.post('/api/user/register', async (req, res) => {
           try {
             await bot.api.sendMessage(
               refUid,
-              `👤 *አዲስ ሰው ተጋብዟል!*\n\n${firstName || 'አዲስ አባል'} ሊንክዎን ተጠቅመው ገብተዋል (አጠቃላይ የተጋበዙ: ${refUser.invitedCount}/20)`,
+              `👤 *አዲስ ሰው ተጋብቧል!*\n\n${firstName || 'አዲስ አባል'} ሊንክዎን ተጠቅሞ ገብቷል (አጠቃላይ የተጋበዙ: ${refUser.invitedCount}/20)`,
               { parse_mode: 'Markdown' }
             );
           } catch (err) {}
@@ -805,7 +839,7 @@ app.post('/api/withdraw-request', async (req, res) => {
       return res.status(400).json({ success: false, message: "አካውንትዎ የታገደ ነው!" });
     }
     if (user.mainWallet < subAmount) {
-      return res.status(400).json({ success: false, message: "በቂ ሰሪዎች የለዎት (በ Main Wallet ውስጥ የሚቀነስ ገንዘብ የለም)!" });
+      return res.status(400).json({ success: false, message: "ቂ ደርጃዎች ያለው (በ Main Wallet ውስጥ የሚቀንስ ገንዘብ የለው)!" });
     }
     const updatedUser = await User.findOneAndUpdate(
       { userId: uid, isBanned: false, mainWallet: { $gte: subAmount } },
@@ -813,9 +847,10 @@ app.post('/api/withdraw-request', async (req, res) => {
       { new: true }
     );
     if (!updatedUser) {
-      return res.status(400).json({ success: false, message: "በቂ ሰሪዎች የለዎት ወይም አካውንትዎ የታገደ ነው!" });
+      return res.status(400).json({ success: false, message: "ቂ ደርጃዎች ያለው ወይም አካውንትዎ የታገደ ነው!" });
     }
     await notifyUserBalanceUpdate(uid);
+
     const tx = await Transaction.create({
       userId: uid,
       userName: userName || updatedUser.username || `User_${uid}`,
@@ -824,15 +859,18 @@ app.post('/api/withdraw-request', async (req, res) => {
       phone: phone || updatedUser.phone,
       status: 'PENDING'
     });
+
     if (bot && ADMIN_GROUP_ID) {
       try {
         const keyboard = new InlineKeyboard()
           .text('✅ Approve', `wit_approve:${tx._id}`)
           .text('❌ Reject', `wit_reject:${tx._id}`);
-        const msgText = `🔔 <b>አዲስ የውል (Withdrawal) ጥያቄ!</b>\n\n` +
+
+        const msgText = `🔔 <b>አዲስ የውጪ (Withdrawal) ጥያቄ!</b>\n\n` +
           `• *User:* @${updatedUser.username || 'N/A'} (ID: \`${uid}\`)\n` +
           `• *Amount:* ${subAmount} ETB\n` +
           `• *Phone:* ${phone || updatedUser.phone || 'N/A'}`;
+
         const sentMsg = await bot.api.sendMessage(ADMIN_GROUP_ID, msgText, {
           parse_mode: 'Markdown',
           disable_notification: false,
@@ -844,10 +882,10 @@ app.post('/api/withdraw-request', async (req, res) => {
         console.error('Withdrawal admin telegram error:', err.message);
       }
     }
-    res.json({ success: true, balance: updatedUser.mainWallet, message: "የውል ጥያቄዎ ተመዝግቧል! አስተዳዳሪ አቋልጠውታል ይደርብዎታል" });
+    res.json({ success: true, balance: updatedUser.mainWallet, message: "የውጪ ጥያቄዎ ተመዝግቧ! አስተዳዳሪ አቋቋም ይደረግበታል" });
   } catch (err) {
     console.error("Withdrawal Error:", err);
-    res.status(500).json({ success: false, message: "የውል ጥያቄውን በሚያልፉበት ጊዜ ስህተት ተፈጥሯል!" });
+    res.status(500).json({ success: false, message: "የውጪ ጥያቄውን በሚያደርጉበት ጊዜ ስህተት ተፈጥሯል!" });
   }
 });
 
@@ -887,7 +925,6 @@ setInterval(() => {
     const state = gameStates[numericStake];
     if (state.gamePhase === 'selecting') {
       state.timeLeft--;
-      
       io.emit('timer_tick', {
         stake: numericStake,
         timeLeft: state.timeLeft,
@@ -919,6 +956,7 @@ setInterval(() => {
 
           state.winningNumber = winNum;
           const winItem = state.selectedNumbers.find(n => Number(n.number) === Number(winNum));
+
           if (winItem) {
             winnerUser = winItem;
             await User.updateOne({ userId: String(winItem.userId) }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
@@ -958,7 +996,6 @@ setInterval(() => {
           state.gamePhase = 'selecting';
           state.winningNumber = '?';
           state.currentGameId = nextGameId;
-          
           io.emit('reset_game', {
             stake: numericStake,
             timeLeft: 50,
@@ -1006,6 +1043,7 @@ io.on('connection', async (socket) => {
     ticketPrice: settings.ticketPrice
   });
 
+  // (Optional) Socket notification for global stats if needed
   io.emit('stats_updated', {
     activePlayers: activeCount,
     activePlayersFormatted: formatUserCount(activeCount),
@@ -1030,20 +1068,19 @@ io.on('connection', async (socket) => {
     }
 
     if (chosenList.length === 0) return;
-
     const currentSelectedSet = new Set(state.selectedNumbers.map(n => Number(n.number)));
     const uniqueNewNumbers = chosenList.filter(num => !currentSelectedSet.has(Number(num)));
     if (uniqueNewNumbers.length === 0) return;
 
     const userDoc = await User.findOne({ userId: uid });
     if (!userDoc || userDoc.isBanned) {
-      socket.emit('error_message', { message: 'አካውንትዎ የታገደ ስለሆነ ቁጥር መምረጥ አይችሉም!' });
+      socket.emit('error_message', { message: 'አካውንትዎ ስለታገደ ቁጥር መምረጥ አይችሉም!' });
       return;
     }
 
     const TOTAL_COST = stake * uniqueNewNumbers.length;
     if ((userDoc.mainWallet + userDoc.playWallet) < TOTAL_COST) {
-      socket.emit('error_message', { message: 'በቂ ሰሪዎች የለዎት! እባክዎ ሰሪዎን ይሙሉ::' });
+      socket.emit('error_message', { message: 'ቂ ደርጃዎች ያለው! እባክዎ ሰርዎትን ይሙሉ::' });
       return;
     }
 
@@ -1074,7 +1111,7 @@ io.on('connection', async (socket) => {
     }
 
     if (!updatedUser) {
-      socket.emit('error_message', { message: 'በቂ ሰሪዎች የለዎት!' });
+      socket.emit('error_message', { message: 'ቂ ደርጃዎች ያለው!' });
       return;
     }
 
@@ -1089,10 +1126,7 @@ io.on('connection', async (socket) => {
     });
 
     broadcastBoard(stake);
-    socket.emit('balance_updated', {
-      balance: updatedUser.mainWallet,
-      playWallet: updatedUser.playWallet
-    });
+    socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
   });
 
   socket.on('deselect_number', async (data) => {
@@ -1107,24 +1141,18 @@ io.on('connection', async (socket) => {
     if (index !== -1) {
       const removedItem = state.selectedNumbers[index];
       state.selectedNumbers.splice(index, 1);
-      
       let updateQuery = { $inc: { mainWallet: stake } };
       if (removedItem.walletUsed === 'play') {
         updateQuery = { $inc: { playWallet: stake } };
       }
-      
       const updatedUser = await User.findOneAndUpdate(
         { userId: uid },
         updateQuery,
         { new: true }
       );
-      
       broadcastBoard(stake);
       if (updatedUser) {
-        socket.emit('balance_updated', {
-          balance: updatedUser.mainWallet,
-          playWallet: updatedUser.playWallet
-        });
+        socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
       }
     }
   });
