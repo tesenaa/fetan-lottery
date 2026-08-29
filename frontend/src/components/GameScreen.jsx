@@ -235,4 +235,191 @@ function BoardView({
       </div>
     </div>
   );
+}import React, { useState, useEffect } from 'react';
+
+export default function GameScreen({ socket, userId, userWallet, setUserWallet }) {
+  const [selectedStake, setSelectedStake] = useState(null); // null, 10, 20, 50, 100
+  const [selectedNumbers, setSelectedNumbers] = useState({
+    10: [],
+    20: [],
+    50: [],
+    100: []
+  });
+  
+  // ለየብቻ የተለዩ የጨዋታ መረጃዎች (Independent Game States)
+  const [gameStates, setGameStates] = useState({
+    10: { gameId: 'FL-10-844022', countdown: 120, players: 0, pool: 0 },
+    20: { gameId: 'FL-20-367618', countdown: 120, players: 0, pool: 0 },
+    50: { gameId: 'FL-50-WEEKS', countdown: 86400, players: 0, pool: 0, schedule: 'ቅዳሜ ማታ 12:00' },
+    100: { gameId: 'FL-100-WEEKS', countdown: 86400, players: 0, pool: 0, schedule: 'ቅዳሜ ማታ 12:05' }
+  });
+
+  // ቁጥር የመምረጥ እና የማጥፋት ሎጂክ ለእያንዳንዱ ስቴክ በየራሱ
+  const handleNumberClick = (num) => {
+    if (!selectedStake) return;
+    const currentList = selectedNumbers[selectedStake];
+    
+    if (currentList.includes(num)) {
+      setSelectedNumbers({
+        ...selectedNumbers,
+        [selectedStake]: currentList.filter(n => n !== num)
+      });
+    } else {
+      if (currentList.length < 5) { // እንደ ደንብዎ የቁጥር όρια (Limit) ማስተካከል ይችላሉ
+        setSelectedNumbers({
+          ...selectedNumbers,
+          [selectedStake]: [...currentList, num]
+        });
+      } else {
+        alert('ከፍተኛው የመምረጫ όρια ደርሰዋል!');
+      }
+    }
+  };
+
+  if (!selectedStake) {
+    return (
+      <div className="p-4 text-white min-h-screen bg-[#0b0e14] flex flex-col items-center justify-center">
+        <h1 className="text-2xl font-bold mb-6 text-yellow-400">Welcome to Fetan Lottery</h1>
+        
+        {/* መደበኛ ጨዋታዎች (Play 10 & Play 20) */}
+        <div className="w-full max-w-md border border-red-500/50 p-4 rounded-xl mb-6 bg-[#131823]">
+          <h2 className="text-center text-orange-400 font-semibold mb-3">Choose Stake</h2>
+          <button 
+            onClick={() => setSelectedStake(10)}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl mb-3 flex items-center justify-center gap-2 shadow-lg"
+          >
+            ▶ Play 10 ETB
+          </button>
+          <button 
+            onClick={() => setSelectedStake(20)}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg"
+          >
+            ▶ Play 20 ETB
+          </button>
+        </div>
+
+        {/* ሳምንታዊ ጨዋታዎች (Play 50 & Play 100 - Independent with new schedule) */}
+        <div className="w-full max-w-md border border-red-500/50 p-4 rounded-xl bg-[#131823]">
+          <h2 className="text-center text-orange-400 font-semibold mb-3">Weekly (ቅዳሜ የሚመጣ)</h2>
+          <button 
+            onClick={() => setSelectedStake(50)}
+            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl mb-3 flex items-center justify-center gap-2 shadow-lg"
+          >
+            ▶ Play 50 ETB (ቅዳሜ 12:00)
+          </button>
+          <button 
+            onClick={() => setSelectedStake(100)}
+            className="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg"
+          >
+            ▶ Play 100 ETB (ቅዳሜ 12:05)
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentGame = gameStates[selectedStake];
+  const currentNumbers = selectedNumbers[selectedStake];
+
+  return (
+    <div className="p-4 text-white min-h-screen bg-[#0b0e14]">
+      {/* ۀደር (Header) */}
+      <div className="flex justify-between items-center mb-4">
+        <button 
+          onClick={() => setSelectedStake(null)}
+          className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg font-bold text-sm"
+        >
+          ← Back
+        </button>
+        <button 
+          onClick={() => window.location.reload()}
+          className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-1"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+
+      {/* የጨዋታ መረጃ ሰንጠረዥ */}
+      <div className="bg-[#131823] p-3 rounded-xl border border-gray-700 flex justify-between items-center mb-4 text-xs">
+        <div>
+          <span className="text-gray-400 block">Game ID</span>
+          <span className="font-bold text-green-400">{currentGame.gameId}</span>
+        </div>
+        <div>
+          <span className="text-gray-400 block">Players</span>
+          <span className="font-bold">{currentGame.players}</span>
+        </div>
+        <div>
+          <span className="text-gray-400 block">Stake</span>
+          <span className="font-bold text-yellow-400">{selectedStake} ETB</span>
+        </div>
+        <div>
+          <span className="text-gray-400 block">Derash</span>
+          <span className="font-bold text-blue-400">{currentGame.pool} ETB</span>
+        </div>
+      </div>
+
+      {/* የሰዓት ቆጣሪ ወይም መርሐ-ግብር ማሳያ */}
+      <div className="text-center bg-gray-800 py-2 rounded-lg mb-4 font-bold text-orange-300">
+        {selectedStake === 50 || selectedStake === 100 ? (
+          <span>ሳምንታዊ ጨዋታ - {currentGame.schedule}</span>
+        ) : (
+          <span>የቀረው ጊዜ: {currentGame.countdown} ሰ</span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* የቁጥሮች ሰሌዳ (1-80) */}
+        <div className="md:col-span-2 grid grid-cols-8 gap-2 bg-[#131823] p-4 rounded-xl border border-gray-700">
+          {Array.from({ length: 80 }, (_, i) => i + 1).map((num) => {
+            const isSelected = currentNumbers.includes(num);
+            return (
+              <button
+                key={num}
+                onClick={() => handleNumberClick(num)}
+                className={`py-2 rounded-lg font-bold text-sm transition-all ${
+                  isSelected 
+                    ? 'bg-yellow-500 text-black scale-105 shadow-md' 
+                    : 'bg-gray-800 hover:bg-gray-700 text-white'
+                }`}
+              >
+                {num}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* የተመረጡ ቁጥሮች ማሳያ እና የጨዋታ ማስጀመሪያ */}
+        <div className="bg-[#131823] p-4 rounded-xl border border-gray-700 flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-sm mb-2 text-yellow-400">የተመረጡ ቁጥሮች ({currentNumbers.length}):</h3>
+            <div className="flex flex-wrap gap-1 mb-4">
+              {currentNumbers.length === 0 ? (
+                <span className="text-gray-500 text-sm">እባክዎ ቁጥር ይምረጡ...</span>
+              ) : (
+                currentNumbers.map(n => (
+                  <span key={n} className="bg-yellow-500 text-black px-2 py-1 rounded font-bold text-xs">
+                    {n}
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+
+          <button 
+            className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg"
+            onClick={() => {
+              if (currentNumbers.length === 0) {
+                alert('እባክዎ ቢያንስ አንድ ቁጥር ይምረጡ!');
+                return;
+              }
+              alert(`በ ${selectedStake} ETB ጨዋታው በተሳካ ሁኔታ ተጀምሯል!`);
+            }}
+          >
+            ጨዋታውን አረጋግጥ (Play)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
