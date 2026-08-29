@@ -127,17 +127,22 @@ const io = new Server(server, {
   perMessageDeflate: { threshold: 1024 }
 });
 
+// Play 10 ጌም አይዲ በትክክል 6 ዲጂት ብቻ እንዲሆን የተደረገበት ሎጂክ
 function generateGameId(stake) {
+  const numericStake = Number(stake);
   const randomNum = Math.floor(100000 + Math.random() * 900000);
-  return `FL-${stake}-${randomNum}`;
+  if (numericStake === 10) {
+    return randomNum.toString(); // 6 digit ID for Play 10
+  }
+  return `FL-${numericStake}-${randomNum}`;
 }
 
-// --- Completely Independent Game States for stakes 10, 20, 50, and 100 ---
+// --- Completely Independent Game States for stakes 10, 20, 50, and 100 with Proper Timers ---
 const gameStates = {
   10: {
     currentGameId: generateGameId(10),
     selectedNumbers: [],
-    timeLeft: 50,
+    timeLeft: 120, // Play 10 timer (120 seconds)
     gamePhase: 'selecting',
     winningNumber: null,
     boardUpdateTimeout: null
@@ -145,7 +150,7 @@ const gameStates = {
   20: {
     currentGameId: generateGameId(20),
     selectedNumbers: [],
-    timeLeft: 50,
+    timeLeft: 180, // Play 20 timer (180 seconds)
     gamePhase: 'selecting',
     winningNumber: null,
     boardUpdateTimeout: null
@@ -153,7 +158,7 @@ const gameStates = {
   50: {
     currentGameId: generateGameId(50),
     selectedNumbers: [],
-    timeLeft: 50,
+    timeLeft: 300, // Play 50 timer (300 seconds)
     gamePhase: 'selecting',
     winningNumber: null,
     boardUpdateTimeout: null
@@ -161,7 +166,7 @@ const gameStates = {
   100: {
     currentGameId: generateGameId(100),
     selectedNumbers: [],
-    timeLeft: 50,
+    timeLeft: 305, // Play 100 timer (305 seconds)
     gamePhase: 'selecting',
     winningNumber: null,
     boardUpdateTimeout: null
@@ -1014,15 +1019,17 @@ setInterval(() => {
           winnerUserId: winnerUser ? winnerUser.userId : null
         });
 
+        const resetTime = numericStake === 10 ? 120 : numericStake === 20 ? 180 : numericStake === 50 ? 300 : 305;
+
         setTimeout(() => {
           state.selectedNumbers = [];
-          state.timeLeft = 50;
+          state.timeLeft = resetTime;
           state.gamePhase = 'selecting';
           state.winningNumber = '?';
           state.currentGameId = nextGameId;
           io.emit('reset_game', {
             stake: numericStake,
-            timeLeft: 50,
+            timeLeft: resetTime,
             gamePhase: 'selecting',
             gameId: state.currentGameId
           });
