@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NumberButton } from './NumberButton';
 
 export default function GameScreen({
@@ -21,22 +21,29 @@ export default function GameScreen({
   visibleNumbers,
   toggleNumber
 }) {
-  // Play 10 እና Play 20 ራሳቸውን የቻሉ 6 ዲጂት ጌም አይዲ እና የ50 ሰከንድ ታይመር ሎጂክ
-  const [game10, setGame10] = useState({
+  // Play 10 እና Play 20 ራሳቸውን የቻሉ 6 ዲጂት ጌም አይዲ እና የ50 ሰከንድ ታይመር
+  const [game10, setGame10] = useState(() => ({
     gameId: Math.floor(100000 + Math.random() * 900000).toString(),
     timer: 50,
     phase: 'selecting', // 'selecting' (50s) -> 'spinning' (6s) -> 'showing_winner' (4s) -> restart
     winningNumber: '?',
     winnerInfo: null
-  });
+  }));
 
-  const [game20, setGame20] = useState({
+  const [game20, setGame20] = useState(() => ({
     gameId: Math.floor(100000 + Math.random() * 900000).toString(),
     timer: 50,
     phase: 'selecting',
     winningNumber: '?',
     winnerInfo: null
-  });
+  }));
+
+  // ቁጥር ሲመረጥ ታይመሩ እንዳይሰንቀጠጥ/እንዳይቋረጥ ሬፍ (Refs) እንጠቀማለን
+  const selectedNumbers10Ref = useRef(selectedNumbers10);
+  useEffect(() => { selectedNumbers10Ref.current = selectedNumbers10; }, [selectedNumbers10]);
+
+  const selectedNumbers20Ref = useRef(selectedNumbers20);
+  useEffect(() => { selectedNumbers20Ref.current = selectedNumbers20; }, [selectedNumbers20]);
 
   // Play 50 እና Play 100 ሳምንታዊ ታይመሮች
   const [timers, setTimers] = useState({
@@ -49,7 +56,7 @@ export default function GameScreen({
     100: currentGameId100 || 'FL100-' + Math.floor(1000 + Math.random() * 9000)
   });
 
-  // የታይመር እና የፊዝ (Phase) ሎጂክ በሰከንድ
+  // የታይመር እና የፊዝ (Phase) ሎጂክ (ባዶ dependency በመጠቀም መብረቅ/መሰንቀጠጥ ሙሉ በሙሉ ጠፍቷል)
   useEffect(() => {
     const interval = setInterval(() => {
       // Play 10 ሎጂክ (50s select -> 6s spin -> 4s winner -> restart)
@@ -64,10 +71,11 @@ export default function GameScreen({
           if (prev.timer > 1) {
             return { ...prev, timer: prev.timer - 1 };
           } else {
-            const winning = selectedNumbers10 && selectedNumbers10.length > 0 
-              ? selectedNumbers10[Math.floor(Math.random() * selectedNumbers10.length)]
+            const currentList = selectedNumbers10Ref.current;
+            const winning = currentList && currentList.length > 0 
+              ? currentList[Math.floor(Math.random() * currentList.length)]
               : 'NONE';
-            const winner = winning !== 'NONE' ? { userName: 'ተጫዋች', number: winning, derash: selectedNumbers10.length * 10 } : null;
+            const winner = winning !== 'NONE' ? { userName: 'ተጫዋች', number: winning, derash: currentList.length * 10 } : null;
             return { ...prev, phase: 'showing_winner', timer: 4, winningNumber: winning, winnerInfo: winner };
           }
         } else if (prev.phase === 'showing_winner') {
@@ -98,10 +106,11 @@ export default function GameScreen({
           if (prev.timer > 1) {
             return { ...prev, timer: prev.timer - 1 };
           } else {
-            const winning = selectedNumbers20 && selectedNumbers20.length > 0 
-              ? selectedNumbers20[Math.floor(Math.random() * selectedNumbers20.length)]
+            const currentList = selectedNumbers20Ref.current;
+            const winning = currentList && currentList.length > 0 
+              ? currentList[Math.floor(Math.random() * currentList.length)]
               : 'NONE';
-            const winner = winning !== 'NONE' ? { userName: 'ተጫዋች', number: winning, derash: selectedNumbers20.length * 20 } : null;
+            const winner = winning !== 'NONE' ? { userName: 'ተጫዋች', number: winning, derash: currentList.length * 20 } : null;
             return { ...prev, phase: 'showing_winner', timer: 4, winningNumber: winning, winnerInfo: winner };
           }
         } else if (prev.phase === 'showing_winner') {
@@ -128,7 +137,7 @@ export default function GameScreen({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [selectedNumbers10, selectedNumbers20]);
+  }, []);
 
   return (
     <>
