@@ -153,6 +153,7 @@ const gameStates = {
   50: {
     currentGameId: generateGameId(50),
     selectedNumbers: [],
+    timeLeft: 50,
     gamePhase: 'selecting',
     winningNumber: null,
     boardUpdateTimeout: null
@@ -160,6 +161,7 @@ const gameStates = {
   100: {
     currentGameId: generateGameId(100),
     selectedNumbers: [],
+    timeLeft: 50,
     gamePhase: 'selecting',
     winningNumber: null,
     boardUpdateTimeout: null
@@ -940,8 +942,8 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- Independent Game Loops for Stakes 10 and 20 (Fast-paced 50 seconds loop) ---
-[10, 20].forEach(stake => {
+// --- Fully Independent Game Loops for ALL Stakes (10, 20, 50, 100) ---
+[10, 20, 50, 100].forEach(stake => {
   const numericStake = Number(stake);
   setInterval(async () => {
     const state = gameStates[numericStake];
@@ -962,7 +964,7 @@ setInterval(() => {
         let winnerUser = null;
 
         if (state.selectedNumbers.length > 0) {
-          const manualKey = numericStake === 10 ? 'manualWinningNumber10' : 'manualWinningNumber20';
+          const manualKey = `manualWinningNumber${numericStake}`;
           let activeManualWin = settings[manualKey] !== null ? settings[manualKey] : (numericStake === 10 ? null : settings.manualWinningNumber);
           
           if (activeManualWin !== null && activeManualWin !== undefined) {
@@ -1030,112 +1032,6 @@ setInterval(() => {
   }, 1000);
 });
 
-// --- Weekly Draw Logic for Play 50 and Play 100 ---
-async function executeWeeklyDraw(stake) {
-  const numericStake = Number(stake);
-  const state = gameStates[numericStake];
-  if (!state) return;
-
-  state.gamePhase = 'spinning';
-  const stats = await getGameStats(numericStake);
-  const settings = await getSettings();
-  let winNum = 'NONE';
-  let winnerUser = null;
-
-  if (state.selectedNumbers.length > 0) {
-    const manualKey = numericStake === 50 ? 'manualWinningNumber50' : 'manualWinningNumber100';
-    let activeManualWin = settings[manualKey] !== null ? settings[manualKey] : null;
-
-    if (activeManualWin !== null && activeManualWin !== undefined) {
-      winNum = activeManualWin;
-      settings[manualKey] = null;
-      await settings.save();
-      cachedSettings = settings;
-    } else {
-      const randomIndex = Math.floor(Math.random() * state.selectedNumbers.length);
-      winNum = state.selectedNumbers[randomIndex].number;
-    }
-
-    state.winningNumber = winNum;
-    const winItem = state.selectedNumbers.find(n => Number(n.number) === Number(winNum));
-
-    if (winItem) {
-      winnerUser = winItem;
-      await User.updateOne({ userId: String(winItem.userId) }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
-      await notifyUserBalanceUpdate(String(winItem.userId));
-      await GameHistory.create({
-        gameId: state.currentGameId,
-        winningNumber: winNum,
-        winnerUserId: String(winItem.userId),
-        winnerName: winItem.userName,
-        totalCollected: stats.totalCollected,
-        derash: stats.derash,
-        houseProfit: stats.houseProfit,
-        playersCount: stats.totalPlayers,
-        stake: numericStake
-      });
-      await updateDailyStats(0, 0, stats.houseProfit, 1);
-    }
-  } else {
-    state.winningNumber = 'NONE';
-  }
-
-  const nextGameId = generateGameId(numericStake);
-  io.emit('game_result', {
-    stake: numericStake,
-    winningNumber: winNum,
-    selectedNumbers: state.selectedNumbers,
-    derash: stats.derash,
-    gameId: state.currentGameId,
-    nextGameId: nextGameId,
-    winnerName: winnerUser ? winnerUser.userName : null,
-    winnerUserId: winnerUser ? winnerUser.userId : null
-  });
-
-  setTimeout(() => {
-    state.selectedNumbers = [];
-    state.gamePhase = 'selecting';
-    state.winningNumber = '?';
-    state.currentGameId = nextGameId;
-    io.emit('reset_game', {
-      stake: numericStake,
-      gamePhase: 'selecting',
-      gameId: state.currentGameId
-    });
-  }, 10000);
-}
-
-// Background checker for weekly draws: Play 50 (Saturday 12:00 local / 18:00 EAT) & Play 100 (Saturday 12:40 local / 18:40 EAT)
-let lastProcessedWeekDraw = { 50: null, 100: null };
-
-setInterval(async () => {
-  const now = new Date();
-  // East Africa Time (EAT, UTC+3)
-  const eatTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
-  const dayOfWeek = eatTime.getUTCDay(); // 6 = Saturday
-  const hours = eatTime.getUTCHours();
-  const minutes = eatTime.getUTCMinutes();
-  const dateStr = eatTime.toISOString().split('T')[0];
-
-  // Play 50: Saturday 12:00 Ethiopian time -> 18:00 EAT
-  if (dayOfWeek === 6 && hours === 18 && minutes === 0) {
-    const drawKey = `50-${dateStr}`;
-    if (lastProcessedWeekDraw[50] !== drawKey) {
-      lastProcessedWeekDraw[50] = drawKey;
-      await executeWeeklyDraw(50);
-    }
-  }
-
-  // Play 100: Saturday 12:40 Ethiopian time -> 18:40 EAT
-  if (dayOfWeek === 6 && hours === 18 && minutes === 40) {
-    const drawKey = `100-${dateStr}`;
-    if (lastProcessedWeekDraw[100] !== drawKey) {
-      lastProcessedWeekDraw[100] = drawKey;
-      await executeWeeklyDraw(100);
-    }
-  }
-}, 30000);
-
 io.on('connection', async (socket) => {
   const userId = socket.handshake.query.userId;
   if (userId && userId !== 'GUEST_USER') {
@@ -1173,6 +1069,7 @@ io.on('connection', async (socket) => {
     stake50: {
       gameId: gameStates[50].currentGameId,
       selectedNumbers: gameStates[50].selectedNumbers,
+      timeLeft: gameStates[50].timeLeft,
       gamePhase: gameStates[50].gamePhase,
       winningNumber: gameStates[50].winningNumber,
       totalPlayers: stats50.totalPlayers,
@@ -1181,6 +1078,7 @@ io.on('connection', async (socket) => {
     stake100: {
       gameId: gameStates[100].currentGameId,
       selectedNumbers: gameStates[100].selectedNumbers,
+      timeLeft: gameStates[100].timeLeft,
       gamePhase: gameStates[100].gamePhase,
       winningNumber: gameStates[100].winningNumber,
       totalPlayers: stats100.totalPlayers,
@@ -1297,7 +1195,7 @@ io.on('connection', async (socket) => {
       );
       broadcastBoard(stake);
       if (updatedUser) {
-        socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
+        socket.emit('balance_user', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
       }
     }
   });
