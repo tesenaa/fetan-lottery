@@ -101,6 +101,8 @@ const systemSettingsSchema = new mongoose.Schema({
   manualWinningNumber: { type: Number, default: null },
   manualWinningNumber10: { type: Number, default: null },
   manualWinningNumber20: { type: Number, default: null },
+  manualWinningNumber50: { type: Number, default: null },
+  manualWinningNumber100: { type: Number, default: null },
   activeAdmins: {
     admin1: { type: Boolean, default: true },
     admin2: { type: Boolean, default: true }
@@ -130,7 +132,7 @@ function generateGameId(stake) {
   return `FL-${stake}-${randomNum}`;
 }
 
-// --- Completely Independent Game States for stake 10 and 20 ---
+// --- Completely Independent Game States for stakes 10, 20, 50, and 100 ---
 const gameStates = {
   10: {
     currentGameId: generateGameId(10),
@@ -144,6 +146,20 @@ const gameStates = {
     currentGameId: generateGameId(20),
     selectedNumbers: [],
     timeLeft: 50,
+    gamePhase: 'selecting',
+    winningNumber: null,
+    boardUpdateTimeout: null
+  },
+  50: {
+    currentGameId: generateGameId(50),
+    selectedNumbers: [],
+    gamePhase: 'selecting',
+    winningNumber: null,
+    boardUpdateTimeout: null
+  },
+  100: {
+    currentGameId: generateGameId(100),
+    selectedNumbers: [],
     gamePhase: 'selecting',
     winningNumber: null,
     boardUpdateTimeout: null
@@ -171,6 +187,8 @@ async function getSettings() {
       manualWinningNumber: null,
       manualWinningNumber10: null,
       manualWinningNumber20: null,
+      manualWinningNumber50: null,
+      manualWinningNumber100: null,
       activeAdmins: { admin1: true, admin2: true }
     });
   }
@@ -483,14 +501,14 @@ const handleDepositRequest = async (req, res) => {
     }
     const existingPending = await Deposit.findOne({ userId: uid, status: 'PENDING' });
     if (existingPending) {
-      return res.status(400).json({ success: false, message: "⚠️ አስቀድሞ pendiente የዲፖዚት ጥያቄ አለዎት።" });
+      return res.status(400).json({ success: false, message: "⚠️ አስቀድሞ pending የዲፖዚት ጥያቄ አለዎት።" });
     }
     const txnId = extractTransactionId(pastedText);
     if (!txnId) {
       return res.status(400).json({ success: false, message: "⚠️ ከላኩት SMS ውስጥ ትክክለኛ Transaction ID ማግኘት አልተቻለም።" });
     }
     const duplicateTxn = await Deposit.findOne({ transactionId: txnId, status: { $in: ['PENDING', 'APPROVED'] } });
-    if (duplicateTxn, duplicateTxn) {
+    if (duplicateTxn) {
       return res.status(400).json({ success: false, message: "⚠️ ይህ የትራንዛክሽን ማረጋገጫ ቀድሞ ጨዋታ ላይ ውሏል!" });
     }
 
@@ -526,7 +544,7 @@ const handleDepositRequest = async (req, res) => {
         console.error('Admin telegram message error:', err.message);
       }
     }
-    return res.json({ success: true, message: "ማረጋገጫዎ ተላክዟል፤ እባክዎ ትንሽ ደቂቃ ይጠብቁ" });
+    return res.json({ success: true, message: "ማረጋገጫዎ ተልኳል፤ እባክዎ ትንሽ ደቂቃ ይጠብቁ" });
   } catch (err) {
     console.error("Deposit Processing Error:", err);
     res.status(500).json({ success: false, message: "የገንዘብ ማስታወቂያ ስህተት አጋጥሟል!" });
@@ -549,12 +567,12 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
   if (req.adminRole !== 'SUPER') {
     return res.status(403).json({ success: false, message: "ይህን ለማድረግ የሲስተም አስተዳዳሪ ስልጣን ይፈልጋል!" });
   }
-  const { ticketPrice, winnerPercentage, manualWinningNumber, manualWinningNumber10, manualWinningNumber20, activeAdmins } = req.body;
+  const { ticketPrice, winnerPercentage, manualWinningNumber, manualWinningNumber10, manualWinningNumber20, manualWinningNumber50, manualWinningNumber100, activeAdmins } = req.body;
   try {
     let settings = await getSettings();
     if (ticketPrice !== undefined) {
       const newPrice = Number(ticketPrice);
-      if (newPrice === 10 || newPrice === 20) {
+      if ([10, 20, 50, 100].includes(newPrice)) {
         settings.ticketPrice = newPrice;
       }
     }
@@ -571,6 +589,12 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
     if (manualWinningNumber20 !== undefined) {
       settings.manualWinningNumber20 = manualWinningNumber20 !== null ? Number(manualWinningNumber20) : null;
     }
+    if (manualWinningNumber50 !== undefined) {
+      settings.manualWinningNumber50 = manualWinningNumber50 !== null ? Number(manualWinningNumber50) : null;
+    }
+    if (manualWinningNumber100 !== undefined) {
+      settings.manualWinningNumber100 = manualWinningNumber100 !== null ? Number(manualWinningNumber100) : null;
+    }
     if (activeAdmins !== undefined) {
       settings.activeAdmins = activeAdmins;
     }
@@ -578,7 +602,7 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
     cachedSettings = settings;
     lastSettingsFetch = Date.now();
     io.emit('settings_updated', { ticketPrice: settings.ticketPrice, winnerPercentage: settings.winnerPercentage });
-    res.json({ success: true, settings, message: "ቅንብሩ በሳክስ ሁነታ ተስተካክሏል!" });
+    res.json({ success: true, settings, message: "ቅንብሩ በሰኩስ ሁነታ ተስተካክሏል!" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -678,7 +702,6 @@ app.post('/api/admin/process-transaction', checkAdminAuth, async (req, res) => {
   }
 });
 
-// -- ሱፐር አድሚን ፋይናንሺያል እና አክቲቭ/ሬጅስተርድ ዩዘር ስታቲስቲክስ ፔጅ (Active & Registered Users ተካትቷል) --
 app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
   if (req.adminRole !== 'SUPER') {
     return res.status(403).json({ success: false, message: "የተከለከለ ክልክ!" });
@@ -727,7 +750,6 @@ app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
 
     const dailyStats = await DailyStat.find().sort({ dateStr: -1 }).limit(10);
 
-    // -- Active & Registered Users counts --
     const activeCount = new Set(activeUsersMap.values()).size;
     const registeredCount = registeredUsersSet.size;
 
@@ -773,7 +795,7 @@ app.post('/api/admin/broadcast', checkAdminAuth, async (req, res) => {
         } catch (err) {}
       }
     }
-    res.json({ success: true, message: `መልእክቱ ለ ${sentCount} ተጠቃሚዎች ተልክዋል!` });
+    res.json({ success: true, message: `መልእክቱ ለ ${sentCount} ተጠቃሚዎች ተልኳል!` });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -839,7 +861,7 @@ app.post('/api/withdraw-request', async (req, res) => {
       return res.status(400).json({ success: false, message: "አካውንትዎ የታገደ ነው!" });
     }
     if (user.mainWallet < subAmount) {
-      return res.status(400).json({ success: false, message: "ቂ ደርጃዎች ያለው (በ Main Wallet ውስጥ የሚቀንስ ገንዘብ የለው)!" });
+      return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለዎትም (በ Main Wallet ውስጥ የሚቀንስ ገንዘብ የለው)!" });
     }
     const updatedUser = await User.findOneAndUpdate(
       { userId: uid, isBanned: false, mainWallet: { $gte: subAmount } },
@@ -847,7 +869,7 @@ app.post('/api/withdraw-request', async (req, res) => {
       { new: true }
     );
     if (!updatedUser) {
-      return res.status(400).json({ success: false, message: "ቂ ደርጃዎች ያለው ወይም አካውንትዎ የታገደ ነው!" });
+      return res.status(400).json({ success: false, message: "በቂ ሂሳብ የለዎትም ወይም አካውንትዎ የታገደ ነው!" });
     }
     await notifyUserBalanceUpdate(uid);
 
@@ -882,7 +904,7 @@ app.post('/api/withdraw-request', async (req, res) => {
         console.error('Withdrawal admin telegram error:', err.message);
       }
     }
-    res.json({ success: true, balance: updatedUser.mainWallet, message: "የውጪ ጥያቄዎ ተመዝግቧ! አስተዳዳሪ አቋቋም ይደረግበታል" });
+    res.json({ success: true, balance: updatedUser.mainWallet, message: "የውጪ ጥያቄዎ ተመዝግቧል፤ አስተዳዳሪ ማረጋገጫ ይሰጥበታል" });
   } catch (err) {
     console.error("Withdrawal Error:", err);
     res.status(500).json({ success: false, message: "የውጪ ጥያቄውን በሚያደርጉበት ጊዜ ስህተት ተፈጥሯል!" });
@@ -918,7 +940,7 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- Independent Game Loops for Stakes 10 and 20 ---
+// --- Independent Game Loops for Stakes 10 and 20 (Fast-paced 50 seconds loop) ---
 [10, 20].forEach(stake => {
   const numericStake = Number(stake);
   setInterval(async () => {
@@ -1008,6 +1030,112 @@ setInterval(() => {
   }, 1000);
 });
 
+// --- Weekly Draw Logic for Play 50 and Play 100 ---
+async function executeWeeklyDraw(stake) {
+  const numericStake = Number(stake);
+  const state = gameStates[numericStake];
+  if (!state) return;
+
+  state.gamePhase = 'spinning';
+  const stats = await getGameStats(numericStake);
+  const settings = await getSettings();
+  let winNum = 'NONE';
+  let winnerUser = null;
+
+  if (state.selectedNumbers.length > 0) {
+    const manualKey = numericStake === 50 ? 'manualWinningNumber50' : 'manualWinningNumber100';
+    let activeManualWin = settings[manualKey] !== null ? settings[manualKey] : null;
+
+    if (activeManualWin !== null && activeManualWin !== undefined) {
+      winNum = activeManualWin;
+      settings[manualKey] = null;
+      await settings.save();
+      cachedSettings = settings;
+    } else {
+      const randomIndex = Math.floor(Math.random() * state.selectedNumbers.length);
+      winNum = state.selectedNumbers[randomIndex].number;
+    }
+
+    state.winningNumber = winNum;
+    const winItem = state.selectedNumbers.find(n => Number(n.number) === Number(winNum));
+
+    if (winItem) {
+      winnerUser = winItem;
+      await User.updateOne({ userId: String(winItem.userId) }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
+      await notifyUserBalanceUpdate(String(winItem.userId));
+      await GameHistory.create({
+        gameId: state.currentGameId,
+        winningNumber: winNum,
+        winnerUserId: String(winItem.userId),
+        winnerName: winItem.userName,
+        totalCollected: stats.totalCollected,
+        derash: stats.derash,
+        houseProfit: stats.houseProfit,
+        playersCount: stats.totalPlayers,
+        stake: numericStake
+      });
+      await updateDailyStats(0, 0, stats.houseProfit, 1);
+    }
+  } else {
+    state.winningNumber = 'NONE';
+  }
+
+  const nextGameId = generateGameId(numericStake);
+  io.emit('game_result', {
+    stake: numericStake,
+    winningNumber: winNum,
+    selectedNumbers: state.selectedNumbers,
+    derash: stats.derash,
+    gameId: state.currentGameId,
+    nextGameId: nextGameId,
+    winnerName: winnerUser ? winnerUser.userName : null,
+    winnerUserId: winnerUser ? winnerUser.userId : null
+  });
+
+  setTimeout(() => {
+    state.selectedNumbers = [];
+    state.gamePhase = 'selecting';
+    state.winningNumber = '?';
+    state.currentGameId = nextGameId;
+    io.emit('reset_game', {
+      stake: numericStake,
+      gamePhase: 'selecting',
+      gameId: state.currentGameId
+    });
+  }, 10000);
+}
+
+// Background checker for weekly draws: Play 50 (Saturday 12:00 local / 18:00 EAT) & Play 100 (Saturday 12:40 local / 18:40 EAT)
+let lastProcessedWeekDraw = { 50: null, 100: null };
+
+setInterval(async () => {
+  const now = new Date();
+  // East Africa Time (EAT, UTC+3)
+  const eatTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+  const dayOfWeek = eatTime.getUTCDay(); // 6 = Saturday
+  const hours = eatTime.getUTCHours();
+  const minutes = eatTime.getUTCMinutes();
+  const dateStr = eatTime.toISOString().split('T')[0];
+
+  // Play 50: Saturday 12:00 Ethiopian time -> 18:00 EAT
+  if (dayOfWeek === 6 && hours === 18 && minutes === 0) {
+    const drawKey = `50-${dateStr}`;
+    if (lastProcessedWeekDraw[50] !== drawKey) {
+      lastProcessedWeekDraw[50] = drawKey;
+      await executeWeeklyDraw(50);
+    }
+  }
+
+  // Play 100: Saturday 12:40 Ethiopian time -> 18:40 EAT
+  if (dayOfWeek === 6 && hours === 18 && minutes === 40) {
+    const drawKey = `100-${dateStr}`;
+    if (lastProcessedWeekDraw[100] !== drawKey) {
+      lastProcessedWeekDraw[100] = drawKey;
+      await executeWeeklyDraw(100);
+    }
+  }
+}, 30000);
+
 io.on('connection', async (socket) => {
   const userId = socket.handshake.query.userId;
   if (userId && userId !== 'GUEST_USER') {
@@ -1019,6 +1147,8 @@ io.on('connection', async (socket) => {
   const registeredCount = registeredUsersSet.size;
   const stats10 = await getGameStats(10);
   const stats20 = await getGameStats(20);
+  const stats50 = await getGameStats(50);
+  const stats100 = await getGameStats(100);
   const settings = await getSettings();
 
   socket.emit('init_state', {
@@ -1040,10 +1170,25 @@ io.on('connection', async (socket) => {
       totalPlayers: stats20.totalPlayers,
       derash: stats20.derash
     },
+    stake50: {
+      gameId: gameStates[50].currentGameId,
+      selectedNumbers: gameStates[50].selectedNumbers,
+      gamePhase: gameStates[50].gamePhase,
+      winningNumber: gameStates[50].winningNumber,
+      totalPlayers: stats50.totalPlayers,
+      derash: stats50.derash
+    },
+    stake100: {
+      gameId: gameStates[100].currentGameId,
+      selectedNumbers: gameStates[100].selectedNumbers,
+      gamePhase: gameStates[100].gamePhase,
+      winningNumber: gameStates[100].winningNumber,
+      totalPlayers: stats100.totalPlayers,
+      derash: stats100.derash
+    },
     ticketPrice: settings.ticketPrice
   });
 
-  // (Optional) Socket notification for global stats if needed
   io.emit('stats_updated', {
     activePlayers: activeCount,
     activePlayersFormatted: formatUserCount(activeCount),
@@ -1080,7 +1225,7 @@ io.on('connection', async (socket) => {
 
     const TOTAL_COST = stake * uniqueNewNumbers.length;
     if ((userDoc.mainWallet + userDoc.playWallet) < TOTAL_COST) {
-      socket.emit('error_message', { message: 'ቂ ደርጃዎች ያለው! እባክዎ ሰርዎትን ይሙሉ::' });
+      socket.emit('error_message', { message: 'በቂ ሂሳብ የለዎትም! እባክዎ አካውንትዎን ይሙሉ::' });
       return;
     }
 
@@ -1111,7 +1256,7 @@ io.on('connection', async (socket) => {
     }
 
     if (!updatedUser) {
-      socket.emit('error_message', { message: 'ቂ ደርጃዎች ያለው!' });
+      socket.emit('error_message', { message: 'በቂ ሂሳብ የለዎትም!' });
       return;
     }
 
@@ -1119,7 +1264,7 @@ io.on('connection', async (socket) => {
       state.selectedNumbers.push({
         number: Number(num),
         userId: uid,
-        userName: userName || `ተጫዋቾች_${uid}`,
+        userName: userName || `ተጫዋች_${uid}`,
         walletUsed: usedWalletType,
         costPerNumber: stake
       });
