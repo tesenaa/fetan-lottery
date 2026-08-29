@@ -6,13 +6,13 @@ export default function GameScreen({
   setCurrentScreen,
   isBanned,
   fetchUserData,
-  currentGameId10, currentGameId20, currentGameId50, currentGameId100,
+  currentGameId50, currentGameId100,
   playerCount10, playerCount20, playerCount50, playerCount100,
   derash10, derash20, derash50, derash100,
-  phase10, phase20, phase50, phase100,
-  selectionTime10, selectionTime20, selectionTime50, selectionTime100,
-  winningNumber10, winningNumber20, winningNumber50, winningNumber100,
-  winnerInfo10, winnerInfo20, winnerInfo50, winnerInfo100,
+  phase50, phase100,
+  selectionTime50, selectionTime100,
+  winningNumber50, winningNumber100,
+  winnerInfo50, winnerInfo100,
   selectedNumbers10, selectedNumbers20, selectedNumbers50, selectedNumbers100,
   myPickedSet10, myPickedSet20, myPickedSet50, myPickedSet100,
   allPickedSet10, allPickedSet20, allPickedSet50, allPickedSet100,
@@ -21,45 +21,114 @@ export default function GameScreen({
   visibleNumbers,
   toggleNumber
 }) {
-  // ለእያንዳንዱ ጨዋታ እራሳቸውን የቻሉ ነጻ ታይመሮች (Independent Timers) - Play 10 እና Play 20 50 ሰከንድ ተደርገዋል
-  const [timers, setTimers] = useState({
-    10: selectionTime10 ?? 50,
-    20: selectionTime20 ?? 50,
-    50: selectionTime50 ?? 300,
-    100: selectionTime100 ?? 300
+  // Play 10 እና Play 20 ራሳቸውን የቻሉ 6 ዲጂት ጌም አይዲ እና የ50 ሰከንድ ታይመር ሎጂክ
+  const [game10, setGame10] = useState({
+    gameId: Math.floor(100000 + Math.random() * 900000).toString(),
+    timer: 50,
+    phase: 'selecting', // 'selecting' (50s) -> 'spinning' (6s) -> 'showing_winner' (4s) -> restart
+    winningNumber: '?',
+    winnerInfo: null
   });
 
-  // ከባክኤንድ የሚመጡትን ታይመሮች ዋጋዎች ከኮንፖነንቱ ስቴት ጋር ማቀናጀት (Syncing with props)
-  useEffect(() => {
-    setTimers({
-      10: selectionTime10 !== undefined && selectionTime10 !== null ? selectionTime10 : 50,
-      20: selectionTime20 !== undefined && selectionTime20 !== null ? selectionTime20 : 50,
-      50: selectionTime50 !== undefined && selectionTime50 !== null ? selectionTime50 : 300,
-      100: selectionTime100 !== undefined && selectionTime100 !== null ? selectionTime100 : 300
-    });
-  }, [selectionTime10, selectionTime20, selectionTime50, selectionTime100]);
+  const [game20, setGame20] = useState({
+    gameId: Math.floor(100000 + Math.random() * 900000).toString(),
+    timer: 50,
+    phase: 'selecting',
+    winningNumber: '?',
+    winnerInfo: null
+  });
 
-  // Play 10 እና Play 20 ጌም አይዲዎች
+  // Play 50 እና Play 100 ሳምንታዊ ታይመሮች
+  const [timers, setTimers] = useState({
+    50: selectionTime50 || 300,
+    100: selectionTime100 || 300
+  });
+
   const [gameIds, setGameIds] = useState({
-    10: Math.floor(100000 + Math.random() * 900000).toString(),
-    20: currentGameId20 || 'FL20-' + Math.floor(1000 + Math.random() * 9000),
     50: currentGameId50 || 'FL50-' + Math.floor(1000 + Math.random() * 9000),
     100: currentGameId100 || 'FL100-' + Math.floor(1000 + Math.random() * 9000)
   });
 
-  // ታይመሮችን በእያንዳንዱ ሰከንድ ማስተካከል (Independent Timer Interval)
+  // የታይመር እና የፊዝ (Phase) ሎጂክ በሰከንድ
   useEffect(() => {
-    const timerInterval = setInterval(() => {
+    const interval = setInterval(() => {
+      // Play 10 ሎጂክ (50s select -> 6s spin -> 4s winner -> restart)
+      setGame10(prev => {
+        if (prev.phase === 'selecting') {
+          if (prev.timer > 1) {
+            return { ...prev, timer: prev.timer - 1 };
+          } else {
+            return { ...prev, phase: 'spinning', timer: 6, winningNumber: 'SPINNING' };
+          }
+        } else if (prev.phase === 'spinning') {
+          if (prev.timer > 1) {
+            return { ...prev, timer: prev.timer - 1 };
+          } else {
+            const winning = selectedNumbers10 && selectedNumbers10.length > 0 
+              ? selectedNumbers10[Math.floor(Math.random() * selectedNumbers10.length)]
+              : 'NONE';
+            const winner = winning !== 'NONE' ? { userName: 'ተጫዋች', number: winning, derash: selectedNumbers10.length * 10 } : null;
+            return { ...prev, phase: 'showing_winner', timer: 4, winningNumber: winning, winnerInfo: winner };
+          }
+        } else if (prev.phase === 'showing_winner') {
+          if (prev.timer > 1) {
+            return { ...prev, timer: prev.timer - 1 };
+          } else {
+            return {
+              gameId: Math.floor(100000 + Math.random() * 900000).toString(),
+              timer: 50,
+              phase: 'selecting',
+              winningNumber: '?',
+              winnerInfo: null
+            };
+          }
+        }
+        return prev;
+      });
+
+      // Play 20 ሎጂክ (50s select -> 6s spin -> 4s winner -> restart)
+      setGame20(prev => {
+        if (prev.phase === 'selecting') {
+          if (prev.timer > 1) {
+            return { ...prev, timer: prev.timer - 1 };
+          } else {
+            return { ...prev, phase: 'spinning', timer: 6, winningNumber: 'SPINNING' };
+          }
+        } else if (prev.phase === 'spinning') {
+          if (prev.timer > 1) {
+            return { ...prev, timer: prev.timer - 1 };
+          } else {
+            const winning = selectedNumbers20 && selectedNumbers20.length > 0 
+              ? selectedNumbers20[Math.floor(Math.random() * selectedNumbers20.length)]
+              : 'NONE';
+            const winner = winning !== 'NONE' ? { userName: 'ተጫዋች', number: winning, derash: selectedNumbers20.length * 20 } : null;
+            return { ...prev, phase: 'showing_winner', timer: 4, winningNumber: winning, winnerInfo: winner };
+          }
+        } else if (prev.phase === 'showing_winner') {
+          if (prev.timer > 1) {
+            return { ...prev, timer: prev.timer - 1 };
+          } else {
+            return {
+              gameId: Math.floor(100000 + Math.random() * 900000).toString(),
+              timer: 50,
+              phase: 'selecting',
+              winningNumber: '?',
+              winnerInfo: null
+            };
+          }
+        }
+        return prev;
+      });
+
+      // Play 50 እና Play 100 ታይመሮች
       setTimers(prev => ({
-        10: prev[10] > 0 ? prev[10] - 1 : 50,
-        20: prev[20] > 0 ? prev[20] - 1 : 50,
         50: prev[50] > 0 ? prev[50] - 1 : 300,
         100: prev[100] > 0 ? prev[100] - 1 : 300
       }));
     }, 1000);
 
-    return () => clearInterval(timerInterval);
-  }, []);
+    return () => clearInterval(interval);
+  }, [selectedNumbers10, selectedNumbers20]);
 
   return (
     <>
@@ -101,9 +170,9 @@ export default function GameScreen({
       {currentScreen === 'board10' && (
         <BoardView
           title="10 ETB" color="#22c55e"
-          gameId={gameIds[10]} playerCount={playerCount10} derash={derash10}
-          phase={phase10} selectionTime={timers[10]}
-          winningNumber={winningNumber10} winnerInfo={winnerInfo10}
+          gameId={game10.gameId} playerCount={playerCount10} derash={derash10}
+          phase={game10.phase} selectionTime={game10.timer}
+          winningNumber={game10.winningNumber} winnerInfo={game10.winnerInfo}
           selectedNumbers={selectedNumbers10} myPickedSet={myPickedSet10} allPickedSet={allPickedSet10}
           allPickedNumbers={allPickedNumbers10} visibleNumbers={visibleNumbers}
           mainWallet={mainWallet} playWallet={playWallet} stake={10} isBanned={isBanned}
@@ -115,9 +184,9 @@ export default function GameScreen({
       {currentScreen === 'board20' && (
         <BoardView
           title="20 ETB" color="#0284c7"
-          gameId={currentGameId20 || gameIds[20]} playerCount={playerCount20} derash={derash20}
-          phase={phase20} selectionTime={timers[20]}
-          winningNumber={winningNumber20} winnerInfo={winnerInfo20}
+          gameId={game20.gameId} playerCount={playerCount20} derash={derash20}
+          phase={game20.phase} selectionTime={game20.timer}
+          winningNumber={game20.winningNumber} winnerInfo={game20.winnerInfo}
           selectedNumbers={selectedNumbers20} myPickedSet={myPickedSet20} allPickedSet={allPickedSet20}
           allPickedNumbers={allPickedNumbers20} visibleNumbers={visibleNumbers}
           mainWallet={mainWallet} playWallet={playWallet} stake={20} isBanned={isBanned}
@@ -129,7 +198,7 @@ export default function GameScreen({
       {currentScreen === 'board50' && (
         <BoardView
           title="50 ETB" color="#8b5cf6" subLabel="📅 ሳምንታዊ (ቅዳሜ 12:00)"
-          gameId={currentGameId50 || gameIds[50]} playerCount={playerCount50} derash={derash50}
+          gameId={gameIds[50]} playerCount={playerCount50} derash={derash50}
           phase={phase50} selectionTime={timers[50]}
           winningNumber={winningNumber50} winnerInfo={winnerInfo50}
           selectedNumbers={selectedNumbers50} myPickedSet={myPickedSet50} allPickedSet={allPickedSet50}
@@ -143,7 +212,7 @@ export default function GameScreen({
       {currentScreen === 'board100' && (
         <BoardView
           title="100 ETB" color="#ec4899" subLabel="📅 ሳምንታዊ (ቅዳሜ 12:40)"
-          gameId={currentGameId100 || gameIds[100]} playerCount={playerCount100} derash={derash100}
+          gameId={gameIds[100]} playerCount={playerCount100} derash={derash100}
           phase={phase100} selectionTime={timers[100]}
           winningNumber={winningNumber100} winnerInfo={winnerInfo100}
           selectedNumbers={selectedNumbers100} myPickedSet={myPickedSet100} allPickedSet={allPickedSet100}
@@ -200,8 +269,8 @@ function BoardView({
 
       <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
-          <div style={{ backgroundColor: phase === 'spinning' ? (allPickedNumbers.length > 0 ? '#dc2626' : '#6b7280') : color, padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
-            {phase === 'spinning' ? (allPickedNumbers.length > 0 ? 'ቁጥር እየሰነዘረ ነው...' : '⚠️ ማንም ቁጥር አልመረጠም!') : (subLabel ? subLabel : 'የምረቃ ጊዜ ' + selectionTime + ' S')}
+          <div style={{ backgroundColor: phase === 'spinning' ? '#dc2626' : phase === 'showing_winner' ? '#059669' : color, padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
+            {phase === 'spinning' ? 'ቁጥር እየሰነዘረ ነው (6s)...' : phase === 'showing_winner' ? 'አሸናፊው ታይቷል (4s)...' : ('የምረቃ ጊዜ ' + selectionTime + ' S')}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
             {visibleNumbers.map((num) => {
