@@ -947,7 +947,6 @@ setInterval(() => {
           winnerUserId: winnerUser ? winnerUser.userId : null
         });
 
-        // Play 10 እና Play 20 ሁለቱም 60 ሰከንድ እንዲኖራቸው ተደረገ (Play 20 ታይመር በትክክል ከ Play 10 ጋር ይመሳሰላል)
         const resetTime = numericStake === 10 ? 60 : numericStake === 20 ? 60 : numericStake === 50 ? 300 : 305;
         setTimeout(() => {
           state.selectedNumbers = [];
