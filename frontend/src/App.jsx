@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { GameScreen } from './components/Game';
-import { HistoryScreen, WalletScreen, ProfileScreen, AdminPanel } from './pages/WalletProfileAdmin';
+import { GameScreen } from './Game';
+import { HistoryScreen, WalletScreen, ProfileScreen, AdminPanel } from './WalletProfileAdmin';
 
 const API_BASE_URL = "https://fetan-lottery-backend.onrender.com";
 const SUPER_ADMIN_ID = "494653076";
@@ -45,17 +45,29 @@ export default function App() {
   const [totalInvite, setTotalInvite] = useState(0);
   const [totalGames, setTotalGames] = useState(0);
 
-  // Helper to generate FL + 6 digit random number
+  // 1. Helper to generate FL + 6 digit random number
   const generateRandomGameId = () => {
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     return `FL-${randomNum}`;
   };
 
-  // Helper to ensure Game ID always has FL- prefix
+  // Helper to ensure Game ID always has FL- prefix and correct format
   const formatGameId = (id) => {
     if (!id) return generateRandomGameId();
     const strId = String(id);
-    return strId.startsWith('FL-') ? strId : `FL-${strId}`;
+    if (strId.startsWith('FL-')) {
+      const parts = strId.split('-');
+      if (parts[1] && parts[1].length === 6) return strId;
+    }
+    return generateRandomGameId();
+  };
+
+  // Helper to normalize initial/received time (if > 300, clamp/start at 50)
+  const getNormalizedTime = (timeLeft) => {
+    if (timeLeft === undefined || timeLeft === null || timeLeft > 300) {
+      return 50;
+    }
+    return timeLeft;
   };
 
   // ==========================================
@@ -382,7 +394,7 @@ export default function App() {
       
       if (gameStake === 100) {
         setPhase100(data.gamePhase || 'selecting');
-        setSelectionTime100(data.timeLeft !== undefined ? data.timeLeft : 50);
+        setSelectionTime100(getNormalizedTime(data.timeLeft));
         setWinningNumber100(data.winningNumber || '?');
         setCurrentGameId100(formatGameId(data.gameId));
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
@@ -396,7 +408,7 @@ export default function App() {
         }
       } else if (gameStake === 50) {
         setPhase50(data.gamePhase || 'selecting');
-        setSelectionTime50(data.timeLeft !== undefined ? data.timeLeft : 50);
+        setSelectionTime50(getNormalizedTime(data.timeLeft));
         setWinningNumber50(data.winningNumber || '?');
         setCurrentGameId50(formatGameId(data.gameId));
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
@@ -410,7 +422,7 @@ export default function App() {
         }
       } else if (gameStake === 20) {
         setPhase20(data.gamePhase || 'selecting');
-        setSelectionTime20(data.timeLeft !== undefined ? data.timeLeft : 50);
+        setSelectionTime20(getNormalizedTime(data.timeLeft));
         setWinningNumber20(data.winningNumber || '?');
         setCurrentGameId20(formatGameId(data.gameId));
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
@@ -424,7 +436,7 @@ export default function App() {
         }
       } else {
         setPhase10(data.gamePhase || 'selecting');
-        setSelectionTime10(data.timeLeft !== undefined ? data.timeLeft : 50);
+        setSelectionTime10(getNormalizedTime(data.timeLeft));
         setWinningNumber10(data.winningNumber || '?');
         setCurrentGameId10(formatGameId(data.gameId));
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
@@ -442,20 +454,21 @@ export default function App() {
     socket.on('timer_tick', (data) => {
       if (!data) return;
       const gameStake = data.ticketPrice || 10;
+      const normalizedTime = getNormalizedTime(data.timeLeft);
       if (gameStake === 100) {
-        setSelectionTime100(data.timeLeft);
+        setSelectionTime100(normalizedTime);
         if (data.gamePhase) setPhase100(data.gamePhase);
         if (data.gameId) setCurrentGameId100(formatGameId(data.gameId));
       } else if (gameStake === 50) {
-        setSelectionTime50(data.timeLeft);
+        setSelectionTime50(normalizedTime);
         if (data.gamePhase) setPhase50(data.gamePhase);
         if (data.gameId) setCurrentGameId50(formatGameId(data.gameId));
       } else if (gameStake === 20) {
-        setSelectionTime20(data.timeLeft);
+        setSelectionTime20(normalizedTime);
         if (data.gamePhase) setPhase20(data.gamePhase);
         if (data.gameId) setCurrentGameId20(formatGameId(data.gameId));
       } else {
-        setSelectionTime10(data.timeLeft);
+        setSelectionTime10(normalizedTime);
         if (data.gamePhase) setPhase10(data.gamePhase);
         if (data.gameId) setCurrentGameId10(formatGameId(data.gameId));
       }
@@ -539,6 +552,7 @@ export default function App() {
     socket.on('game_result', (data) => {
       if (!data || data.winningNumber === 'NONE') return;
       const gameStake = data.ticketPrice || 10;
+      const nextId = formatGameId(data.nextGameId);
 
       if (gameStake === 100) {
         setPhase100('spinning');
@@ -574,7 +588,7 @@ export default function App() {
             setSelectionTime100(50);
             setPlayerCount100(0);
             setDerash100(0);
-            setCurrentGameId100(formatGameId(data.nextGameId));
+            setCurrentGameId100(nextId);
           }, 4000);
         }, 1500);
       } else if (gameStake === 50) {
@@ -611,7 +625,7 @@ export default function App() {
             setSelectionTime50(50);
             setPlayerCount50(0);
             setDerash50(0);
-            setCurrentGameId50(formatGameId(data.nextGameId));
+            setCurrentGameId50(nextId);
           }, 4000);
         }, 1500);
       } else if (gameStake === 20) {
@@ -648,7 +662,7 @@ export default function App() {
             setSelectionTime20(50);
             setPlayerCount20(0);
             setDerash20(0);
-            setCurrentGameId20(formatGameId(data.nextGameId));
+            setCurrentGameId20(nextId);
           }, 4000);
         }, 1500);
       } else {
@@ -685,7 +699,7 @@ export default function App() {
             setSelectionTime10(50);
             setPlayerCount10(0);
             setDerash10(0);
-            setCurrentGameId10(formatGameId(data.nextGameId));
+            setCurrentGameId10(nextId);
           }, 4000);
         }, 1500);
       }
@@ -693,6 +707,9 @@ export default function App() {
 
     socket.on('reset_game', (data) => {
       const gameStake = data?.ticketPrice || 10;
+      const newGameId = formatGameId(data?.gameId);
+      const normalizedTime = getNormalizedTime(data?.timeLeft);
+
       if (gameStake === 100) {
         clearTimeout(spinTimeout100);
         clearTimeout(resultTimeout100);
@@ -701,10 +718,10 @@ export default function App() {
         setWinningNumber100('?');
         setWinnerInfo100(null);
         setPhase100(data?.gamePhase || 'selecting');
-        setSelectionTime100(data?.timeLeft || 50);
+        setSelectionTime100(normalizedTime);
         setPlayerCount100(0);
         setDerash100(0);
-        setCurrentGameId100(formatGameId(data?.gameId));
+        setCurrentGameId100(newGameId);
       } else if (gameStake === 50) {
         clearTimeout(spinTimeout50);
         clearTimeout(resultTimeout50);
@@ -713,10 +730,10 @@ export default function App() {
         setWinningNumber50('?');
         setWinnerInfo50(null);
         setPhase50(data?.gamePhase || 'selecting');
-        setSelectionTime50(data?.timeLeft || 50);
+        setSelectionTime50(normalizedTime);
         setPlayerCount50(0);
         setDerash50(0);
-        setCurrentGameId50(formatGameId(data?.gameId));
+        setCurrentGameId50(newGameId);
       } else if (gameStake === 20) {
         clearTimeout(spinTimeout20);
         clearTimeout(resultTimeout20);
@@ -725,10 +742,10 @@ export default function App() {
         setWinningNumber20('?');
         setWinnerInfo20(null);
         setPhase20(data?.gamePhase || 'selecting');
-        setSelectionTime20(data?.timeLeft || 50);
+        setSelectionTime20(normalizedTime);
         setPlayerCount20(0);
         setDerash20(0);
-        setCurrentGameId20(formatGameId(data?.gameId));
+        setCurrentGameId20(newGameId);
       } else {
         clearTimeout(spinTimeout10);
         clearTimeout(resultTimeout10);
@@ -737,10 +754,10 @@ export default function App() {
         setWinningNumber10('?');
         setWinnerInfo10(null);
         setPhase10(data?.gamePhase || 'selecting');
-        setSelectionTime10(data?.timeLeft || 50);
+        setSelectionTime10(normalizedTime);
         setPlayerCount10(0);
         setDerash10(0);
-        setCurrentGameId10(formatGameId(data?.gameId));
+        setCurrentGameId10(newGameId);
       }
     });
 
@@ -1080,7 +1097,7 @@ export default function App() {
         )}
       </div>
 
-      {/* BOTTOM NAVIGATION BAR - Shown ONLY on home / stake selection screen */}
+      {/* 3. BOTTOM NAVIGATION BAR - Shown ONLY on stake/home selection screen */}
       <div style={{ width: '100%', backgroundColor: '#0e0e24', borderTop: '1px solid #1f1f3d', display: currentScreen === 'home' ? 'flex' : 'none', justifyContent: 'space-around', padding: '8px 0', flexShrink: 0 }}>
         <button onClick={() => { setCurrentTab('game'); setCurrentScreen('home'); }} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
           <span style={{ fontSize: '18px' }}>🎮</span>

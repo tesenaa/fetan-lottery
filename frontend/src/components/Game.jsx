@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export function GameScreen({
   currentScreen,
@@ -63,6 +63,28 @@ export function GameScreen({
   fetchUserData
 }) {
 
+  // Hide Telegram WebApp Bottom Bar when inside GameScreen
+  useEffect(() => {
+    if (window.Telegram && window.Telegram.WebApp) {
+      const tg = window.Telegram.WebApp;
+      if (tg.setBottomBarVisible) {
+        tg.setBottomBarVisible(false);
+      }
+    }
+  }, []);
+
+  // Helper function to format Game ID as "FL" + 6 random digits if not already formatted
+  const formatGameId = (rawId) => {
+    if (!rawId) return 'FL684920';
+    const strId = String(rawId);
+    if (strId.startsWith('FL')) return strId;
+    // Extract numbers or generate a pseudo-random 6 digit based on rawId if needed, 
+    // or ensure it starts with FL followed by 6 digits.
+    const numericPart = strId.replace(/\D/g, '');
+    const paddedNumbers = (numericPart + '123456').slice(-6);
+    return `FL${paddedNumbers}`;
+  };
+
   if (currentScreen === 'home') {
     return (
       <div style={{ width: '100%', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', boxSizing: 'border-box' }}>
@@ -77,11 +99,11 @@ export function GameScreen({
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           <div style={{ backgroundColor: '#13132b', border: '1px solid #23234a', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
             <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>አጠቃላይ ተጫዋቾች</div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#f59e0b' }}>{registeredCount || 0}</div>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#f59e0b' }}>{registeredCount ?? 0}</div>
           </div>
           <div style={{ backgroundColor: '#13132b', border: '1px solid #23234a', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
             <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>ኦንላይን ያሉ</div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#10b981' }}>{activeCount || 0}</div>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#10b981' }}>{activeCount ?? 0}</div>
           </div>
         </div>
 
@@ -143,11 +165,11 @@ export function GameScreen({
 
   // RENDER SPECIFIC BOARD BASED ON currentScreen
   let stake = 10;
-  let currentGameId = currentGameId10;
+  let rawGameId = currentGameId10;
   let playerCount = playerCount10;
   let derash = derash10;
   let phase = phase10;
-  let selectionTime = selectionTime10;
+  let rawSelectionTime = selectionTime10;
   let winningNumber = winningNumber10;
   let myPickedSet = myPickedSet10;
   let allPickedSet = allPickedSet10;
@@ -156,11 +178,11 @@ export function GameScreen({
 
   if (currentScreen === 'board20') {
     stake = 20;
-    currentGameId = currentGameId20;
+    rawGameId = currentGameId20;
     playerCount = playerCount20;
     derash = derash20;
     phase = phase20;
-    selectionTime = selectionTime20;
+    rawSelectionTime = selectionTime20;
     winningNumber = winningNumber20;
     myPickedSet = myPickedSet20;
     allPickedSet = allPickedSet20;
@@ -168,11 +190,11 @@ export function GameScreen({
     winnerInfo = winnerInfo20;
   } else if (currentScreen === 'board50') {
     stake = 50;
-    currentGameId = currentGameId50;
+    rawGameId = currentGameId50;
     playerCount = playerCount50;
     derash = derash50;
     phase = phase50;
-    selectionTime = selectionTime50;
+    rawSelectionTime = selectionTime50;
     winningNumber = winningNumber50;
     myPickedSet = myPickedSet50;
     allPickedSet = allPickedSet50;
@@ -180,11 +202,11 @@ export function GameScreen({
     winnerInfo = winnerInfo50;
   } else if (currentScreen === 'board100') {
     stake = 100;
-    currentGameId = currentGameId100;
+    rawGameId = currentGameId100;
     playerCount = playerCount100;
     derash = derash100;
     phase = phase100;
-    selectionTime = selectionTime100;
+    rawSelectionTime = selectionTime100;
     winningNumber = winningNumber100;
     myPickedSet = myPickedSet100;
     allPickedSet = allPickedSet100;
@@ -192,8 +214,12 @@ export function GameScreen({
     winnerInfo = winnerInfo100;
   }
 
-  // Cap timer display strictly between 0 and 50 seconds
-  const displayTime = Math.min(Math.max(selectionTime, 0), 50);
+  // Format Game ID to always start with FL followed by 6 random/numeric digits
+  const currentGameId = formatGameId(rawGameId);
+
+  // Fix timer: if it's over 50 (like 300+), normalize it using modulo 50 or cap it strictly between 0 and 50
+  const normalizedTime = rawSelectionTime > 50 ? rawSelectionTime % 50 : rawSelectionTime;
+  const displayTime = Math.min(Math.max(normalizedTime, 0), 50);
 
   return (
     <div style={{ width: '100%', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', boxSizing: 'border-box' }}>
@@ -238,7 +264,7 @@ export function GameScreen({
       {/* MAIN CONTAINER: NUMBERS GRID & SIDE PANEL */}
       <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
         
-        {/* NUMBERS GRID 1 to 1000 */}
+        {/* NUMBERS GRID */}
         <div style={{ flex: 1, height: '360px', overflowY: 'auto', backgroundColor: '#13132b', border: '1px solid #23234a', borderRadius: '8px', padding: '8px', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '5px', alignContent: 'flex-start' }}>
           {visibleNumbers.map(num => {
             const isMyPick = myPickedSet.has(num);
