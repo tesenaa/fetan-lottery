@@ -51,6 +51,13 @@ export default function App() {
     return `FL-${randomNum}`;
   };
 
+  // Helper to ensure Game ID always has FL- prefix
+  const formatGameId = (id) => {
+    if (!id) return generateRandomGameId();
+    const strId = String(id);
+    return strId.startsWith('FL-') ? strId : `FL-${strId}`;
+  };
+
   // ==========================================
   // INDEPENDENT STATES FOR STAKE 10, 20, 50, 100
   // ==========================================
@@ -377,8 +384,7 @@ export default function App() {
         setPhase100(data.gamePhase || 'selecting');
         setSelectionTime100(data.timeLeft !== undefined ? data.timeLeft : 50);
         setWinningNumber100(data.winningNumber || '?');
-        if (data.gameId) setCurrentGameId100(data.gameId);
-        else setCurrentGameId100(generateRandomGameId());
+        setCurrentGameId100(formatGameId(data.gameId));
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
           const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
           setAllPickedNumbers100(allPicked);
@@ -392,8 +398,7 @@ export default function App() {
         setPhase50(data.gamePhase || 'selecting');
         setSelectionTime50(data.timeLeft !== undefined ? data.timeLeft : 50);
         setWinningNumber50(data.winningNumber || '?');
-        if (data.gameId) setCurrentGameId50(data.gameId);
-        else setCurrentGameId50(generateRandomGameId());
+        setCurrentGameId50(formatGameId(data.gameId));
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
           const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
           setAllPickedNumbers50(allPicked);
@@ -407,8 +412,7 @@ export default function App() {
         setPhase20(data.gamePhase || 'selecting');
         setSelectionTime20(data.timeLeft !== undefined ? data.timeLeft : 50);
         setWinningNumber20(data.winningNumber || '?');
-        if (data.gameId) setCurrentGameId20(data.gameId);
-        else setCurrentGameId20(generateRandomGameId());
+        setCurrentGameId20(formatGameId(data.gameId));
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
           const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
           setAllPickedNumbers20(allPicked);
@@ -422,8 +426,7 @@ export default function App() {
         setPhase10(data.gamePhase || 'selecting');
         setSelectionTime10(data.timeLeft !== undefined ? data.timeLeft : 50);
         setWinningNumber10(data.winningNumber || '?');
-        if (data.gameId) setCurrentGameId10(data.gameId);
-        else setCurrentGameId10(generateRandomGameId());
+        setCurrentGameId10(formatGameId(data.gameId));
         if (data.selectedNumbers && Array.isArray(data.selectedNumbers)) {
           const allPicked = data.selectedNumbers.map(n => typeof n === 'object' ? n.number : n);
           setAllPickedNumbers10(allPicked);
@@ -442,19 +445,19 @@ export default function App() {
       if (gameStake === 100) {
         setSelectionTime100(data.timeLeft);
         if (data.gamePhase) setPhase100(data.gamePhase);
-        if (data.gameId) setCurrentGameId100(data.gameId);
+        if (data.gameId) setCurrentGameId100(formatGameId(data.gameId));
       } else if (gameStake === 50) {
         setSelectionTime50(data.timeLeft);
         if (data.gamePhase) setPhase50(data.gamePhase);
-        if (data.gameId) setCurrentGameId50(data.gameId);
+        if (data.gameId) setCurrentGameId50(formatGameId(data.gameId));
       } else if (gameStake === 20) {
         setSelectionTime20(data.timeLeft);
         if (data.gamePhase) setPhase20(data.gamePhase);
-        if (data.gameId) setCurrentGameId20(data.gameId);
+        if (data.gameId) setCurrentGameId20(formatGameId(data.gameId));
       } else {
         setSelectionTime10(data.timeLeft);
         if (data.gamePhase) setPhase10(data.gamePhase);
-        if (data.gameId) setCurrentGameId10(data.gameId);
+        if (data.gameId) setCurrentGameId10(formatGameId(data.gameId));
       }
     });
 
@@ -571,7 +574,7 @@ export default function App() {
             setSelectionTime100(50);
             setPlayerCount100(0);
             setDerash100(0);
-            setCurrentGameId100(data.nextGameId || generateRandomGameId());
+            setCurrentGameId100(formatGameId(data.nextGameId));
           }, 4000);
         }, 1500);
       } else if (gameStake === 50) {
@@ -608,7 +611,7 @@ export default function App() {
             setSelectionTime50(50);
             setPlayerCount50(0);
             setDerash50(0);
-            setCurrentGameId50(data.nextGameId || generateRandomGameId());
+            setCurrentGameId50(formatGameId(data.nextGameId));
           }, 4000);
         }, 1500);
       } else if (gameStake === 20) {
@@ -645,7 +648,7 @@ export default function App() {
             setSelectionTime20(50);
             setPlayerCount20(0);
             setDerash20(0);
-            setCurrentGameId20(data.nextGameId || generateRandomGameId());
+            setCurrentGameId20(formatGameId(data.nextGameId));
           }, 4000);
         }, 1500);
       } else {
@@ -682,7 +685,7 @@ export default function App() {
             setSelectionTime10(50);
             setPlayerCount10(0);
             setDerash10(0);
-            setCurrentGameId10(data.nextGameId || generateRandomGameId());
+            setCurrentGameId10(formatGameId(data.nextGameId));
           }, 4000);
         }, 1500);
       }
@@ -701,7 +704,7 @@ export default function App() {
         setSelectionTime100(data?.timeLeft || 50);
         setPlayerCount100(0);
         setDerash100(0);
-        setCurrentGameId100(data?.gameId || generateRandomGameId());
+        setCurrentGameId100(formatGameId(data?.gameId));
       } else if (gameStake === 50) {
         clearTimeout(spinTimeout50);
         clearTimeout(resultTimeout50);
@@ -713,7 +716,7 @@ export default function App() {
         setSelectionTime50(data?.timeLeft || 50);
         setPlayerCount50(0);
         setDerash50(0);
-        setCurrentGameId50(data?.gameId || generateRandomGameId());
+        setCurrentGameId50(formatGameId(data?.gameId));
       } else if (gameStake === 20) {
         clearTimeout(spinTimeout20);
         clearTimeout(resultTimeout20);
@@ -725,7 +728,7 @@ export default function App() {
         setSelectionTime20(data?.timeLeft || 50);
         setPlayerCount20(0);
         setDerash20(0);
-        setCurrentGameId20(data?.gameId || generateRandomGameId());
+        setCurrentGameId20(formatGameId(data?.gameId));
       } else {
         clearTimeout(spinTimeout10);
         clearTimeout(resultTimeout10);
@@ -737,7 +740,7 @@ export default function App() {
         setSelectionTime10(data?.timeLeft || 50);
         setPlayerCount10(0);
         setDerash10(0);
-        setCurrentGameId10(data?.gameId || generateRandomGameId());
+        setCurrentGameId10(formatGameId(data?.gameId));
       }
     });
 
@@ -1077,8 +1080,8 @@ export default function App() {
         )}
       </div>
 
-      {/* BOTTOM NAVIGATION BAR - hidden when inside any game board */}
-      <div style={{ width: '100%', backgroundColor: '#0e0e24', borderTop: '1px solid #1f1f3d', display: (currentTab === 'game' && currentScreen !== 'home') ? 'none' : 'flex', justifyContent: 'space-around', padding: '8px 0', flexShrink: 0 }}>
+      {/* BOTTOM NAVIGATION BAR - Shown ONLY on home / stake selection screen */}
+      <div style={{ width: '100%', backgroundColor: '#0e0e24', borderTop: '1px solid #1f1f3d', display: currentScreen === 'home' ? 'flex' : 'none', justifyContent: 'space-around', padding: '8px 0', flexShrink: 0 }}>
         <button onClick={() => { setCurrentTab('game'); setCurrentScreen('home'); }} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#f59e0b' : '#9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
           <span style={{ fontSize: '18px' }}>🎮</span>
           <span>Game</span>

@@ -192,8 +192,8 @@ export function GameScreen({
     winnerInfo = winnerInfo100;
   }
 
-  // Ensure timer value shown does not exceed 50s if backend sends higher value (capping at 50s max display)
-  const displayTime = Math.min(selectionTime, 50);
+  // Cap timer display strictly between 0 and 50 seconds
+  const displayTime = Math.min(Math.max(selectionTime, 0), 50);
 
   return (
     <div style={{ width: '100%', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', boxSizing: 'border-box' }}>
@@ -306,7 +306,7 @@ export function GameScreen({
           <div style={{ backgroundColor: '#13132b', border: '1px solid #23234a', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
             <div style={{ fontSize: '11px', color: '#f59e0b', marginBottom: '6px', fontWeight: 'bold' }}>የቁጥር ውጤል</div>
             
-            <div style={{ width: '90px', height: '90px', borderRadius: '50%</i>', border: '3px solid #ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1e1b4b', position: 'relative' }}>
+            <div style={{ width: '90px', height: '90px', borderRadius: '50%', border: '3px solid #ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1e1b4b', position: 'relative' }}>
               {phase === 'spinning' ? (
                 <div className="spin-arrow-container" style={{ fontSize: '28px' }}>🎲</div>
               ) : (
