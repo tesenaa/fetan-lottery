@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { GameScreen } from './Game';
-import { HistoryScreen, WalletScreen, ProfileScreen, AdminPanel } from './WalletProfileAdmin';
+import { GameScreen } from './components/Game';
+import { HistoryScreen, WalletScreen, ProfileScreen, AdminPanel } from './pages/WalletProfileAdmin';
 
 const API_BASE_URL = "https://fetan-lottery-backend.onrender.com";
 const SUPER_ADMIN_ID = "494653076";
