@@ -1,10 +1,26 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const API_BASE_URL = "https://fetan-lottery-backend.onrender.com";
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://fetan-lottery-backend.onrender.com";
 const SUPER_ADMIN_ID = "494653076";
 const ASSISTANT_ADMIN_1 = "6557480753";
 const ASSISTANT_ADMIN_2 = "6660106172";
+
+function eventStake(data) {
+  const value = Number(data?.stake ?? data?.ticketPrice);
+  return [10, 20, 50, 100].includes(value) ? value : null;
+}
+
+function formatCountdown(totalSeconds) {
+  const seconds = Math.max(0, Number(totalSeconds) || 0);
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (d > 0) return `${d}ቀ ${h}ሰ ${String(m).padStart(2, '0')}ደ ${String(s).padStart(2, '0')}ሰ`;
+  if (h > 0) return `${h}ሰ ${String(m).padStart(2, '0')}ደ ${String(s).padStart(2, '0')}ሰ`;
+  return `${m}ደ ${String(s).padStart(2, '0')}ሰ`;
+}
 
 const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) => {
   let bgColor = '#2a2a40';
@@ -111,7 +127,7 @@ export default function App() {
   const [playerCount50, setPlayerCount50] = useState(0);
   const [derash50, setDerash50] = useState(0);
   const [phase50, setPhase50] = useState('selecting');
-  const [selectionTime50, setSelectionTime50] = useState('ቅዳሜ 12:00');
+  const [selectionTime50, setSelectionTime50] = useState(0);
   const [winningNumber50, setWinningNumber50] = useState('?');
   const [winnerInfo50, setWinnerInfo50] = useState(null);
   const [currentGameId50, setCurrentGameId50] = useState(generateRandomGameId());
@@ -121,7 +137,7 @@ export default function App() {
   const [playerCount100, setPlayerCount100] = useState(0);
   const [derash100, setDerash100] = useState(0);
   const [phase100, setPhase100] = useState('selecting');
-  const [selectionTime100, setSelectionTime100] = useState('ቅዳሜ 12:05');
+  const [selectionTime100, setSelectionTime100] = useState(0);
   const [winningNumber100, setWinningNumber100] = useState('?');
   const [winnerInfo100, setWinnerInfo100] = useState(null);
   const [currentGameId100, setCurrentGameId100] = useState(generateRandomGameId());
@@ -209,6 +225,61 @@ export default function App() {
       setDerash100(Math.floor(allSelectedList.length * 100 * (sysSettings.winnerPercentage / 100)));
     }
   }, [sysSettings.winnerPercentage]);
+
+  const applyStakeSnapshot = useCallback((stake, snapshot) => {
+    if (!snapshot) return;
+    const allSelected = Array.isArray(snapshot.selectedNumbers) ? snapshot.selectedNumbers : [];
+    const allPicked = allSelected.map(n => (typeof n === 'object' ? n.number : n));
+    const myPicked = allSelected
+      .filter(n => typeof n === 'object' && String(n.userId) === String(userId))
+      .map(n => n.number);
+    const phase = snapshot.gamePhase || 'selecting';
+    const winning = snapshot.winningNumber || '?';
+    const gameId = snapshot.gameId;
+    const timeLeft = snapshot.timeLeft;
+
+    if (stake === 100) {
+      setPhase100(phase);
+      setWinningNumber100(winning);
+      if (gameId) setCurrentGameId100(gameId);
+      if (timeLeft !== undefined) setSelectionTime100(timeLeft);
+      setAllPickedNumbers100(allPicked);
+      setSelectedNumbers100(myPicked);
+      updateBoardStats100(allSelected);
+      if (snapshot.totalPlayers !== undefined && allSelected.length === 0) setPlayerCount100(snapshot.totalPlayers);
+      if (snapshot.derash !== undefined && allSelected.length === 0) setDerash100(snapshot.derash);
+    } else if (stake === 50) {
+      setPhase50(phase);
+      setWinningNumber50(winning);
+      if (gameId) setCurrentGameId50(gameId);
+      if (timeLeft !== undefined) setSelectionTime50(timeLeft);
+      setAllPickedNumbers50(allPicked);
+      setSelectedNumbers50(myPicked);
+      updateBoardStats50(allSelected);
+      if (snapshot.totalPlayers !== undefined && allSelected.length === 0) setPlayerCount50(snapshot.totalPlayers);
+      if (snapshot.derash !== undefined && allSelected.length === 0) setDerash50(snapshot.derash);
+    } else if (stake === 20) {
+      setPhase20(phase);
+      setWinningNumber20(winning);
+      if (gameId) setCurrentGameId20(gameId);
+      if (timeLeft !== undefined) setSelectionTime20(timeLeft);
+      setAllPickedNumbers20(allPicked);
+      setSelectedNumbers20(myPicked);
+      updateBoardStats20(allSelected);
+      if (snapshot.totalPlayers !== undefined && allSelected.length === 0) setPlayerCount20(snapshot.totalPlayers);
+      if (snapshot.derash !== undefined && allSelected.length === 0) setDerash20(snapshot.derash);
+    } else if (stake === 10) {
+      setPhase10(phase);
+      setWinningNumber10(winning);
+      if (gameId) setCurrentGameId10(gameId);
+      if (timeLeft !== undefined) setSelectionTime10(timeLeft);
+      setAllPickedNumbers10(allPicked);
+      setSelectedNumbers10(myPicked);
+      updateBoardStats10(allSelected);
+      if (snapshot.totalPlayers !== undefined && allSelected.length === 0) setPlayerCount10(snapshot.totalPlayers);
+      if (snapshot.derash !== undefined && allSelected.length === 0) setDerash10(snapshot.derash);
+    }
+  }, [userId, updateBoardStats10, updateBoardStats20, updateBoardStats50, updateBoardStats100]);
 
   const fetchUserData = useCallback(async () => {
     try {

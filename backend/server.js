@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -18,7 +21,7 @@ app.use(cors());
 app.use(express.json());
 
 // --- MONGODB CONNECTION WITH ADVANCED POOLING ---
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 if (MONGODB_URI) {
   mongoose.connect(MONGODB_URI, {
     maxPoolSize: 100,
@@ -26,7 +29,10 @@ if (MONGODB_URI) {
     socketTimeoutMS: 45000,
     serverSelectionTimeoutMS: 5000,
   })
-  .then(() => console.log('✅ Connected to MongoDB Atlas successfully!'))
+  .then(async () => {
+    console.log('✅ Connected to MongoDB Atlas successfully!');
+    await hydrateLiveGames();
+  })
   .catch((err) => console.error('❌ MongoDB Connection Error:', err));
 } else {
   console.warn('⚠️ MONGODB_URI environment variable is missing!');
@@ -109,12 +115,22 @@ const systemSettingsSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+const liveGameSchema = new mongoose.Schema({
+  stake: { type: Number, required: true, unique: true },
+  currentGameId: { type: String, required: true },
+  selectedNumbers: { type: Array, default: [] },
+  gamePhase: { type: String, default: 'selecting' },
+  winningNumber: { type: mongoose.Schema.Types.Mixed, default: '?' },
+  lastDrawKey: { type: String, default: null }
+}, { timestamps: true });
+
 const User = mongoose.model('User', userSchema);
 const Deposit = mongoose.model('Deposit', depositSchema);
 const Transaction = mongoose.model('Transaction', transactionSchema);
 const GameHistory = mongoose.model('GameHistory', gameHistorySchema);
 const DailyStat = mongoose.model('DailyStat', dailyStatSchema);
 const SystemSettings = mongoose.model('SystemSettings', systemSettingsSchema);
+const LiveGame = mongoose.model('LiveGame', liveGameSchema);
 
 app.get('/', (req, res) => {
   res.send('Fetan Lottery Backend is running live 🚀');
@@ -132,13 +148,92 @@ function generateGameId(stake) {
   return `FL-${stake}-${randomNum}`;
 }
 
+// Ethiopian evening 12:00 = 18:00 EAT (UTC+3). Play 50 at 18:00, Play 100 at 18:05 Saturday.
+const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
+const WEEKLY_DRAW_HOUR_EAT = 18;
+const WEEKLY_DRAW_WINDOW_MS = 60 * 1000;
+
+function getWeeklyTargetUtc(eatHour, eatMinute, fromMs = Date.now()) {
+  const eatDate = new Date(fromMs + EAT_OFFSET_MS);
+  const y = eatDate.getUTCFullYear();
+  const mo = eatDate.getUTCMonth();
+  const dayDate = eatDate.getUTCDate();
+  const dow = eatDate.getUTCDay();
+  const addDays = (6 - dow + 7) % 7;
+  const thisWeekEatUtcFields = Date.UTC(y, mo, dayDate + addDays, eatHour, eatMinute, 0, 0);
+  return thisWeekEatUtcFields - EAT_OFFSET_MS;
+}
+
+function getWeeklyDrawKey(stake, eatHour, eatMinute, fromMs = Date.now()) {
+  const targetUtc = getWeeklyTargetUtc(eatHour, eatMinute, fromMs);
+  const eat = new Date(targetUtc + EAT_OFFSET_MS);
+  const y = eat.getUTCFullYear();
+  const m = String(eat.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(eat.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}-${stake}`;
+}
+
+function getSecondsUntilWeeklyDraw(eatHour, eatMinute, lastDrawKey, stake) {
+  const now = Date.now();
+  let targetUtc = getWeeklyTargetUtc(eatHour, eatMinute, now);
+  const weekKey = getWeeklyDrawKey(stake, eatHour, eatMinute, now);
+  if (now >= targetUtc + WEEKLY_DRAW_WINDOW_MS || lastDrawKey === weekKey) {
+    targetUtc += 7 * 24 * 60 * 60 * 1000;
+  }
+  return Math.max(0, Math.floor((targetUtc - now) / 1000));
+}
+
+function getWeeklyDrawMinute(stake) {
+  return stake === 50 ? 0 : 5;
+}
+
 // --- Completely Independent Game States for all stakes (10, 20, 50, 100) ---
 const gameStates = {
-  10: { currentGameId: generateGameId(10), selectedNumbers: [], timeLeft: 50, gamePhase: 'selecting', winningNumber: null, boardUpdateTimeout: null },
-  20: { currentGameId: generateGameId(20), selectedNumbers: [], timeLeft: 50, gamePhase: 'selecting', winningNumber: null, boardUpdateTimeout: null },
-  50: { currentGameId: generateGameId(50), selectedNumbers: [], timeLeft: 0, gamePhase: 'selecting', winningNumber: null, boardUpdateTimeout: null, isWeekly: true },
-  100: { currentGameId: generateGameId(100), selectedNumbers: [], timeLeft: 0, gamePhase: 'selecting', winningNumber: null, boardUpdateTimeout: null, isWeekly: true }
+  10: { currentGameId: generateGameId(10), selectedNumbers: [], timeLeft: 50, gamePhase: 'selecting', winningNumber: '?', boardUpdateTimeout: null, processing: false, lastDrawKey: null },
+  20: { currentGameId: generateGameId(20), selectedNumbers: [], timeLeft: 50, gamePhase: 'selecting', winningNumber: '?', boardUpdateTimeout: null, processing: false, lastDrawKey: null },
+  50: { currentGameId: generateGameId(50), selectedNumbers: [], timeLeft: 0, gamePhase: 'selecting', winningNumber: '?', boardUpdateTimeout: null, isWeekly: true, processing: false, lastDrawKey: null },
+  100: { currentGameId: generateGameId(100), selectedNumbers: [], timeLeft: 0, gamePhase: 'selecting', winningNumber: '?', boardUpdateTimeout: null, isWeekly: true, processing: false, lastDrawKey: null }
 };
+
+async function persistLiveGame(stake) {
+  const state = gameStates[stake];
+  if (!state) return;
+  try {
+    await LiveGame.findOneAndUpdate(
+      { stake: Number(stake) },
+      {
+        stake: Number(stake),
+        currentGameId: state.currentGameId,
+        selectedNumbers: state.selectedNumbers,
+        gamePhase: state.gamePhase === 'spinning' ? 'selecting' : state.gamePhase,
+        winningNumber: state.winningNumber,
+        lastDrawKey: state.lastDrawKey || null
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error('LiveGame persist error:', err.message);
+  }
+}
+
+async function hydrateLiveGames() {
+  try {
+    const saved = await LiveGame.find({ stake: { $in: [10, 20, 50, 100] } });
+    saved.forEach((doc) => {
+      const state = gameStates[doc.stake];
+      if (!state) return;
+      if (Array.isArray(doc.selectedNumbers)) state.selectedNumbers = doc.selectedNumbers;
+      if (doc.currentGameId) state.currentGameId = doc.currentGameId;
+      if (doc.lastDrawKey) state.lastDrawKey = doc.lastDrawKey;
+      state.gamePhase = 'selecting';
+      state.winningNumber = '?';
+      if (!state.isWeekly) state.timeLeft = 50;
+    });
+    console.log('✅ Live game states restored from MongoDB');
+  } catch (err) {
+    console.error('LiveGame hydrate error:', err.message);
+  }
+}
 
 const registeredUsersSet = new Set();
 const activeUsersMap = new Map();
@@ -239,6 +334,106 @@ async function getGameStats(stake) {
   const derash = Math.floor(totalCollected * winnerPct);
   const houseProfit = totalCollected - derash;
   return { totalPlayers: uniquePlayers, totalCollected, derash, houseProfit, stake };
+}
+
+function snapshotStake(stake) {
+  const state = gameStates[stake];
+  return {
+    gameId: state.currentGameId,
+    selectedNumbers: state.selectedNumbers,
+    timeLeft: state.timeLeft,
+    gamePhase: state.gamePhase,
+    winningNumber: state.winningNumber,
+    isWeekly: !!state.isWeekly
+  };
+}
+
+async function runDraw(stake) {
+  const state = gameStates[stake];
+  if (!state || state.processing) return;
+  state.processing = true;
+  state.gamePhase = 'spinning';
+
+  const stats = await getGameStats(stake);
+  const settings = await getSettings();
+  let winNum = 'NONE';
+  let winnerUser = null;
+
+  if (state.selectedNumbers.length > 0) {
+    const manualKey = `manualWinningNumber${stake}`;
+    let activeManualWin = settings[manualKey] !== null && settings[manualKey] !== undefined
+      ? settings[manualKey]
+      : (stake === 20 ? settings.manualWinningNumber : null);
+    if (activeManualWin !== null && activeManualWin !== undefined) {
+      const exists = state.selectedNumbers.some(n => Number(n.number) === Number(activeManualWin));
+      winNum = exists ? activeManualWin : state.selectedNumbers[Math.floor(Math.random() * state.selectedNumbers.length)].number;
+      settings[manualKey] = null;
+      if (stake === 20) settings.manualWinningNumber = null;
+      await settings.save();
+      cachedSettings = settings;
+    } else {
+      const randomIndex = Math.floor(Math.random() * state.selectedNumbers.length);
+      winNum = state.selectedNumbers[randomIndex].number;
+    }
+    state.winningNumber = winNum;
+    const winItem = state.selectedNumbers.find(n => Number(n.number) === Number(winNum));
+    if (winItem) {
+      winnerUser = winItem;
+      await User.updateOne({ userId: String(winItem.userId) }, { $inc: { mainWallet: stats.derash, gamesWon: 1, totalGames: 1 } });
+      await notifyUserBalanceUpdate(String(winItem.userId));
+      await GameHistory.create({
+        gameId: state.currentGameId,
+        winningNumber: winNum,
+        winnerUserId: String(winItem.userId),
+        winnerName: winItem.userName,
+        totalCollected: stats.totalCollected,
+        derash: stats.derash,
+        houseProfit: stats.houseProfit,
+        playersCount: stats.totalPlayers,
+        stake: stake
+      });
+      await updateDailyStats(0, 0, stats.houseProfit, 1);
+    }
+  } else {
+    state.winningNumber = 'NONE';
+  }
+
+  const nextGameId = generateGameId(stake);
+  io.emit('game_result', {
+    stake: Number(stake),
+    ticketPrice: Number(stake),
+    winningNumber: winNum,
+    selectedNumbers: state.selectedNumbers,
+    derash: stats.derash,
+    gameId: state.currentGameId,
+    nextGameId: nextGameId,
+    winnerName: winnerUser ? winnerUser.userName : null,
+    winnerUserId: winnerUser ? winnerUser.userId : null
+  });
+
+  const resetDelay = state.isWeekly ? 15000 : 10000;
+  setTimeout(async () => {
+    state.selectedNumbers = [];
+    state.gamePhase = 'selecting';
+    state.winningNumber = '?';
+    state.currentGameId = nextGameId;
+    state.processing = false;
+    if (state.isWeekly) {
+      const minute = getWeeklyDrawMinute(stake);
+      state.timeLeft = getSecondsUntilWeeklyDraw(WEEKLY_DRAW_HOUR_EAT, minute, state.lastDrawKey, stake);
+    } else {
+      state.timeLeft = 50;
+    }
+    io.emit('reset_game', {
+      stake: Number(stake),
+      ticketPrice: Number(stake),
+      timeLeft: state.timeLeft,
+      gamePhase: 'selecting',
+      gameId: state.currentGameId,
+      isWeekly: !!state.isWeekly
+    });
+    await persistLiveGame(stake);
+  }, resetDelay);
 }
 
 async function getOrInitUser(userId, firstName = '', username = '', phone = '') {
@@ -861,177 +1056,61 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-// --- Independent Game Loops for Stakes (10, 20, 50, 100) ---
-[10, 20, 50, 100].forEach(stake => {
+function refreshWeeklyCountdowns() {
+  [50, 100].forEach((stake) => {
+    const state = gameStates[stake];
+    if (!state || state.gamePhase !== 'selecting') return;
+    const minute = getWeeklyDrawMinute(stake);
+    state.timeLeft = getSecondsUntilWeeklyDraw(WEEKLY_DRAW_HOUR_EAT, minute, state.lastDrawKey, stake);
+  });
+}
+
+refreshWeeklyCountdowns();
+
+// Independent loops: Play 10 and Play 20 each have their own 50s timer.
+// Play 50 draws Saturday 18:00 EAT (ቅዳሜ ማታ 12:00). Play 100 draws Saturday 18:05 EAT.
+[10, 20, 50, 100].forEach((stake) => {
   setInterval(async () => {
     const state = gameStates[stake];
+    if (!state || state.processing) return;
 
     if (state.isWeekly) {
-      // Weekly Logic for Play 50 and Play 100 (Saturday 12:00 / 12:05 EAT)
-      // EAT is UTC+3. 
-      const nowUtc = new Date();
-      const eatOffsetMs = 3 * 60 * 60 * 1000;
-      const nowEat = new Date(nowUtc.getTime() + eatOffsetMs);
+      if (state.gamePhase !== 'selecting') return;
+      const minute = getWeeklyDrawMinute(stake);
+      const weekKey = getWeeklyDrawKey(stake, WEEKLY_DRAW_HOUR_EAT, minute);
+      const now = Date.now();
+      const targetUtc = getWeeklyTargetUtc(WEEKLY_DRAW_HOUR_EAT, minute, now);
+      const inDrawWindow = now >= targetUtc && now < targetUtc + WEEKLY_DRAW_WINDOW_MS && state.lastDrawKey !== weekKey;
+      state.timeLeft = getSecondsUntilWeeklyDraw(WEEKLY_DRAW_HOUR_EAT, minute, state.lastDrawKey, stake);
 
-      const dayOfWeek = nowEat.getUTCDay(); // 6 is Saturday
-      const hours = nowEat.getUTCHours();
-      const minutes = nowEat.getUTCMinutes();
+      io.emit('timer_tick', {
+        stake: Number(stake),
+        ticketPrice: Number(stake),
+        timeLeft: state.timeLeft,
+        gamePhase: state.gamePhase,
+        gameId: state.currentGameId,
+        isWeekly: true
+      });
 
-      const targetHour = 0; // 12:00 AM EAT (Midnight Saturday going into Sunday) or 12:00 PM (noon) -> let's check standard Ethiopian time terms: "ማታ 12:00" means 00:00 (Midnight) or 6:00 PM (18:00). Usually "ማታ 12:00" in East African/Ethiopian context means 6:00 PM local time (18:00 UTC+3). Let's use 18:00 for Saturday evening.
-      // Let's configure: Saturday 18:00 (ማታ 12:00 ሰዓት በባህላዊ አቆጣጠር)
-      // Play 50: Saturday 18:00, Play 100: Saturday 18:05
-      const targetMinute = stake === 50 ? 0 : 5;
-
-      // Let's check if it's Saturday and time matches
-      if (dayOfWeek === 6 && hours === 18 && minutes === targetMinute && state.gamePhase === 'selecting') {
-        state.gamePhase = 'spinning';
-        const stats = await getGameStats(stake);
-        const settings = await getSettings();
-        let winNum = 'NONE';
-        let winnerUser = null;
-
-        if (state.selectedNumbers.length > 0) {
-          const manualKey = stake === 50 ? 'manualWinningNumber50' : 'manualWinningNumber100';
-          let activeManualWin = settings[manualKey] !== null ? settings[manualKey] : null;
-          if (activeManualWin !== null && activeManualWin !== undefined) {
-            winNum = activeManualWin;
-            settings[manualKey] = null;
-            await settings.save();
-            cachedSettings = settings;
-          } else {
-            const randomIndex = Math.floor(Math.random() * state.selectedNumbers.length);
-            winNum = state.selectedNumbers[randomIndex].number;
-          }
-          state.winningNumber = winNum;
-          const winItem = state.selectedNumbers.find(n => Number(n.number) === Number(winNum));
-          if (winItem) {
-            winnerUser = winItem;
-            await User.updateOne({ userId: String(winItem.userId) }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
-            await notifyUserBalanceUpdate(String(winItem.userId));
-            await GameHistory.create({
-              gameId: state.currentGameId,
-              winningNumber: winNum,
-              winnerUserId: String(winItem.userId),
-              winnerName: winItem.userName,
-              totalCollected: stats.totalCollected,
-              derash: stats.derash,
-              houseProfit: stats.houseProfit,
-              playersCount: stats.totalPlayers,
-              stake: stake
-            });
-            await updateDailyStats(0, 0, stats.houseProfit, 1);
-          }
-        } else {
-          state.winningNumber = 'NONE';
-        }
-
-        const nextGameId = generateGameId(stake);
-        io.emit('game_result', {
-          stake: Number(stake),
-          winningNumber: winNum,
-          selectedNumbers: state.selectedNumbers,
-          derash: stats.derash,
-          gameId: state.currentGameId,
-          nextGameId: nextGameId,
-          winnerName: winnerUser ? winnerUser.userName : null,
-          winnerUserId: winnerUser ? winnerUser.userId : null
-        });
-
-        setTimeout(() => {
-          state.selectedNumbers = [];
-          state.gamePhase = 'selecting';
-          state.winningNumber = '?';
-          state.currentGameId = nextGameId;
-          io.emit('reset_game', {
-            stake: Number(stake),
-            timeLeft: 0,
-            gamePhase: 'selecting',
-            gameId: state.currentGameId,
-            isWeekly: true
-          });
-        }, 15000);
+      if (inDrawWindow) {
+        state.lastDrawKey = weekKey;
+        await persistLiveGame(stake);
+        await runDraw(stake);
       }
+      return;
+    }
 
-    } else {
-      // Normal 50-second timer loop for Play 10 and Play 20
-      if (state.gamePhase === 'selecting') {
-        state.timeLeft--;
-        io.emit('timer_tick', {
-          stake: Number(stake),
-          timeLeft: state.timeLeft,
-          gamePhase: state.gamePhase,
-          gameId: state.currentGameId
-        });
-
-        if (state.timeLeft <= 0) {
-          state.gamePhase = 'spinning';
-          const stats = await getGameStats(stake);
-          const settings = await getSettings();
-          let winNum = 'NONE';
-          let winnerUser = null;
-
-          if (state.selectedNumbers.length > 0) {
-            const manualKey = stake === 10 ? 'manualWinningNumber10' : 'manualWinningNumber20';
-            let activeManualWin = settings[manualKey] !== null ? settings[manualKey] : (stake === 10 ? null : settings.manualWinningNumber);
-            if (activeManualWin !== null && activeManualWin !== undefined) {
-              winNum = activeManualWin;
-              settings[manualKey] = null;
-              settings.manualWinningNumber = null;
-              await settings.save();
-              cachedSettings = settings;
-            } else {
-              const randomIndex = Math.floor(Math.random() * state.selectedNumbers.length);
-              winNum = state.selectedNumbers[randomIndex].number;
-            }
-            state.winningNumber = winNum;
-            const winItem = state.selectedNumbers.find(n => Number(n.number) === Number(winNum));
-            if (winItem) {
-              winnerUser = winItem;
-              await User.updateOne({ userId: String(winItem.userId) }, { $inc: { mainWallet: stats.derash, gamesWon: 1 } });
-              await notifyUserBalanceUpdate(String(winItem.userId));
-              await GameHistory.create({
-                gameId: state.currentGameId,
-                winningNumber: winNum,
-                winnerUserId: String(winItem.userId),
-                winnerName: winItem.userName,
-                totalCollected: stats.totalCollected,
-                derash: stats.derash,
-                houseProfit: stats.houseProfit,
-                playersCount: stats.totalPlayers,
-                stake: stake
-              });
-              await updateDailyStats(0, 0, stats.houseProfit, 1);
-            }
-          } else {
-            state.winningNumber = 'NONE';
-          }
-
-          const nextGameId = generateGameId(stake);
-          io.emit('game_result', {
-            stake: Number(stake),
-            winningNumber: winNum,
-            selectedNumbers: state.selectedNumbers,
-            derash: stats.derash,
-            gameId: state.currentGameId,
-            nextGameId: nextGameId,
-            winnerName: winnerUser ? winnerUser.userName : null,
-            winnerUserId: winnerUser ? winnerUser.userId : null
-          });
-
-          setTimeout(() => {
-            state.selectedNumbers = [];
-            state.timeLeft = 50;
-            state.gamePhase = 'selecting';
-            state.winningNumber = '?';
-            state.currentGameId = nextGameId;
-            io.emit('reset_game', {
-              stake: Number(stake),
-              timeLeft: 50,
-              gamePhase: 'selecting',
-              gameId: state.currentGameId
-            });
-          }, 10000);
-        }
+    if (state.gamePhase === 'selecting') {
+      state.timeLeft--;
+      io.emit('timer_tick', {
+        stake: Number(stake),
+        ticketPrice: Number(stake),
+        timeLeft: state.timeLeft,
+        gamePhase: state.gamePhase,
+        gameId: state.currentGameId
+      });
+      if (state.timeLeft <= 0) {
+        await runDraw(stake);
       }
     }
   }, 1000);
@@ -1047,6 +1126,7 @@ io.on('connection', async (socket) => {
   const activeCount = new Set(activeUsersMap.values()).size;
   const registeredCount = registeredUsersSet.size;
 
+  refreshWeeklyCountdowns();
   const stats10 = await getGameStats(10);
   const stats20 = await getGameStats(20);
   const stats50 = await getGameStats(50);
@@ -1054,10 +1134,10 @@ io.on('connection', async (socket) => {
   const settings = await getSettings();
 
   socket.emit('init_state', {
-    stake10: { gameId: gameStates[10].currentGameId, selectedNumbers: gameStates[10].selectedNumbers, timeLeft: gameStates[10].timeLeft, gamePhase: gameStates[10].gamePhase, winningNumber: gameStates[10].winningNumber, totalPlayers: stats10.totalPlayers, derash: stats10.derash },
-    stake20: { gameId: gameStates[20].currentGameId, selectedNumbers: gameStates[20].selectedNumbers, timeLeft: gameStates[20].timeLeft, gamePhase: gameStates[20].gamePhase, winningNumber: gameStates[20].winningNumber, totalPlayers: stats20.totalPlayers, derash: stats20.derash },
-    stake50: { gameId: gameStates[50].currentGameId, selectedNumbers: gameStates[50].selectedNumbers, timeLeft: gameStates[50].timeLeft, gamePhase: gameStates[50].gamePhase, winningNumber: gameStates[50].winningNumber, totalPlayers: stats50.totalPlayers, derash: stats50.derash, isWeekly: true },
-    stake100: { gameId: gameStates[100].currentGameId, selectedNumbers: gameStates[100].selectedNumbers, timeLeft: gameStates[100].timeLeft, gamePhase: gameStates[100].gamePhase, winningNumber: gameStates[100].winningNumber, totalPlayers: stats100.totalPlayers, derash: stats100.derash, isWeekly: true },
+    stake10: { ...snapshotStake(10), totalPlayers: stats10.totalPlayers, derash: stats10.derash },
+    stake20: { ...snapshotStake(20), totalPlayers: stats20.totalPlayers, derash: stats20.derash },
+    stake50: { ...snapshotStake(50), totalPlayers: stats50.totalPlayers, derash: stats50.derash },
+    stake100: { ...snapshotStake(100), totalPlayers: stats100.totalPlayers, derash: stats100.derash },
     ticketPrice: settings.ticketPrice
   });
 
@@ -1145,6 +1225,7 @@ io.on('connection', async (socket) => {
     });
 
     broadcastBoard(stake);
+    persistLiveGame(stake);
     socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
   });
 
@@ -1173,6 +1254,7 @@ io.on('connection', async (socket) => {
       );
 
       broadcastBoard(stake);
+      persistLiveGame(stake);
       if (updatedUser) {
         socket.emit('balance_updated', { balance: updatedUser.mainWallet, playWallet: updatedUser.playWallet });
       }
