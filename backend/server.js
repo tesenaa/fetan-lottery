@@ -12,8 +12,6 @@ import { webhookCallback, InlineKeyboard } from 'grammy';
 
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
 const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_ID || process.env.ADMIN_ID || "494653076";
-const ASSISTANT_ADMIN_1 = process.env.ASSISTANT_ADMIN_1 || "6557480753";
-const ASSISTANT_ADMIN_2 = process.env.ASSISTANT_ADMIN_2 || "6660106172";
 const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || "-1003928734889";
 
 const app = express();
@@ -108,11 +106,7 @@ const systemSettingsSchema = new mongoose.Schema({
   manualWinningNumber10: { type: Number, default: null },
   manualWinningNumber20: { type: Number, default: null },
   manualWinningNumber50: { type: Number, default: null },
-  manualWinningNumber100: { type: Number, default: null },
-  activeAdmins: {
-    admin1: { type: Boolean, default: true },
-    admin2: { type: Boolean, default: true }
-  }
+  manualWinningNumber100: { type: Number, default: null }
 }, { timestamps: true });
 
 const liveGameSchema = new mongoose.Schema({
@@ -256,8 +250,7 @@ async function getSettings() {
       manualWinningNumber10: null,
       manualWinningNumber20: null,
       manualWinningNumber50: null,
-      manualWinningNumber100: null,
-      activeAdmins: { admin1: true, admin2: true }
+      manualWinningNumber100: null
     });
   }
   cachedSettings = settings;
@@ -305,15 +298,8 @@ function extractTransactionId(text) {
 
 async function checkAdminAuth(req, res, next) {
   const adminKey = req.headers['admin-key'];
-  const settings = await getSettings();
   if (adminKey === SUPER_ADMIN_ID) {
     req.adminRole = 'SUPER';
-    return next();
-  } else if (adminKey === ASSISTANT_ADMIN_1 && settings.activeAdmins?.admin1) {
-    req.adminRole = 'ADMIN_1';
-    return next();
-  } else if (adminKey === ASSISTANT_ADMIN_2 && settings.activeAdmins?.admin2) {
-    req.adminRole = 'ADMIN_2';
     return next();
   }
   return res.status(403).json({ success: false, message: "ባለልዩ ፈቃድ ስልጣን አይደለም ወይም አስተዳዳሪ አይደለም!" });
@@ -700,7 +686,7 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
   if (req.adminRole !== 'SUPER') {
     return res.status(403).json({ success: false, message: "ይህን ለማድረግ የሰርቨር አስተዳዳሪ ስልጣን ያስፈልጋል!" });
   }
-  const { ticketPrice, winnerPercentage, manualWinningNumber, manualWinningNumber10, manualWinningNumber20, manualWinningNumber50, manualWinningNumber100, activeAdmins } = req.body;
+  const { ticketPrice, winnerPercentage, manualWinningNumber, manualWinningNumber10, manualWinningNumber20, manualWinningNumber50, manualWinningNumber100 } = req.body;
   try {
     let settings = await getSettings();
     if (ticketPrice !== undefined) {
@@ -727,9 +713,6 @@ app.post('/api/admin/settings', checkAdminAuth, async (req, res) => {
     }
     if (manualWinningNumber100 !== undefined) {
       settings.manualWinningNumber100 = manualWinningNumber100 !== null ? Number(manualWinningNumber100) : null;
-    }
-    if (activeAdmins !== undefined) {
-      settings.activeAdmins = activeAdmins;
     }
     await settings.save();
     cachedSettings = settings;
@@ -866,14 +849,10 @@ app.get('/api/admin/financial-stats', checkAdminAuth, async (req, res) => {
 
     const adminStatsFormatted = {
       superAdmin: { amount: 0, count: 0 },
-      admin1: { amount: 0, count: 0 },
-      admin2: { amount: 0, count: 0 },
       others: { amount: 0, count: 0 }
     };
     adminBreakdown.forEach(item => {
       if (item._id === SUPER_ADMIN_ID) adminStatsFormatted.superAdmin = { amount: item.totalAmount, count: item.count };
-      else if (item._id === ASSISTANT_ADMIN_1) adminStatsFormatted.admin1 = { amount: item.totalAmount, count: item.count };
-      else if (item._id === ASSISTANT_ADMIN_2) adminStatsFormatted.admin2 = { amount: item.totalAmount, count: item.count };
       else {
         adminStatsFormatted.others.amount += item.totalAmount;
         adminStatsFormatted.others.count += item.count;

@@ -3,8 +3,6 @@ import { io } from 'socket.io-client';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://fetan-lottery-backend.onrender.com";
 const SUPER_ADMIN_ID = "494653076";
-const ASSISTANT_ADMIN_1 = "6557480753";
-const ASSISTANT_ADMIN_2 = "6660106172";
 
 function eventStake(data) {
   const value = Number(data?.stake ?? data?.ticketPrice);
@@ -69,9 +67,7 @@ export default function App() {
 
   // ADMIN ROLES CHECK
   const isSuperAdmin = useMemo(() => String(userId) === String(SUPER_ADMIN_ID), [userId]);
-  const isAssistantAdmin1 = useMemo(() => String(userId) === String(ASSISTANT_ADMIN_1), [userId]);
-  const isAssistantAdmin2 = useMemo(() => String(userId) === String(ASSISTANT_ADMIN_2), [userId]);
-  const isAdmin = isSuperAdmin || isAssistantAdmin1 || isAssistantAdmin2;
+  const isAdmin = isSuperAdmin;
 
   const [userPhone, setUserPhone] = useState('');
   const [isBanned, setIsBanned] = useState(false);
@@ -177,8 +173,7 @@ export default function App() {
   const [sysSettings, setSysSettings] = useState({
     ticketPrice: 10,
     winnerPercentage: 80,
-    manualWinningNumber: null,
-    activeAdmins: { admin1: true, admin2: true }
+    manualWinningNumber: null
   });
   const [manualNumberInput, setManualNumberInput] = useState('');
 
@@ -366,7 +361,6 @@ export default function App() {
         ticketPrice: sysSettings.ticketPrice,
         winnerPercentage: sysSettings.winnerPercentage,
         manualWinningNumber: sysSettings.manualWinningNumber,
-        activeAdmins: sysSettings.activeAdmins,
         ...overrideParams
       };
       const res = await fetch(`${API_BASE_URL}/api/admin/settings`, {
@@ -1014,16 +1008,18 @@ export default function App() {
                   </div>
                 </div>
 
-                <div style={{ width: '100%', backgroundColor: '#1b1b38', borderRadius: '16px', padding: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', boxSizing: 'border-box', border: '1px solid #2d2d50', alignItems: 'center' }}>
-                  <div style={{ width: '100%' }}>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{activeCount}</div>
-                    <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Active Users</div>
+                {isSuperAdmin && (
+                  <div style={{ width: '100%', backgroundColor: '#1b1b38', borderRadius: '16px', padding: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', boxSizing: 'border-box', border: '1px solid #2d2d50', alignItems: 'center' }}>
+                    <div style={{ width: '100%' }}>
+                      <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{activeCount}</div>
+                      <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Active Users</div>
+                    </div>
+                    <div style={{ width: '100%', borderTop: '1px solid #2d2d50', paddingTop: '12px' }}>
+                      <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{registeredCount}</div>
+                      <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Registered Users</div>
+                    </div>
                   </div>
-                  <div style={{ width: '100%', borderTop: '1px solid #2d2d50', paddingTop: '12px' }}>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{registeredCount}</div>
-                    <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Registered Users</div>
-                  </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -1411,7 +1407,7 @@ export default function App() {
           <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h1 style={{ fontSize: '18px', fontWeight: 'bold', color: '#f59e0b' }}>
-                ⚙️ Admin Panel ({isSuperAdmin ? 'Super Admin' : 'Assistant Admin'})
+                ⚙️ Admin Panel (Super Admin)
               </h1>
               <button onClick={fetchAdminData} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}>🔄 Refresh</button>
             </div>
