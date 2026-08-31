@@ -995,22 +995,22 @@ export default function App() {
                    <div style={{ width: '100%', backgroundColor: '#15152a', border: '1px solid #f59e0b', borderRadius: '16px', padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 0 20px rgba(245, 158, 11, 0.2)', marginBottom: '20px', boxSizing: 'border-box' }}>
                     <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px', textAlign: 'center' }}>Weekly Game</div>
                  
-                    <button onClick={() => setCurrentScreen('board50')} style={{ width: '100%', backgroundColor: '#8b5cf6', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>
+                    <button onClick={() => setCurrentScreen('board50')} style={{ width: '100%', backgroundColor: '#2481cc', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>
                       ► Play 50 ETB
                     </button>
-                    <div style={{ textAlign: 'center', fontSize: '11px', color: '#c084fc', marginTop: '4px', fontWeight: 'bold' }}>
+                    <div style={{ textAlign: 'center', fontSize: '11px', color: '#facc15', marginTop: '4px', fontWeight: 'bold' }}>
                       weekly (ቅዳሜ ማታ 12:00)
                     
                   </div>
 
                   {/* Play 100 (Weekly - Saturday 12:05) */}
-                  <div style={{ width: '100%', border: '2px solid #eab308', borderRadius: '12px', padding: '6px', background: '#121225' }}>
-                    <button onClick={() => setCurrentScreen('board100')} style={{ width: '100%', backgroundColor: '#eab308', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>
+                  
+                    <button onClick={() => setCurrentScreen('board100')} style={{ width: '100%', backgroundColor: '#22c55e', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>
                       ► Play 100 ETB
                     </button>
                     <div style={{ textAlign: 'center', fontSize: '11px', color: '#facc15', marginTop: '4px', fontWeight: 'bold' }}>
                       weekly (ቅዳሜ ማታ 12:05)
-                    </div>
+                    
                   </div>
                 </div>
 
