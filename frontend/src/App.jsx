@@ -989,15 +989,18 @@ export default function App() {
                   <button onClick={() => setCurrentScreen('board20')} style={{ width: '100%', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px', textAlign: 'center' }}>
                     ► Play 20 ETB
                   </button>
+                  </div>
 
-                  {/* Play 50 (Weekly - Saturday 12:00) */}
-                  <div style={{ width: '100%', border: '2px solid #8b5cf6', borderRadius: '12px', padding: '6px', marginBottom: '10px', background: '#121225' }}>
+                 {/* Play 50 (Weekly - Saturday 12:00) */}
+                   <div style={{ width: '100%', backgroundColor: '#15152a', border: '1px solid #f59e0b', borderRadius: '16px', padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 0 20px rgba(245, 158, 11, 0.2)', marginBottom: '20px', boxSizing: 'border-box' }}>
+                    <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px', textAlign: 'center' }}>Weekly Game</div>
+                 
                     <button onClick={() => setCurrentScreen('board50')} style={{ width: '100%', backgroundColor: '#8b5cf6', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>
                       ► Play 50 ETB
                     </button>
                     <div style={{ textAlign: 'center', fontSize: '11px', color: '#c084fc', marginTop: '4px', fontWeight: 'bold' }}>
                       weekly (ቅዳሜ ማታ 12:00)
-                    </div>
+                    
                   </div>
 
                   {/* Play 100 (Weekly - Saturday 12:05) */}
