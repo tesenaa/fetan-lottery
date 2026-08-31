@@ -1564,26 +1564,28 @@ export default function App() {
         )}
       </div>
 
-      {/* FOOTER NAVIGATION */}
-      <div style={{ width: '100%', height: '60px', backgroundColor: '#0a0a16', borderTop: '1px solid #1e1b4b', display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexShrink: 0 }}>
-        <button onClick={() => { setCurrentTab('game'); setCurrentScreen('home'); }} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-          <span style={{ fontSize: '18px' }}>🎮</span> Game
-        </button>
-        <button onClick={() => setCurrentTab('history')} style={{ background: 'none', border: 'none', color: currentTab === 'history' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-          <span style={{ fontSize: '18px' }}>📜</span> History
-        </button>
-        <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color: currentTab === 'wallet' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-          <span style={{ fontSize: '18px' }}>💳</span> Wallet
-        </button>
-        <button onClick={() => setCurrentTab('profile')} style={{ background: 'none', border: 'none', color: currentTab === 'profile' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-          <span style={{ fontSize: '18px' }}>👤</span> Profile
-        </button>
-        {isAdmin && (
-          <button onClick={() => setCurrentTab('admin')} style={{ background: 'none', border: 'none', color: currentTab === 'admin' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-            <span style={{ fontSize: '18px' }}>⚙️</span> Admin
+      {/* FOOTER NAVIGATION - shown on the Home screen, hidden on the game board screens */}
+      {!(currentTab === 'game' && currentScreen !== 'home') && (
+        <div style={{ width: '100%', height: '60px', backgroundColor: '#0a0a16', borderTop: '1px solid #1e1b4b', display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexShrink: 0 }}>
+          <button onClick={() => { setCurrentTab('game'); setCurrentScreen('home'); }} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+            <span style={{ fontSize: '18px' }}>🎮</span> Game
           </button>
-        )}
-      </div>
+          <button onClick={() => setCurrentTab('history')} style={{ background: 'none', border: 'none', color: currentTab === 'history' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+            <span style={{ fontSize: '18px' }}>📜</span> History
+          </button>
+          <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color: currentTab === 'wallet' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+            <span style={{ fontSize: '18px' }}>💳</span> Wallet
+          </button>
+          <button onClick={() => setCurrentTab('profile')} style={{ background: 'none', border: 'none', color: currentTab === 'profile' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+            <span style={{ fontSize: '18px' }}>👤</span> Profile
+          </button>
+          {isAdmin && (
+            <button onClick={() => setCurrentTab('admin')} style={{ background: 'none', border: 'none', color: currentTab === 'admin' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+              <span style={{ fontSize: '18px' }}>⚙️</span> Admin
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
