@@ -102,7 +102,8 @@ if (bot) {
           const playKeyboard = new InlineKeyboard()
             .webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
 
-          await ctx.reply("🎯 ለመጫወት ዝግጁ ነዎት! ከታች ያለውን ቁልፍ ተጭነው ወደ ዌብአፕ በመግባት የሚፈልጉትን እስቴክ መርጠው ይጫወቱ፡", {
+          // ሳይጽፍ ቀጥታ የ WebApp ቁልፍን ብቻ ከፍቶ እንዲሰጥ ተስተካከለ
+          await ctx.reply("🎮 **Fetan Lottery**", {
             reply_markup: playKeyboard,
             disable_notification: false
           });
@@ -252,10 +253,28 @@ Coin:         ${coin}`;
     }
   });
 
-  // Direct command handlers for menu items
+  // Direct command handlers for menu items (እዚህም ላይ ትዕዛዙ በቀጥታ WebApp እንዲከፍት ተስተካክሏል)
   bot.command('play', async (ctx) => {
-    const playKeyboard = new InlineKeyboard().webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
-    await ctx.reply("🎯 ለመጫወት ከታች ያለውን ቁልፍ ይጫኑ፡", { reply_markup: playKeyboard, disable_notification: false });
+    const userId = String(ctx.from?.id);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}&userId=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const userObj = data.user || data;
+
+        if (userObj && userObj.phone && userObj.phone !== "አልተመዘገበም" && String(userObj.phone).trim() !== "") {
+          const playKeyboard = new InlineKeyboard().webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
+          await ctx.reply("🎮 **Fetan Lottery**", { reply_markup: playKeyboard, disable_notification: false });
+          return;
+        }
+      }
+
+      const contactKeyboard = new Keyboard().requestContact("📱 ስልክ ቁጥር አጋራ (Share Contact)").resized().oneTime();
+      await ctx.reply("⚠️ ለመጫወት አስቀድመው መመዝገብ አለብዎት! እባክዎን ስልክ ቁጥርዎን ያጋሩ፡", { reply_markup: contactKeyboard, disable_notification: false });
+    } catch (err) {
+      const playKeyboard = new InlineKeyboard().webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
+      await ctx.reply("🎮 **Fetan Lottery**", { reply_markup: playKeyboard, disable_notification: false });
+    }
   });
 
   bot.command('register', async (ctx) => {
