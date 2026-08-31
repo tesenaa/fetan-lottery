@@ -102,14 +102,9 @@ if (bot) {
           const playKeyboard = new InlineKeyboard()
             .webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
 
-          // ጽሁፉ ሳይመጣ ቀጥታ ቁልፉን እንዲልክ (Edit Message ወይም Reply በቁልፍ ብቻ)
-          await ctx.editMessageReplyMarkup({
-            reply_markup: playKeyboard
-          }).catch(async () => {
-            await ctx.reply("🎯 ለመጫወት ከታች ያለውን ቁልፍ ይጫኑ፡", {
-              reply_markup: playKeyboard,
-              disable_notification: false
-            });
+          await ctx.reply("🎯 ለመጫወት ዝግጁ ነዎት! ከታች ያለውን ቁልፍ ተጭነው ወደ ዌብአፕ በመግባት የሚፈልጉትን እስቴክ መርጠው ይጫወቱ፡", {
+            reply_markup: playKeyboard,
+            disable_notification: false
           });
           return;
         }
