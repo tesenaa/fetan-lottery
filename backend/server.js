@@ -281,7 +281,26 @@ function broadcastBoard(stake) {
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
 if (process.env.NODE_ENV === 'production' && RENDER_URL && bot) {
   app.use('/webhook', webhookCallback(bot, 'express'));
+
+  // Re-register the webhook with Telegram every time the server boots.
+  // This matters whenever TELEGRAM_BOT_TOKEN is rotated/changed: Telegram routes
+  // updates based on whichever webhook URL was last registered for a token. If the
+  // token changes but setWebhook is never called again, this server keeps replying
+  // with the NEW token to chats that only ever talked to the OLD bot/token — which
+  // Telegram rejects with "400: Bad Request: chat not found".
+  bot.api.setWebhook(`${RENDER_URL}/webhook`)
+    .then(() => console.log(`✅ Webhook registered: ${RENDER_URL}/webhook`))
+    .catch((err) => console.error('❌ setWebhook failed:', err));
 }
+
+// Safety net: never let a single failed Telegram API call (e.g. a blocked/invalid
+// chat) crash and restart the whole server for every user. Log it and keep running.
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection (ignored, server keeps running):', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception (ignored, server keeps running):', err);
+});
 
 function extractTransactionId(text) {
   if (!text) return null;
