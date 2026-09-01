@@ -35,7 +35,6 @@ if (bot) {
   }).catch(err => console.error('ChatMenuButton error:', err));
 
   // 3. Main Inline Keyboard Menu — Play 🎮 button is built dynamically per-user
-  //    (registered users get a direct WebApp button, unregistered users get the registration prompt)
   const buildMainMenu = (isRegistered) => {
     const kb = new InlineKeyboard();
     if (isRegistered) {
