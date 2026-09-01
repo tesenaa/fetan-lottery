@@ -21,26 +21,37 @@ function formatCountdown(totalSeconds) {
 }
 
 const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) => {
-  let bgColor = '#2a2a40';
-  if (isMine) bgColor = '#22c55e';
-  else if (isOthers) bgColor = '#ef4444';
+  let background = 'linear-gradient(160deg, #32324a, #24243a)';
+  let borderColor = '#40405e';
+  let boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04)';
+  if (isMine) {
+    background = 'linear-gradient(160deg, #34d399, #16a34a)';
+    borderColor = '#4ade80';
+    boxShadow = '0 0 8px rgba(52, 211, 153, 0.45), inset 0 1px 0 rgba(255,255,255,0.15)';
+  } else if (isOthers) {
+    background = 'linear-gradient(160deg, #f87171, #dc2626)';
+    borderColor = '#fca5a5';
+    boxShadow = '0 0 8px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255,255,255,0.12)';
+  }
   return (
     <button
       onClick={() => onClick(num)}
       disabled={disabled}
       style={{
         padding: '8px 0',
-        backgroundColor: bgColor,
+        background,
         color: '#ffffff',
-        border: '1px solid #3d3d5c',
-        borderRadius: '4px',
+        border: `1px solid ${borderColor}`,
+        borderRadius: '6px',
         fontSize: '11px',
         fontWeight: 'bold',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.6 : 1,
+        opacity: disabled ? 0.55 : 1,
+        boxShadow,
+        transition: 'transform 0.08s ease, box-shadow 0.15s ease',
         touchAction: 'manipulation',
         WebkitTapHighlightColor: 'transparent',
-        willChange: 'background-color'
+        willChange: 'transform'
       }}
     >
       {num}
@@ -52,6 +63,79 @@ const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) =
     prevProps.isMine === nextProps.isMine &&
     prevProps.isOthers === nextProps.isOthers &&
     prevProps.disabled === nextProps.disabled
+  );
+});
+
+// Virtualized number grid: renders only the rows near the visible scroll area
+// instead of all 1000 number buttons at once (big DOM/render cost saver on mobile).
+const GRID_COLUMNS = 5;
+const GRID_ROW_HEIGHT = 34; // approx button height (8px*2 padding + text + border) + 4px gap
+const GRID_BUFFER_ROWS = 4;
+
+const NumberGrid = React.memo(function NumberGrid({ numbers, myPickedSet, allPickedSet, isDisabled, onToggle }) {
+  const containerRef = useRef(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(300);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setViewportHeight(el.clientHeight || 300);
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) setViewportHeight(entry.contentRect.height || 300);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const totalRows = Math.ceil(numbers.length / GRID_COLUMNS);
+  const totalHeight = totalRows * GRID_ROW_HEIGHT;
+
+  const startRow = Math.max(0, Math.floor(scrollTop / GRID_ROW_HEIGHT) - GRID_BUFFER_ROWS);
+  const rowsInView = Math.ceil(viewportHeight / GRID_ROW_HEIGHT) + GRID_BUFFER_ROWS * 2;
+  const endRow = Math.min(totalRows, startRow + rowsInView);
+
+  const startIndex = startRow * GRID_COLUMNS;
+  const endIndex = Math.min(numbers.length, endRow * GRID_COLUMNS);
+  const visibleSlice = numbers.slice(startIndex, endIndex);
+
+  return (
+    <div
+      ref={containerRef}
+      onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+      style={{ overflowY: 'auto', paddingRight: '4px', flex: 1 }}
+    >
+      <div style={{ height: totalHeight, position: 'relative' }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: startRow * GRID_ROW_HEIGHT,
+            left: 0,
+            right: 0,
+            display: 'grid',
+            gridTemplateColumns: `repeat(${GRID_COLUMNS}, 1fr)`,
+            gap: '4px',
+            alignContent: 'start'
+          }}
+        >
+          {visibleSlice.map((num) => {
+            const isMine = myPickedSet.has(num);
+            const isOthers = allPickedSet.has(num) && !isMine;
+            return (
+              <NumberButton
+                key={num}
+                num={num}
+                disabled={isDisabled(isMine)}
+                isMine={isMine}
+                isOthers={isOthers}
+                onClick={onToggle}
+              />
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 });
 
@@ -859,6 +943,22 @@ export default function App() {
     }
   }, [phase10, phase20, phase50, phase100, isBanned, myPickedSet10, myPickedSet20, myPickedSet50, myPickedSet100, mainWallet, playWallet, socket, userId, userName]);
 
+  // Stable per-board handlers for the virtualized NumberGrid (keeps React.memo effective)
+  const onToggle10 = useCallback((num) => toggleNumber(num, 10), [toggleNumber]);
+  const onToggle20 = useCallback((num) => toggleNumber(num, 20), [toggleNumber]);
+  const onToggle50 = useCallback((num) => toggleNumber(num, 50), [toggleNumber]);
+  const onToggle100 = useCallback((num) => toggleNumber(num, 100), [toggleNumber]);
+
+  const hasEnoughMoney10 = (Number(mainWallet) + Number(playWallet)) >= 10;
+  const hasEnoughMoney20 = (Number(mainWallet) + Number(playWallet)) >= 20;
+  const hasEnoughMoney50 = (Number(mainWallet) + Number(playWallet)) >= 50;
+  const hasEnoughMoney100 = (Number(mainWallet) + Number(playWallet)) >= 100;
+
+  const isDisabled10 = useCallback((isMine) => phase10 !== 'selecting' || isBanned || (!hasEnoughMoney10 && !isMine), [phase10, isBanned, hasEnoughMoney10]);
+  const isDisabled20 = useCallback((isMine) => phase20 !== 'selecting' || isBanned || (!hasEnoughMoney20 && !isMine), [phase20, isBanned, hasEnoughMoney20]);
+  const isDisabled50 = useCallback((isMine) => isBanned || (!hasEnoughMoney50 && !isMine), [isBanned, hasEnoughMoney50]);
+  const isDisabled100 = useCallback((isMine) => isBanned || (!hasEnoughMoney100 && !isMine), [isBanned, hasEnoughMoney100]);
+
   const handleDeposit = async () => {
     if (!depAmount || Number(depAmount) <= 0) return alert("እባክዎ ትክክለኛ መጠን ይስጡ!");
     if (!pastedSMS.trim()) return alert("እባክዎ የቴሌብር SMS መልእክትዎትን ድራፍ አድርገው ያስገቡ!");
@@ -955,6 +1055,7 @@ export default function App() {
         * { box-sizing: border-box !important; }
         @keyframes arrowSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .spin-arrow-container { animation: arrowSpin 0.3s linear infinite; }
+        @keyframes pulseUrgent { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #312e81; border-radius: 4px; }
       `}} />
@@ -1031,25 +1132,30 @@ export default function App() {
                   <button onClick={() => fetchUserData()} style={{ backgroundColor: '#1e1b4b', color: '#22c55e', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Refresh</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId10}</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount10}</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>10 ETB</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash10} ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId10}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount10}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>10 ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash10} ETB</div></div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: phase10 === 'spinning' ? (allPickedNumbers10.length > 0 ? '#dc2626' : '#6b7280') : '#22c55e', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
+                    <div style={{
+                      background: phase10 === 'spinning'
+                        ? (allPickedNumbers10.length > 0 ? 'linear-gradient(90deg, #dc2626, #991b1b)' : 'linear-gradient(90deg, #6b7280, #4b5563)')
+                        : (selectionTime10 <= 10 ? 'linear-gradient(90deg, #f59e0b, #dc2626)' : 'linear-gradient(90deg, #22c55e, #16a34a)'),
+                      padding: '6px', borderRadius: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                      animation: (phase10 === 'selecting' && selectionTime10 <= 10) ? 'pulseUrgent 1s ease-in-out infinite' : 'none'
+                    }}>
                       {phase10 === 'spinning' ? (allPickedNumbers10.length > 0 ? 'ቁጥር እያሰበሰበ ነው...' : '⚠️ ማንም ቁጥር አልመረጠም!') : 'የምረጣ ጊዜ ' + selectionTime10 + ' S'}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
-                      {visibleNumbers.map((num) => {
-                        const isMine = myPickedSet10.has(num);
-                        const isOthers = allPickedSet10.has(num) && !isMine;
-                        const hasEnoughMoney = (Number(mainWallet) + Number(playWallet)) >= 10;
-                        const isDisabled = phase10 !== 'selecting' || isBanned || (!hasEnoughMoney && !isMine);
-                        return <NumberButton key={num} num={num} disabled={isDisabled} isMine={isMine} isOthers={isOthers} onClick={() => toggleNumber(num, 10)} />;
-                      })}
-                    </div>
+                    <NumberGrid
+                      numbers={visibleNumbers}
+                      myPickedSet={myPickedSet10}
+                      allPickedSet={allPickedSet10}
+                      isDisabled={isDisabled10}
+                      onToggle={onToggle10}
+                    />
                   </div>
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
                     <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -1104,25 +1210,30 @@ export default function App() {
                   <button onClick={() => fetchUserData()} style={{ backgroundColor: '#1e1b4b', color: '#22c55e', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Refresh</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId20}</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount20}</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0284c7' }}>20 ETB</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash20} ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId20}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount20}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0284c7' }}>20 ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash20} ETB</div></div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: phase20 === 'spinning' ? (allPickedNumbers20.length > 0 ? '#dc2626' : '#6b7280') : '#0284c7', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
+                    <div style={{
+                      background: phase20 === 'spinning'
+                        ? (allPickedNumbers20.length > 0 ? 'linear-gradient(90deg, #dc2626, #991b1b)' : 'linear-gradient(90deg, #6b7280, #4b5563)')
+                        : (selectionTime20 <= 10 ? 'linear-gradient(90deg, #f59e0b, #dc2626)' : 'linear-gradient(90deg, #0284c7, #0369a1)'),
+                      padding: '6px', borderRadius: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                      animation: (phase20 === 'selecting' && selectionTime20 <= 10) ? 'pulseUrgent 1s ease-in-out infinite' : 'none'
+                    }}>
                       {phase20 === 'spinning' ? (allPickedNumbers20.length > 0 ? 'ቁጥር እያሰበሰበ ነው...' : '⚠️ ማንም ቁጥር አልመረጠም!') : 'የምረጣ ጊዜ ' + selectionTime20 + ' S'}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
-                      {visibleNumbers.map((num) => {
-                        const isMine = myPickedSet20.has(num);
-                        const isOthers = allPickedSet20.has(num) && !isMine;
-                        const hasEnoughMoney = (Number(mainWallet) + Number(playWallet)) >= 20;
-                        const isDisabled = phase20 !== 'selecting' || isBanned || (!hasEnoughMoney && !isMine);
-                        return <NumberButton key={num} num={num} disabled={isDisabled} isMine={isMine} isOthers={isOthers} onClick={() => toggleNumber(num, 20)} />;
-                      })}
-                    </div>
+                    <NumberGrid
+                      numbers={visibleNumbers}
+                      myPickedSet={myPickedSet20}
+                      allPickedSet={allPickedSet20}
+                      isDisabled={isDisabled20}
+                      onToggle={onToggle20}
+                    />
                   </div>
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
                     <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -1177,25 +1288,23 @@ export default function App() {
                   <button onClick={() => fetchUserData()} style={{ backgroundColor: '#1e1b4b', color: '#22c55e', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Refresh</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId50}</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount50}</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#8b5cf6' }}>50 ETB</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash50} ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId50}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount50}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#8b5cf6' }}>50 ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash50} ETB</div></div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: '#8b5cf6', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
+                    <div style={{ background: 'linear-gradient(90deg, #8b5cf6, #6d28d9)', padding: '6px', borderRadius: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>
                       Weekly: ቅዳሜ ማታ 12:00
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
-                      {visibleNumbers.map((num) => {
-                        const isMine = myPickedSet50.has(num);
-                        const isOthers = allPickedSet50.has(num) && !isMine;
-                        const hasEnoughMoney = (Number(mainWallet) + Number(playWallet)) >= 50;
-                        const isDisabled = isBanned || (!hasEnoughMoney && !isMine);
-                        return <NumberButton key={num} num={num} disabled={isDisabled} isMine={isMine} isOthers={isOthers} onClick={() => toggleNumber(num, 50)} />;
-                      })}
-                    </div>
+                    <NumberGrid
+                      numbers={visibleNumbers}
+                      myPickedSet={myPickedSet50}
+                      allPickedSet={allPickedSet50}
+                      isDisabled={isDisabled50}
+                      onToggle={onToggle50}
+                    />
                   </div>
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
                     <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -1231,25 +1340,23 @@ export default function App() {
                   <button onClick={() => fetchUserData()} style={{ backgroundColor: '#1e1b4b', color: '#22c55e', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Refresh</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId100}</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount100}</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>100 ETB</div></div>
-                  <div style={{ backgroundColor: '#1e1b4b', padding: '6px 2px', borderRadius: '6px', textAlign: 'center' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash100} ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId100}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount100}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>100 ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash100} ETB</div></div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: '#eab308', color: '#000', padding: '5px', borderRadius: '6px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>
+                    <div style={{ background: 'linear-gradient(90deg, #facc15, #eab308)', color: '#1a1400', padding: '6px', borderRadius: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>
                       Weekly: ቅዳሜ ማታ 12:05
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', overflowY: 'auto', alignContent: 'start', paddingRight: '4px', flex: 1 }}>
-                      {visibleNumbers.map((num) => {
-                        const isMine = myPickedSet100.has(num);
-                        const isOthers = allPickedSet100.has(num) && !isMine;
-                        const hasEnoughMoney = (Number(mainWallet) + Number(playWallet)) >= 100;
-                        const isDisabled = isBanned || (!hasEnoughMoney && !isMine);
-                        return <NumberButton key={num} num={num} disabled={isDisabled} isMine={isMine} isOthers={isOthers} onClick={() => toggleNumber(num, 100)} />;
-                      })}
-                    </div>
+                    <NumberGrid
+                      numbers={visibleNumbers}
+                      myPickedSet={myPickedSet100}
+                      allPickedSet={allPickedSet100}
+                      isDisabled={isDisabled100}
+                      onToggle={onToggle100}
+                    />
                   </div>
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
                     <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>

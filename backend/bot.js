@@ -34,28 +34,52 @@ if (bot) {
     }
   }).catch(err => console.error('ChatMenuButton error:', err));
 
-  // 3. Main Inline Keyboard Menu (Play 🎮 ብቻ)
-  const mainInlineMenu = new InlineKeyboard()
-    .text('Play 🎮', 'play').text('Register 📝', 'register').row()
-    .text('Check Balance 💵', 'check_balance').text('Deposit 💵', 'deposit').row()
-    .text('Withdraw 🤑', 'withdraw').text('Invite 🔗', 'invite').row()
-    .text('Instruction 📖', 'instruction').text('Contact Support ☎️', 'support').row()
-    .text('Convert Bonus 💱', 'convert');
+  // 3. Main Inline Keyboard Menu — Play 🎮 button is built dynamically per-user
+  //    (registered users get a direct WebApp button, unregistered users get the registration prompt)
+  const buildMainMenu = (isRegistered) => {
+    const kb = new InlineKeyboard();
+    if (isRegistered) {
+      kb.webApp('Play 🎮', WEB_APP_URL).text('Register 📝', 'register').row();
+    } else {
+      kb.text('Play 🎮', 'play').text('Register 📝', 'register').row();
+    }
+    kb.text('Check Balance 💵', 'check_balance').text('Deposit 💵', 'deposit').row()
+      .text('Withdraw 🤑', 'withdraw').text('Invite 🔗', 'invite').row()
+      .text('Instruction 📖', 'instruction').text('Contact Support ☎️', 'support').row()
+      .text('Convert Bonus 💱', 'convert');
+    return kb;
+  };
+
+  const isUserRegistered = async (userId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/user?id=${userId}&userId=${userId}`);
+      if (!res.ok) return false;
+      const data = await res.json();
+      const userObj = data.user || data;
+      return !!(userObj && userObj.phone && userObj.phone !== "አልተመዘገበም" && String(userObj.phone).trim() !== "");
+    } catch (err) {
+      console.error('Registration check error:', err);
+      return false;
+    }
+  };
 
   // የሜኑ መልእክቱን የሚልክ የተለመደ ተግባር (Function)
   const sendMainMenu = async (ctx) => {
     const captionText = "👋 Welcome to Fetan Lottery! Choose an option below.\n\nእንኳን ወደ Fetan Lottery በደህና መጡ! ከታች ያሉትን ቁልፎች በመጠቀም ጨዋታውን መጫወት ይችላሉ።";
+    const userId = String(ctx.from?.id);
+    const registered = await isUserRegistered(userId);
+    const menu = buildMainMenu(registered);
 
     try {
       await ctx.replyWithPhoto(BANNER_IMAGE_URL, {
         caption: captionText,
-        reply_markup: mainInlineMenu,
+        reply_markup: menu,
         disable_notification: false
       });
     } catch (err) {
       console.error('Photo send error:', err);
       await ctx.reply(captionText, { 
-        reply_markup: mainInlineMenu,
+        reply_markup: menu,
         disable_notification: false 
       });
     }
@@ -254,8 +278,22 @@ Coin:         ${coin}`;
 
   // Direct command handlers for menu items
   bot.command('play', async (ctx) => {
-    const playKeyboard = new InlineKeyboard().webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
-    await ctx.reply("🎯 ለመጫወት ከታች ያለውን ቁልፍ ይጫኑ፡", { reply_markup: playKeyboard, disable_notification: false });
+    const userId = String(ctx.from?.id);
+    const registered = await isUserRegistered(userId);
+    if (registered) {
+      const playKeyboard = new InlineKeyboard().webApp("🎮 አሁኑኑ ተጫወት (Play Now)", WEB_APP_URL);
+      await ctx.reply("🎯 ለመጫወት ከታች ያለውን ቁልፍ ይጫኑ፡", { reply_markup: playKeyboard, disable_notification: false });
+    } else {
+      const contactKeyboard = new Keyboard()
+        .requestContact("📱 ስልክ ቁጥር አጋራ (Share Contact)")
+        .resized()
+        .oneTime();
+      await ctx.reply(
+        "⚠️ ለመጫወት አስቀድመው መመዝገብ አለብዎት!\n\n" +
+        "እባክዎን መጀመሪያ 'Register 📝' በማድረግ ወይም ከታች ያለውን '📱 ስልክ ቁጥር አጋራ (Share Contact)' ቁልፍ ተጭነው ስልክ ቁጥርዎን ያጋሩ፡",
+        { reply_markup: contactKeyboard, disable_notification: false }
+      );
+    }
   });
 
   bot.command('register', async (ctx) => {
@@ -408,6 +446,7 @@ Coin:         ${coin}`;
           disable_notification: false
         }
       );
+      await sendMainMenu(ctx);
     } catch (err) {
       console.error('Phone update fetch error:', err);
       await ctx.reply(
