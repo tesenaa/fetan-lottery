@@ -456,7 +456,7 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
       phone: phone || '',
       phoneBonusReceived: isPhoneProvided,
       mainWallet: 0,
-      playWallet: isPhoneProvided ? 20 : 0,
+      playWallet: isPhoneProvided ? 10 : 0,
       totalInvite: 0,
       invitedCount: 0,
       hasReceivedInviteBonus: false,
@@ -471,7 +471,7 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
     }
   } else if (phone && !dbUser.phoneBonusReceived) {
     dbUser.phone = phone;
-    dbUser.playWallet += 20;
+    dbUser.playWallet += 10;
     dbUser.phoneBonusReceived = true;
     await dbUser.save();
     if (bot) {
