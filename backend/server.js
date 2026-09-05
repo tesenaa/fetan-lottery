@@ -9,6 +9,7 @@ import https from 'https';
 import mongoose from 'mongoose';
 import { bot } from './bot.js';
 import { webhookCallback, InlineKeyboard } from 'grammy';
+import { telebirrRoutes } from './telebirr/routes.js';
 
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
 const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_ID || process.env.ADMIN_ID || "494653076";
@@ -57,9 +58,11 @@ const depositSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
   userName: { type: String, default: '' },
   amount: { type: Number, required: true },
-  pastedText: { type: String, required: true },
+  pastedText: { type: String, default: '' }, // only used by the manual SMS-paste flow
   transactionId: { type: String, default: null, index: true },
-  status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
+  status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED', 'FAILED'], default: 'PENDING' },
+  method: { type: String, enum: ['MANUAL_SMS', 'TELEBIRR_AUTO'], default: 'MANUAL_SMS' },
+  prepayId: { type: String, default: null }, // Telebirr order id, for the auto flow
   processedBy: { type: String, default: null },
   telegramMessageId: { type: Number, default: null },
   createdAt: { type: Date, default: Date.now, expires: 7776000 }
@@ -691,6 +694,12 @@ const handleDepositRequest = async (req, res) => {
 
 app.post('/api/deposit', handleDepositRequest);
 app.post('/api/deposit-request', handleDepositRequest);
+
+// --- Telebirr Fabric Gateway automated deposit + webhook routes ---
+// See ./telebirr/*.js. Kept as separate endpoints alongside the existing
+// manual SMS-paste flow above, so you can roll this out gradually and
+// keep the manual flow as a fallback while testing.
+app.use('/api/telebirr', telebirrRoutes({ Deposit, User, notifyUserBalanceUpdate }));
 
 app.get('/api/admin/settings', checkAdminAuth, async (req, res) => {
   try {
