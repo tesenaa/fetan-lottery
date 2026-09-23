@@ -21,17 +21,20 @@ function formatCountdown(totalSeconds) {
 }
 
 const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) => {
-  let background = 'linear-gradient(160deg, #32324a, #24243a)';
-  let borderColor = '#40405e';
-  let boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04)';
+  let background = 'linear-gradient(160deg, #2e2e48, #1c1c32)';
+  let borderColor = '#3a3a5e';
+  let boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.4)';
+  let textColor = '#cbd5e1';
   if (isMine) {
-    background = 'linear-gradient(160deg, #34d399, #16a34a)';
-    borderColor = '#4ade80';
-    boxShadow = '0 0 8px rgba(52, 211, 153, 0.45), inset 0 1px 0 rgba(255,255,255,0.15)';
+    background = 'linear-gradient(160deg, #34d399, #059669)';
+    borderColor = '#6ee7b7';
+    boxShadow = '0 0 10px rgba(52, 211, 153, 0.55), inset 0 1px 0 rgba(255,255,255,0.25)';
+    textColor = '#ffffff';
   } else if (isOthers) {
-    background = 'linear-gradient(160deg, #f87171, #dc2626)';
-    borderColor = '#fca5a5';
-    boxShadow = '0 0 8px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255,255,255,0.12)';
+    background = 'linear-gradient(160deg, #fb7185, #dc2626)';
+    borderColor = '#fda4af';
+    boxShadow = '0 0 10px rgba(239, 68, 68, 0.45), inset 0 1px 0 rgba(255,255,255,0.2)';
+    textColor = '#ffffff';
   }
   return (
     <button
@@ -40,19 +43,23 @@ const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) =
       style={{
         padding: '8px 0',
         background,
-        color: '#ffffff',
+        color: textColor,
         border: `1px solid ${borderColor}`,
-        borderRadius: '6px',
+        borderRadius: '8px',
         fontSize: '11px',
-        fontWeight: 'bold',
+        fontWeight: '800',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.55 : 1,
+        opacity: disabled ? 0.5 : 1,
         boxShadow,
-        transition: 'transform 0.08s ease, box-shadow 0.15s ease',
+        transition: 'transform 0.08s ease, box-shadow 0.18s ease, filter 0.18s ease',
         touchAction: 'manipulation',
         WebkitTapHighlightColor: 'transparent',
-        willChange: 'transform'
+        willChange: 'transform',
+        letterSpacing: '0.3px'
       }}
+      onMouseDown={(e) => { if (!disabled) e.currentTarget.style.transform = 'scale(0.92)'; }}
+      onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
     >
       {num}
     </button>
@@ -67,9 +74,8 @@ const NumberButton = React.memo(({ num, isMine, isOthers, disabled, onClick }) =
 });
 
 // Virtualized number grid: renders only the rows near the visible scroll area
-// instead of all 1000 number buttons at once (big DOM/render cost saver on mobile).
 const GRID_COLUMNS = 5;
-const GRID_ROW_HEIGHT = 34; // approx button height (8px*2 padding + text + border) + 4px gap
+const GRID_ROW_HEIGHT = 34;
 const GRID_BUFFER_ROWS = 4;
 
 const NumberGrid = React.memo(function NumberGrid({ numbers, myPickedSet, allPickedSet, isDisabled, onToggle }) {
@@ -104,7 +110,16 @@ const NumberGrid = React.memo(function NumberGrid({ numbers, myPickedSet, allPic
     <div
       ref={containerRef}
       onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
-      style={{ overflowY: 'auto', paddingRight: '4px', flex: 1 }}
+      style={{
+        overflowY: 'auto',
+        paddingRight: '4px',
+        flex: 1,
+        background: 'linear-gradient(180deg, #0f0f24, #0a0a1c)',
+        borderRadius: '10px',
+        padding: '6px',
+        border: '1px solid #23234a',
+        boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.5)'
+      }}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
         <div
@@ -149,7 +164,6 @@ export default function App() {
   }, [tgUser]);
   const userPhoto = tgUser?.photo_url || null;
 
-  // ADMIN ROLES CHECK
   const isSuperAdmin = useMemo(() => String(userId) === String(SUPER_ADMIN_ID), [userId]);
   const isAdmin = isSuperAdmin;
 
@@ -164,7 +178,7 @@ export default function App() {
   }), [userId]);
 
   const [currentTab, setCurrentTab] = useState('game');
-  const [currentScreen, setCurrentScreen] = useState('home'); // 'home', 'board10', 'board20', 'board50', 'board100'
+  const [currentScreen, setCurrentScreen] = useState('home');
   const [registeredCount, setRegisteredCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
   const [walletTab, setWalletTab] = useState('balance');
@@ -174,13 +188,11 @@ export default function App() {
   const [totalInvite, setTotalInvite] = useState(0);
   const [totalGames, setTotalGames] = useState(0);
 
-  // Helper to generate FL + 6 digit random number
   const generateRandomGameId = () => {
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     return `FL-${randomNum}`;
   };
 
-  // INDEPENDENT STATES FOR STAKE 10, 20, 50, AND 100
   const [selectedNumbers10, setSelectedNumbers10] = useState([]);
   const [allPickedNumbers10, setAllPickedNumbers10] = useState([]);
   const [playerCount10, setPlayerCount10] = useState(0);
@@ -201,7 +213,6 @@ export default function App() {
   const [winnerInfo20, setWinnerInfo20] = useState(null);
   const [currentGameId20, setCurrentGameId20] = useState(generateRandomGameId());
 
-  // PLAY 50 & PLAY 100 (WEEKLY INDEPENDENT)
   const [selectedNumbers50, setSelectedNumbers50] = useState([]);
   const [allPickedNumbers50, setAllPickedNumbers50] = useState([]);
   const [playerCount50, setPlayerCount50] = useState(0);
@@ -231,7 +242,6 @@ export default function App() {
   const myPickedSet100 = useMemo(() => new Set(selectedNumbers100), [selectedNumbers100]);
   const allPickedSet100 = useMemo(() => new Set(allPickedNumbers100), [allPickedNumbers100]);
 
-  // DEPOSIT & WITHDRAW STATES
   const [depAmount, setDepAmount] = useState('200');
   const [pastedSMS, setPastedSMS] = useState('');
   const [isSubmittingDep, setIsSubmittingDep] = useState(false);
@@ -239,7 +249,6 @@ export default function App() {
   const [gameHistory, setGameHistory] = useState([]);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // ADMIN STATES
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminSearch, setAdminSearch] = useState('');
   const [editingUser, setEditingUser] = useState(null);
@@ -253,7 +262,6 @@ export default function App() {
   const [financialStats, setFinancialStats] = useState(null);
   const [broadcastText, setBroadcastText] = useState('');
 
-  // SYSTEM SETTINGS STATE
   const [sysSettings, setSysSettings] = useState({
     ticketPrice: 10,
     winnerPercentage: 80,
@@ -943,7 +951,6 @@ export default function App() {
     }
   }, [phase10, phase20, phase50, phase100, isBanned, myPickedSet10, myPickedSet20, myPickedSet50, myPickedSet100, mainWallet, playWallet, socket, userId, userName]);
 
-  // Stable per-board handlers for the virtualized NumberGrid (keeps React.memo effective)
   const onToggle10 = useCallback((num) => toggleNumber(num, 10), [toggleNumber]);
   const onToggle20 = useCallback((num) => toggleNumber(num, 20), [toggleNumber]);
   const onToggle50 = useCallback((num) => toggleNumber(num, 50), [toggleNumber]);
@@ -1049,75 +1056,245 @@ export default function App() {
     return activeTxList.filter(t => t.status === txFilter);
   }, [activeTxList, txFilter]);
 
+  // Shared visual helpers
+  const cardStyle = {
+    background: 'linear-gradient(160deg, #1a1a36, #12122a)',
+    border: '1px solid #2a2a52',
+    borderRadius: '14px',
+    boxShadow: '0 4px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04)'
+  };
+
+  const navBtnStyle = (active) => ({
+    background: 'none',
+    border: 'none',
+    color: active ? '#fbbf24' : '#8b8ba7',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    cursor: 'pointer',
+    fontSize: '11px',
+    fontWeight: 'bold',
+    gap: '2px',
+    transition: 'color 0.2s ease, transform 0.15s ease',
+    transform: active ? 'translateY(-2px)' : 'none',
+    filter: active ? 'drop-shadow(0 0 8px rgba(251,191,36,0.6))' : 'none'
+  });
+
   return (
-    <div style={{ maxWidth: '500px', width: '100%', margin: '0 auto', backgroundColor: '#0c0c1e', color: '#ffffff', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', boxSizing: 'border-box', overflow: 'hidden' }}>
+    <div style={{
+      maxWidth: '500px',
+      width: '100%',
+      margin: '0 auto',
+      background: 'radial-gradient(circle at 50% 0%, #1a1a3e 0%, #0c0c1e 55%, #05050f 100%)',
+      color: '#ffffff',
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      boxSizing: 'border-box',
+      overflow: 'hidden'
+    }}>
       <style dangerouslySetInnerHTML={{ __html: `
         * { box-sizing: border-box !important; }
         @keyframes arrowSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .spin-arrow-container { animation: arrowSpin 0.3s linear infinite; }
-        @keyframes pulseUrgent { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #312e81; border-radius: 4px; }
+        @keyframes pulseUrgent { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.75; transform: scale(0.995); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 12px rgba(251,191,36,0.35); } 50% { box-shadow: 0 0 24px rgba(251,191,36,0.65); } }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        @keyframes floatIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        .fade-in-up { animation: fadeInUp 0.35s ease-out both; }
+        .float-in { animation: floatIn 0.35s ease-out both; }
+        input, textarea { outline: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; font-family: inherit; }
+        input:focus, textarea:focus { border-color: #6366f1 !important; box-shadow: 0 0 0 3px rgba(99,102,241,0.18); }
+        button { transition: filter 0.15s ease, transform 0.08s ease, box-shadow 0.2s ease; }
+        button:hover:not(:disabled) { filter: brightness(1.08); }
+        button:active:not(:disabled) { transform: scale(0.97); }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #4338ca, #312e81); border-radius: 6px; }
       `}} />
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', width: '100%', alignItems: 'center' }}>
         {currentTab === 'game' && (
           <>
             {currentScreen === 'home' && (
-              <div style={{ flex: 1, width: '100%', maxWidth: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
-                <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center', width: '100%' }}>
-                  Welcome to <span style={{ color: '#f59e0b' }}>Fetan Lottery</span>
+              <div className="fade-in-up" style={{ flex: 1, width: '100%', maxWidth: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
+                <h1 style={{
+                  fontSize: '30px',
+                  fontWeight: '900',
+                  marginBottom: '6px',
+                  textAlign: 'center',
+                  width: '100%',
+                  letterSpacing: '-0.5px',
+                  background: 'linear-gradient(120deg, #ffffff 0%, #c7d2fe 50%, #ffffff 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  filter: 'drop-shadow(0 2px 12px rgba(99,102,241,0.35))'
+                }}>
+                  Welcome to <span style={{ background: 'linear-gradient(120deg, #fbbf24, #f59e0b, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Fetan Lottery</span>
                 </h1>
+                <div style={{ fontSize: '12px', color: '#8b8ba7', marginBottom: '22px', letterSpacing: '1.5px', textTransform: 'uppercase' }}>✦ የዕድል ጨዋታ ✦</div>
 
                 {isBanned && (
-                  <div style={{ backgroundColor: '#ef4444', color: '#fff', padding: '12px', borderRadius: '8px', marginBottom: '16px', textAlign: 'center', width: '100%', fontWeight: 'bold' }}>
+                  <div className="float-in" style={{
+                    background: 'linear-gradient(160deg, #ef4444, #b91c1c)',
+                    color: '#fff',
+                    padding: '14px',
+                    borderRadius: '12px',
+                    marginBottom: '16px',
+                    textAlign: 'center',
+                    width: '100%',
+                    fontWeight: 'bold',
+                    boxShadow: '0 4px 18px rgba(239,68,68,0.4)',
+                    border: '1px solid #fca5a5'
+                  }}>
                     ⚠️ አካውንትዎ ታግዶ በድርጊት መሳተፍ አይችሉም!
                   </div>
                 )}
 
-                <div style={{ width: '100%', backgroundColor: '#15152a', border: '1px solid #f59e0b', borderRadius: '16px', padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 0 20px rgba(245, 158, 11, 0.2)', marginBottom: '20px', boxSizing: 'border-box' }}>
-                  <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px', textAlign: 'center' }}>Choose Stake</div>
-                  
-                  <button onClick={() => setCurrentScreen('board10')} style={{ width: '100%', backgroundColor: '#22c55e', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px', textAlign: 'center' }}>
+                <div className="float-in" style={{
+                  ...cardStyle,
+                  width: '100%',
+                  padding: '22px 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  boxShadow: '0 0 26px rgba(245, 158, 11, 0.18), inset 0 1px 0 rgba(255,255,255,0.05)',
+                  marginBottom: '18px'
+                }}>
+                  <div style={{
+                    fontSize: '13px',
+                    color: '#fbbf24',
+                    fontWeight: '800',
+                    marginBottom: '16px',
+                    textAlign: 'center',
+                    letterSpacing: '1.2px',
+                    textTransform: 'uppercase'
+                  }}>⚡ Choose Stake ⚡</div>
+
+                  <button onClick={() => setCurrentScreen('board10')} style={{
+                    width: '100%',
+                    background: 'linear-gradient(120deg, #22c55e, #16a34a)',
+                    color: '#ffffff',
+                    border: '1px solid #4ade80',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    fontSize: '15px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    marginBottom: '10px',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 16px rgba(34,197,94,0.35)',
+                    letterSpacing: '0.5px'
+                  }}>
                     ► Play 10 ETB
                   </button>
-                  <button onClick={() => setCurrentScreen('board20')} style={{ width: '100%', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px', textAlign: 'center' }}>
+                  <button onClick={() => setCurrentScreen('board20')} style={{
+                    width: '100%',
+                    background: 'linear-gradient(120deg, #0ea5e9, #0369a1)',
+                    color: '#ffffff',
+                    border: '1px solid #38bdf8',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    fontSize: '15px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    marginBottom: '4px',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 16px rgba(14,165,233,0.35)',
+                    letterSpacing: '0.5px'
+                  }}>
                     ► Play 20 ETB
                   </button>
+                </div>
+
+                <div className="float-in" style={{
+                  ...cardStyle,
+                  width: '100%',
+                  padding: '22px 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  boxShadow: '0 0 26px rgba(245, 158, 11, 0.18), inset 0 1px 0 rgba(255,255,255,0.05)',
+                  marginBottom: '18px'
+                }}>
+                  <div style={{
+                    fontSize: '13px',
+                    color: '#fbbf24',
+                    fontWeight: '800',
+                    marginBottom: '16px',
+                    textAlign: 'center',
+                    letterSpacing: '1.2px',
+                    textTransform: 'uppercase'
+                  }}>🏆 Weekly Game 🏆</div>
+
+                  <button onClick={() => setCurrentScreen('board50')} style={{
+                    width: '100%',
+                    background: 'linear-gradient(120deg, #8b5cf6, #6d28d9)',
+                    color: '#ffffff',
+                    border: '1px solid #a78bfa',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    fontSize: '15px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 16px rgba(139,92,246,0.4)',
+                    letterSpacing: '0.5px'
+                  }}>
+                    ► Play 50 ETB
+                  </button>
+                  <div style={{ textAlign: 'center', fontSize: '11px', color: '#facc15', marginTop: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>
+                    📅 weekly (ቅዳሜ ማታ 12:00)
                   </div>
 
-                 {/* Play 50 (Weekly - Saturday 12:00) */}
-                   <div style={{ width: '100%', backgroundColor: '#15152a', border: '1px solid #f59e0b', borderRadius: '16px', padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 0 20px rgba(245, 158, 11, 0.2)', marginBottom: '20px', boxSizing: 'border-box' }}>
-                    <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '16px', textAlign: 'center' }}>Weekly Game</div>
-                 
-                    <button onClick={() => setCurrentScreen('board50')} style={{ width: '100%', backgroundColor: '#2481cc', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>
-                      ► Play 50 ETB
-                    </button>
-                    <div style={{ textAlign: 'center', fontSize: '11px', color: '#facc15', marginTop: '4px', fontWeight: 'bold' }}>
-                      weekly (ቅዳሜ ማታ 12:00)
-                    
-                  </div>
-
-                  {/* Play 100 (Weekly - Saturday 12:05) */}
-                  
-                    <button onClick={() => setCurrentScreen('board100')} style={{ width: '100%', backgroundColor: '#22c55e', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>
-                      ► Play 100 ETB
-                    </button>
-                    <div style={{ textAlign: 'center', fontSize: '11px', color: '#facc15', marginTop: '4px', fontWeight: 'bold' }}>
-                      weekly (ቅዳሜ ማታ 12:05)
-                    
+                  <button onClick={() => setCurrentScreen('board100')} style={{
+                    width: '100%',
+                    background: 'linear-gradient(120deg, #eab308, #a16207)',
+                    color: '#1a1400',
+                    border: '1px solid #facc15',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    fontSize: '15px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    marginTop: '14px',
+                    boxShadow: '0 4px 16px rgba(234,179,8,0.4)',
+                    letterSpacing: '0.5px'
+                  }}>
+                    ► Play 100 ETB
+                  </button>
+                  <div style={{ textAlign: 'center', fontSize: '11px', color: '#facc15', marginTop: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>
+                    📅 weekly (ቅዳሜ ማታ 12:05)
                   </div>
                 </div>
 
                 {isSuperAdmin && (
-                  <div style={{ width: '100%', backgroundColor: '#1b1b38', borderRadius: '16px', padding: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', boxSizing: 'border-box', border: '1px solid #2d2d50', alignItems: 'center' }}>
+                  <div className="float-in" style={{
+                    width: '100%',
+                    ...cardStyle,
+                    padding: '20px',
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px',
+                    alignItems: 'center',
+                    border: '1px solid #2d2d58'
+                  }}>
                     <div style={{ width: '100%' }}>
-                      <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{activeCount}</div>
-                      <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Active Users</div>
+                      <div style={{ fontSize: '26px', fontWeight: '900', color: '#38bdf8', textShadow: '0 0 14px rgba(56,189,248,0.5)' }}>{activeCount}</div>
+                      <div style={{ fontSize: '11px', color: '#8b8ba7', marginTop: '4px', letterSpacing: '1px', textTransform: 'uppercase' }}>Active Users</div>
                     </div>
-                    <div style={{ width: '100%', borderTop: '1px solid #2d2d50', paddingTop: '12px' }}>
-                      <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{registeredCount}</div>
-                      <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Registered Users</div>
+                    <div style={{ width: '100%', borderTop: '1px solid #2d2d58', paddingTop: '14px' }}>
+                      <div style={{ fontSize: '26px', fontWeight: '900', color: '#22c55e', textShadow: '0 0 14px rgba(34,197,94,0.5)' }}>{registeredCount}</div>
+                      <div style={{ fontSize: '11px', color: '#8b8ba7', marginTop: '4px', letterSpacing: '1px', textTransform: 'uppercase' }}>Registered Users</div>
                     </div>
                   </div>
                 )}
@@ -1126,28 +1303,35 @@ export default function App() {
 
             {/* SEPARATE BOARD FOR 10 ETB */}
             {currentScreen === 'board10' && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', backgroundColor: '#0a0a16', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%' }}>
-                  <button onClick={() => setCurrentScreen('home')} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>← Back</button>
-                  <button onClick={() => fetchUserData()} style={{ backgroundColor: '#1e1b4b', color: '#22c55e', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Refresh</button>
+              <div className="fade-in-up" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'linear-gradient(180deg, #0e0e22, #0a0a16)', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%', boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
+                  <button onClick={() => setCurrentScreen('home')} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>← Back</button>
+                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#22c55e', letterSpacing: '1px' }}>🎯 10 ETB BOARD</div>
+                  <button onClick={() => fetchUserData()} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#22c55e', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>🔄</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId10}</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount10}</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>10 ETB</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash10} ETB</div></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', padding: '8px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>GAME ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#fbbf24' }}>{currentGameId10}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>PLAYERS</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount10}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>STAKE</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>10 ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>DERASH</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash10} ETB</div></div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
                     <div style={{
                       background: phase10 === 'spinning'
                         ? (allPickedNumbers10.length > 0 ? 'linear-gradient(90deg, #dc2626, #991b1b)' : 'linear-gradient(90deg, #6b7280, #4b5563)')
-                        : (selectionTime10 <= 10 ? 'linear-gradient(90deg, #f59e0b, #dc2626)' : 'linear-gradient(90deg, #22c55e, #16a34a)'),
-                      padding: '6px', borderRadius: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-                      animation: (phase10 === 'selecting' && selectionTime10 <= 10) ? 'pulseUrgent 1s ease-in-out infinite' : 'none'
+                        : (selectionTime10 <= 10 ? 'linear-gradient(90deg, #f59e0b, #dc2626)' : 'linear-gradient(90deg, #22c55e, #15803d)'),
+                      padding: '8px',
+                      borderRadius: '10px',
+                      textAlign: 'center',
+                      fontSize: '11px',
+                      fontWeight: '800',
+                      flexShrink: 0,
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1)',
+                      animation: (phase10 === 'selecting' && selectionTime10 <= 10) ? 'pulseUrgent 1s ease-in-out infinite' : 'none',
+                      letterSpacing: '0.5px'
                     }}>
-                      {phase10 === 'spinning' ? (allPickedNumbers10.length > 0 ? 'ቁጥር እያሰበሰበ ነው...' : '⚠️ ማንም ቁጥር አልመረጠም!') : 'የምረጣ ጊዜ ' + selectionTime10 + ' S'}
+                      {phase10 === 'spinning' ? (allPickedNumbers10.length > 0 ? '✦ ቁጥር እያሰበሰበ ነው...' : '⚠️ ማንም ቁጥር አልመረጠም!') : '⏱ የምረጣ ጊዜ ' + selectionTime10 + ' S'}
                     </div>
                     <NumberGrid
                       numbers={visibleNumbers}
@@ -1158,15 +1342,21 @@ export default function App() {
                     />
                   </div>
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
-                    <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                      <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}> 📌 የተመረጡ ቁጥሮች ({selectedNumbers10.length}): </div>
-                      <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.2', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
+                    <div style={{ ...cardStyle, borderRadius: '10px', padding: '8px 10px', minHeight: '65px', maxHeight: '90px', display: 'flex', flexDirection: 'column', flexShrink: 0, border: '1px solid #312e81' }}>
+                      <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '4px', fontWeight: '800', letterSpacing: '0.3px' }}> 📌 የተመረጡ ({selectedNumbers10.length}) </div>
+                      <div style={{ fontSize: '10px', color: '#c7d2fe', lineHeight: '1.35', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
                         {selectedNumbers10.length > 0 ? selectedNumbers10.join(', ') : 'እስካሁን ማንም አልመረጠም'}
                       </div>
                     </div>
-                    <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
-                      <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}> የቁጥር ማውጣት </div>
-                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: '#0d0d1a', border: winningNumber10 === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber10 !== '?' && winningNumber10 !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: winningNumber10 === 'SPINNING' ? '0 0 20px rgba(0, 242, 254, 0.6)' : (winningNumber10 !== '?' && winningNumber10 !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'), transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ ...cardStyle, borderRadius: '12px', padding: '14px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ fontSize: '11px', fontWeight: '800', marginBottom: '10px', color: '#fbbf24', letterSpacing: '0.8px' }}>🎲 የቁጥር ማውጣት</div>
+                      <div style={{
+                        width: '110px', height: '110px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #1a1a3a, #0a0a1a)',
+                        border: winningNumber10 === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber10 !== '?' && winningNumber10 !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'),
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: winningNumber10 === 'SPINNING' ? '0 0 24px rgba(0, 242, 254, 0.7), inset 0 0 20px rgba(0,242,254,0.25)' : (winningNumber10 !== '?' && winningNumber10 !== 'NONE' ? '0 0 24px rgba(0, 255, 204, 0.7), inset 0 0 20px rgba(0,255,204,0.25)' : '0 0 18px rgba(225, 29, 72, 0.45), inset 0 0 12px rgba(225,29,72,0.15)'),
+                        transition: 'all 0.35s ease', position: 'relative', overflow: 'hidden'
+                      }}>
                         {winningNumber10 === 'SPINNING' ? (
                           <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="80" height="80" viewBox="0 0 100 100">
@@ -1182,7 +1372,7 @@ export default function App() {
                           </div>
                         ) : (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                            <span style={{ fontSize: winningNumber10 === '?' ? '42px' : '38px', fontWeight: 'bold', color: winningNumber10 === '?' ? '#ffffff' : '#00ffcc', textShadow: winningNumber10 === '?' ? 'none' : '0 0 12px #00ffcc', lineHeight: '1', display: 'inline-block', margin: '0', padding: '0' }}>
+                            <span style={{ fontSize: winningNumber10 === '?' ? '44px' : '40px', fontWeight: '900', color: winningNumber10 === '?' ? '#ffffff' : '#00ffcc', textShadow: winningNumber10 === '?' ? 'none' : '0 0 14px #00ffcc', lineHeight: '1', display: 'inline-block', margin: '0', padding: '0' }}>
                               {winningNumber10}
                             </span>
                           </div>
@@ -1190,11 +1380,11 @@ export default function App() {
                       </div>
                     </div>
                     {winnerInfo10 && (
-                      <div style={{ marginTop: '4px', padding: '8px', backgroundColor: '#064e3b', border: '2px solid #10b981', borderRadius: '10px', textAlign: 'center', boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#34d399' }}> 🎉 አሸናፊ አሸነፈ! </div>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '2px 0' }}> 👤 {winnerInfo10.userName} </div>
-                        <div style={{ fontSize: '13px', fontWeight: '900', color: '#facc15' }}> ቁጥር: #{winnerInfo10.number} </div>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '2px' }}> የድረሽ ብር: {winnerInfo10.derash} ETB </div>
+                      <div className="float-in" style={{ marginTop: '4px', padding: '10px', background: 'linear-gradient(160deg, #064e3b, #022c22)', border: '2px solid #10b981', borderRadius: '12px', textAlign: 'center', boxShadow: '0 0 20px rgba(16, 185, 129, 0.5)' }}>
+                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#34d399', letterSpacing: '0.5px' }}> 🎉 አሸናፊ አሸነፈ! </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '4px 0' }}> 👤 {winnerInfo10.userName} </div>
+                        <div style={{ fontSize: '14px', fontWeight: '900', color: '#facc15' }}> ቁጥር: #{winnerInfo10.number} </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '4px' }}> የድረሽ ብር: {winnerInfo10.derash} ETB </div>
                       </div>
                     )}
                   </div>
@@ -1204,28 +1394,35 @@ export default function App() {
 
             {/* SEPARATE BOARD FOR 20 ETB */}
             {currentScreen === 'board20' && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', backgroundColor: '#0a0a16', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%' }}>
-                  <button onClick={() => setCurrentScreen('home')} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>← Back</button>
-                  <button onClick={() => fetchUserData()} style={{ backgroundColor: '#1e1b4b', color: '#22c55e', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Refresh</button>
+              <div className="fade-in-up" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'linear-gradient(180deg, #0e0e22, #0a0a16)', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%', boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
+                  <button onClick={() => setCurrentScreen('home')} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>← Back</button>
+                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#38bdf8', letterSpacing: '1px' }}>🎯 20 ETB BOARD</div>
+                  <button onClick={() => fetchUserData()} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#22c55e', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>🔄</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId20}</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount20}</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0284c7' }}>20 ETB</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash20} ETB</div></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', padding: '8px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>GAME ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#fbbf24' }}>{currentGameId20}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>PLAYERS</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount20}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>STAKE</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0284c7' }}>20 ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>DERASH</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash20} ETB</div></div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
                     <div style={{
                       background: phase20 === 'spinning'
                         ? (allPickedNumbers20.length > 0 ? 'linear-gradient(90deg, #dc2626, #991b1b)' : 'linear-gradient(90deg, #6b7280, #4b5563)')
-                        : (selectionTime20 <= 10 ? 'linear-gradient(90deg, #f59e0b, #dc2626)' : 'linear-gradient(90deg, #0284c7, #0369a1)'),
-                      padding: '6px', borderRadius: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-                      animation: (phase20 === 'selecting' && selectionTime20 <= 10) ? 'pulseUrgent 1s ease-in-out infinite' : 'none'
+                        : (selectionTime20 <= 10 ? 'linear-gradient(90deg, #f59e0b, #dc2626)' : 'linear-gradient(90deg, #0ea5e9, #0369a1)'),
+                      padding: '8px',
+                      borderRadius: '10px',
+                      textAlign: 'center',
+                      fontSize: '11px',
+                      fontWeight: '800',
+                      flexShrink: 0,
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1)',
+                      animation: (phase20 === 'selecting' && selectionTime20 <= 10) ? 'pulseUrgent 1s ease-in-out infinite' : 'none',
+                      letterSpacing: '0.5px'
                     }}>
-                      {phase20 === 'spinning' ? (allPickedNumbers20.length > 0 ? 'ቁጥር እያሰበሰበ ነው...' : '⚠️ ማንም ቁጥር አልመረጠም!') : 'የምረጣ ጊዜ ' + selectionTime20 + ' S'}
+                      {phase20 === 'spinning' ? (allPickedNumbers20.length > 0 ? '✦ ቁጥር እያሰበሰበ ነው...' : '⚠️ ማንም ቁጥር አልመረጠም!') : '⏱ የምረጣ ጊዜ ' + selectionTime20 + ' S'}
                     </div>
                     <NumberGrid
                       numbers={visibleNumbers}
@@ -1236,15 +1433,21 @@ export default function App() {
                     />
                   </div>
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
-                    <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                      <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}> 📌 የተመረጡ ቁጥሮች ({selectedNumbers20.length}): </div>
-                      <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.2', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
+                    <div style={{ ...cardStyle, borderRadius: '10px', padding: '8px 10px', minHeight: '65px', maxHeight: '90px', display: 'flex', flexDirection: 'column', flexShrink: 0, border: '1px solid #312e81' }}>
+                      <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '4px', fontWeight: '800', letterSpacing: '0.3px' }}> 📌 የተመረጡ ({selectedNumbers20.length}) </div>
+                      <div style={{ fontSize: '10px', color: '#c7d2fe', lineHeight: '1.35', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
                         {selectedNumbers20.length > 0 ? selectedNumbers20.join(', ') : 'እስካሁን ማንም አልመረጠም'}
                       </div>
                     </div>
-                    <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
-                      <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}> የቁጥር ማውጣት </div>
-                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: '#0d0d1a', border: winningNumber20 === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber20 !== '?' && winningNumber20 !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'), display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: winningNumber20 === 'SPINNING' ? '0 0 20px rgba(0, 242, 254, 0.6)' : (winningNumber20 !== '?' && winningNumber20 !== 'NONE' ? '0 0 20px rgba(0, 255, 204, 0.6)' : '0 0 15px rgba(225, 29, 72, 0.3)'), transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ ...cardStyle, borderRadius: '12px', padding: '14px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ fontSize: '11px', fontWeight: '800', marginBottom: '10px', color: '#fbbf24', letterSpacing: '0.8px' }}>🎲 የቁጥር ማውጣት</div>
+                      <div style={{
+                        width: '110px', height: '110px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #1a1a3a, #0a0a1a)',
+                        border: winningNumber20 === 'SPINNING' ? '3px solid #00f2fe' : (winningNumber20 !== '?' && winningNumber20 !== 'NONE' ? '3px solid #00ffcc' : '3px solid #e11d48'),
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: winningNumber20 === 'SPINNING' ? '0 0 24px rgba(0, 242, 254, 0.7), inset 0 0 20px rgba(0,242,254,0.25)' : (winningNumber20 !== '?' && winningNumber20 !== 'NONE' ? '0 0 24px rgba(0, 255, 204, 0.7), inset 0 0 20px rgba(0,255,204,0.25)' : '0 0 18px rgba(225, 29, 72, 0.45), inset 0 0 12px rgba(225,29,72,0.15)'),
+                        transition: 'all 0.35s ease', position: 'relative', overflow: 'hidden'
+                      }}>
                         {winningNumber20 === 'SPINNING' ? (
                           <div className="spin-arrow-container" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="80" height="80" viewBox="0 0 100 100">
@@ -1260,7 +1463,7 @@ export default function App() {
                           </div>
                         ) : (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                            <span style={{ fontSize: winningNumber20 === '?' ? '42px' : '38px', fontWeight: 'bold', color: winningNumber20 === '?' ? '#ffffff' : '#00ffcc', textShadow: winningNumber20 === '?' ? 'none' : '0 0 12px #00ffcc', lineHeight: '1', display: 'inline-block', margin: '0', padding: '0' }}>
+                            <span style={{ fontSize: winningNumber20 === '?' ? '44px' : '40px', fontWeight: '900', color: winningNumber20 === '?' ? '#ffffff' : '#00ffcc', textShadow: winningNumber20 === '?' ? 'none' : '0 0 14px #00ffcc', lineHeight: '1', display: 'inline-block', margin: '0', padding: '0' }}>
                               {winningNumber20}
                             </span>
                           </div>
@@ -1268,11 +1471,11 @@ export default function App() {
                       </div>
                     </div>
                     {winnerInfo20 && (
-                      <div style={{ marginTop: '4px', padding: '8px', backgroundColor: '#064e3b', border: '2px solid #10b981', borderRadius: '10px', textAlign: 'center', boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#34d399' }}> 🎉 አሸናፊ አሸነፈ! </div>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '2px 0' }}> 👤 {winnerInfo20.userName} </div>
-                        <div style={{ fontSize: '13px', fontWeight: '900', color: '#facc15' }}> ቁጥር: #{winnerInfo20.number} </div>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '2px' }}> የድረሽ ብር: {winnerInfo20.derash} ETB </div>
+                      <div className="float-in" style={{ marginTop: '4px', padding: '10px', background: 'linear-gradient(160deg, #064e3b, #022c22)', border: '2px solid #10b981', borderRadius: '12px', textAlign: 'center', boxShadow: '0 0 20px rgba(16, 185, 129, 0.5)' }}>
+                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#34d399', letterSpacing: '0.5px' }}> 🎉 አሸናፊ አሸነፈ! </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '4px 0' }}> 👤 {winnerInfo20.userName} </div>
+                        <div style={{ fontSize: '14px', fontWeight: '900', color: '#facc15' }}> ቁጥር: #{winnerInfo20.number} </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '4px' }}> የድረሽ ብር: {winnerInfo20.derash} ETB </div>
                       </div>
                     )}
                   </div>
@@ -1280,23 +1483,24 @@ export default function App() {
               </div>
             )}
 
-            {/* SEPARATE BOARD FOR 50 ETB (WEEKLY - Saturday 12:00) */}
+            {/* SEPARATE BOARD FOR 50 ETB */}
             {currentScreen === 'board50' && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', backgroundColor: '#0a0a16', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%' }}>
-                  <button onClick={() => setCurrentScreen('home')} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>← Back</button>
-                  <button onClick={() => fetchUserData()} style={{ backgroundColor: '#1e1b4b', color: '#22c55e', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Refresh</button>
+              <div className="fade-in-up" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'linear-gradient(180deg, #0e0e22, #0a0a16)', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%', boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
+                  <button onClick={() => setCurrentScreen('home')} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>← Back</button>
+                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#a78bfa', letterSpacing: '1px' }}>🎯 50 ETB BOARD</div>
+                  <button onClick={() => fetchUserData()} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#22c55e', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>🔄</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId50}</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount50}</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#8b5cf6' }}>50 ETB</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash50} ETB</div></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', padding: '8px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>GAME ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#fbbf24' }}>{currentGameId50}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>PLAYERS</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount50}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>STAKE</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#a78bfa' }}>50 ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>DERASH</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash50} ETB</div></div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
-                    <div style={{ background: 'linear-gradient(90deg, #8b5cf6, #6d28d9)', padding: '6px', borderRadius: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>
-                      Weekly: ቅዳሜ ማታ 12:00
+                    <div style={{ background: 'linear-gradient(90deg, #8b5cf6, #6d28d9)', padding: '8px', borderRadius: '10px', textAlign: 'center', fontSize: '11px', fontWeight: '800', flexShrink: 0, boxShadow: '0 2px 10px rgba(139,92,246,0.4), inset 0 1px 0 rgba(255,255,255,0.1)', letterSpacing: '0.5px' }}>
+                      📅 Weekly: ቅዳሜ ማታ 12:00
                     </div>
                     <NumberGrid
                       numbers={visibleNumbers}
@@ -1307,24 +1511,24 @@ export default function App() {
                     />
                   </div>
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
-                    <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                      <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}> 📌 የተመረጡ ቁጥሮች ({selectedNumbers50.length}): </div>
-                      <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.2', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
+                    <div style={{ ...cardStyle, borderRadius: '10px', padding: '8px 10px', minHeight: '65px', maxHeight: '90px', display: 'flex', flexDirection: 'column', flexShrink: 0, border: '1px solid #312e81' }}>
+                      <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '4px', fontWeight: '800', letterSpacing: '0.3px' }}> 📌 የተመረጡ ({selectedNumbers50.length}) </div>
+                      <div style={{ fontSize: '10px', color: '#c7d2fe', lineHeight: '1.35', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
                         {selectedNumbers50.length > 0 ? selectedNumbers50.join(', ') : 'እስካሁን ማንም አልመረጠም'}
                       </div>
                     </div>
-                    <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
-                      <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}> የቁጥር ማውጣት </div>
-                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: '#0d0d1a', border: '3px solid #8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 15px rgba(139, 92, 246, 0.3)' }}>
-                        <span style={{ fontSize: '38px', fontWeight: 'bold', color: '#ffffff' }}>{winningNumber50}</span>
+                    <div style={{ ...cardStyle, borderRadius: '12px', padding: '14px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ fontSize: '11px', fontWeight: '800', marginBottom: '10px', color: '#fbbf24', letterSpacing: '0.8px' }}>🎲 የቁጥር ማውጣት</div>
+                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #1a1a3a, #0a0a1a)', border: '3px solid #8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px rgba(139, 92, 246, 0.5), inset 0 0 15px rgba(139,92,246,0.15)' }}>
+                        <span style={{ fontSize: '40px', fontWeight: '900', color: '#ffffff' }}>{winningNumber50}</span>
                       </div>
                     </div>
                     {winnerInfo50 && (
-                      <div style={{ marginTop: '4px', padding: '8px', backgroundColor: '#064e3b', border: '2px solid #10b981', borderRadius: '10px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#34d399' }}> 🎉 አሸናፊ አሸነፈ! </div>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '2px 0' }}> 👤 {winnerInfo50.userName} </div>
-                        <div style={{ fontSize: '13px', fontWeight: '900', color: '#facc15' }}> ቁጥር: #{winnerInfo50.number} </div>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '2px' }}> የድረሽ ብር: {winnerInfo50.derash} ETB </div>
+                      <div className="float-in" style={{ marginTop: '4px', padding: '10px', background: 'linear-gradient(160deg, #064e3b, #022c22)', border: '2px solid #10b981', borderRadius: '12px', textAlign: 'center', boxShadow: '0 0 20px rgba(16,185,129,0.5)' }}>
+                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#34d399', letterSpacing: '0.5px' }}> 🎉 አሸናፊ አሸነፈ! </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '4px 0' }}> 👤 {winnerInfo50.userName} </div>
+                        <div style={{ fontSize: '14px', fontWeight: '900', color: '#facc15' }}> ቁጥር: #{winnerInfo50.number} </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '4px' }}> የድረሽ ብር: {winnerInfo50.derash} ETB </div>
                       </div>
                     )}
                   </div>
@@ -1332,23 +1536,24 @@ export default function App() {
               </div>
             )}
 
-            {/* SEPARATE BOARD FOR 100 ETB (WEEKLY - Saturday 12:05) */}
+            {/* SEPARATE BOARD FOR 100 ETB */}
             {currentScreen === 'board100' && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', backgroundColor: '#0a0a16', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%' }}>
-                  <button onClick={() => setCurrentScreen('home')} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>← Back</button>
-                  <button onClick={() => fetchUserData()} style={{ backgroundColor: '#1e1b4b', color: '#22c55e', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Refresh</button>
+              <div className="fade-in-up" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'linear-gradient(180deg, #0e0e22, #0a0a16)', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%', boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
+                  <button onClick={() => setCurrentScreen('home')} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>← Back</button>
+                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#facc15', letterSpacing: '1px' }}>🎯 100 ETB BOARD</div>
+                  <button onClick={() => fetchUserData()} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#22c55e', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>🔄</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', padding: '6px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Game ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#f59e0b' }}>{currentGameId100}</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Players</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount100}</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Stake</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>100 ETB</div></div>
-                  <div style={{ background: 'linear-gradient(160deg, #24244a, #1a1a38)', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}><div style={{ fontSize: '9px', color: '#9ca3af' }}>Derash</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash100} ETB</div></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', padding: '8px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>GAME ID</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#fbbf24' }}>{currentGameId100}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>PLAYERS</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#38bdf8' }}>{playerCount100}</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>STAKE</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#eab308' }}>100 ETB</div></div>
+                  <div style={{ background: 'linear-gradient(160deg, #24244a, #16162e)', padding: '7px 2px', borderRadius: '9px', textAlign: 'center', border: '1px solid #2d2d5c', boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}><div style={{ fontSize: '9px', color: '#8b8ba7', letterSpacing: '0.5px' }}>DERASH</div><div style={{ fontSize: '10px', fontWeight: 'bold', color: '#22c55e' }}>{derash100} ETB</div></div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
-                    <div style={{ background: 'linear-gradient(90deg, #facc15, #eab308)', color: '#1a1400', padding: '6px', borderRadius: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>
-                      Weekly: ቅዳሜ ማታ 12:05
+                    <div style={{ background: 'linear-gradient(90deg, #facc15, #ca8a04)', color: '#1a1400', padding: '8px', borderRadius: '10px', textAlign: 'center', fontSize: '11px', fontWeight: '800', flexShrink: 0, boxShadow: '0 2px 10px rgba(250,204,21,0.4), inset 0 1px 0 rgba(255,255,255,0.25)', letterSpacing: '0.5px' }}>
+                      📅 Weekly: ቅዳሜ ማታ 12:05
                     </div>
                     <NumberGrid
                       numbers={visibleNumbers}
@@ -1359,24 +1564,24 @@ export default function App() {
                     />
                   </div>
                   <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, justifyContent: 'flex-start', overflowY: 'auto' }}>
-                    <div style={{ backgroundColor: '#1b1b32', borderRadius: '8px', padding: '6px 8px', minHeight: '65px', maxHeight: '90px', border: '1px solid #312e81', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                      <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '2px', fontWeight: 'bold' }}> 📌 የተመረጡ ቁጥሮች ({selectedNumbers100.length}): </div>
-                      <div style={{ fontSize: '10px', color: '#9ca3af', lineHeight: '1.2', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
+                    <div style={{ ...cardStyle, borderRadius: '10px', padding: '8px 10px', minHeight: '65px', maxHeight: '90px', display: 'flex', flexDirection: 'column', flexShrink: 0, border: '1px solid #312e81' }}>
+                      <div style={{ fontSize: '10px', color: '#38bdf8', marginBottom: '4px', fontWeight: '800', letterSpacing: '0.3px' }}> 📌 የተመረጡ ({selectedNumbers100.length}) </div>
+                      <div style={{ fontSize: '10px', color: '#c7d2fe', lineHeight: '1.35', wordBreak: 'break-word', overflowY: 'auto', flex: 1 }}>
                         {selectedNumbers100.length > 0 ? selectedNumbers100.join(', ') : 'እስካሁን ማንም አልመረጠም'}
                       </div>
                     </div>
-                    <div style={{ backgroundColor: '#13132b', borderRadius: '12px', padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #23234d', flexShrink: 0 }}>
-                      <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '10px', color: '#f59e0b' }}> የቁጥር ማውጣት </div>
-                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: '#0d0d1a', border: '3px solid #eab308', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 15px rgba(234, 179, 8, 0.3)' }}>
-                        <span style={{ fontSize: '38px', fontWeight: 'bold', color: '#ffffff' }}>{winningNumber100}</span>
+                    <div style={{ ...cardStyle, borderRadius: '12px', padding: '14px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ fontSize: '11px', fontWeight: '800', marginBottom: '10px', color: '#fbbf24', letterSpacing: '0.8px' }}>🎲 የቁጥር ማውጣት</div>
+                      <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #1a1a3a, #0a0a1a)', border: '3px solid #eab308', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px rgba(234, 179, 8, 0.5), inset 0 0 15px rgba(234,179,8,0.15)' }}>
+                        <span style={{ fontSize: '40px', fontWeight: '900', color: '#ffffff' }}>{winningNumber100}</span>
                       </div>
                     </div>
                     {winnerInfo100 && (
-                      <div style={{ marginTop: '4px', padding: '8px', backgroundColor: '#064e3b', border: '2px solid #10b981', borderRadius: '10px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#34d399' }}> 🎉 አሸናፊ አሸነፈ! </div>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '2px 0' }}> 👤 {winnerInfo100.userName} </div>
-                        <div style={{ fontSize: '13px', fontWeight: '900', color: '#facc15' }}> ቁጥር: #{winnerInfo100.number} </div>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '2px' }}> የድረሽ ብር: {winnerInfo100.derash} ETB </div>
+                      <div className="float-in" style={{ marginTop: '4px', padding: '10px', background: 'linear-gradient(160deg, #064e3b, #022c22)', border: '2px solid #10b981', borderRadius: '12px', textAlign: 'center', boxShadow: '0 0 20px rgba(16,185,129,0.5)' }}>
+                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#34d399', letterSpacing: '0.5px' }}> 🎉 አሸናፊ አሸነፈ! </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffffff', margin: '4px 0' }}> 👤 {winnerInfo100.userName} </div>
+                        <div style={{ fontSize: '14px', fontWeight: '900', color: '#facc15' }}> ቁጥር: #{winnerInfo100.number} </div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34d399', marginTop: '4px' }}> የድረሽ ብር: {winnerInfo100.derash} ETB </div>
                       </div>
                     )}
                   </div>
@@ -1387,83 +1592,83 @@ export default function App() {
         )}
 
         {currentTab === 'history' && (
-          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
-            <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px', textAlign: 'center' }}>📜 Game History</h1>
-            <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '16px', marginBottom: '20px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
-              <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '6px' }}>Total Games Played</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{totalGames}</div>
+          <div className="fade-in-up" style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '16px', textAlign: 'center', letterSpacing: '-0.3px' }}>📜 Game History</h1>
+            <div style={{ ...cardStyle, padding: '16px', marginBottom: '20px', textAlign: 'center' }}>
+              <div style={{ fontSize: '12px', color: '#8b8ba7', marginBottom: '6px', letterSpacing: '1px', textTransform: 'uppercase' }}>Total Games Played</div>
+              <div style={{ fontSize: '32px', fontWeight: '900', background: 'linear-gradient(120deg, #38bdf8, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{totalGames}</div>
             </div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#ffffff', marginBottom: '12px' }}>Your Winning History</div>
+            <div style={{ fontSize: '15px', fontWeight: '800', color: '#ffffff', marginBottom: '12px', letterSpacing: '0.3px' }}>🏆 Your Winning History</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {gameHistory.length > 0 ? (
                 gameHistory.map((item, idx) => (
-                  <div key={idx} style={{ backgroundColor: '#181830', border: '1px solid #2a2a4a', borderRadius: '10px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={idx} style={{ ...cardStyle, borderRadius: '12px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #2a2a52' }}>
                     <div>
-                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#38bdf8' }}>Winning Num: #{item.winningNumber}</div>
-                      <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>Winner: {item.winnerName}</div>
+                      <div style={{ fontSize: '14px', fontWeight: '800', color: '#38bdf8' }}>Winning Num: #{item.winningNumber}</div>
+                      <div style={{ fontSize: '11px', color: '#8b8ba7', marginTop: '4px' }}>Winner: {item.winnerName}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#22c55e' }}>+{item.derash} ETB</div>
+                      <div style={{ fontSize: '15px', fontWeight: '900', color: '#22c55e', textShadow: '0 0 10px rgba(34,197,94,0.4)' }}>+{item.derash} ETB</div>
                       <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px' }}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Recently'}</div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div style={{ textAlign: 'center', color: '#6b7280', padding: '20px', fontSize: '13px' }}> እስካሁን የሎቶሪ ታሪክ አልተመዘገበም </div>
+                <div style={{ textAlign: 'center', color: '#6b7280', padding: '30px', fontSize: '13px' }}> እስካሁን የሎቶሪ ታሪክ አልተመዘገበም </div>
               )}
             </div>
           </div>
         )}
 
         {currentTab === 'wallet' && (
-          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
+          <div className="fade-in-up" style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>💳 Wallet & Transactions</h1>
-              <span onClick={fetchUserData} style={{ fontSize: '18px', cursor: 'pointer', color: '#9ca3af' }}>🔄</span>
+              <h1 style={{ fontSize: '22px', fontWeight: '900', letterSpacing: '-0.3px' }}>💳 Wallet</h1>
+              <button onClick={fetchUserData} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>🔄</button>
             </div>
-            <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', border: '1px solid #2a2a4a' }}>
+            <div style={{ ...cardStyle, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '18px' }}>👤</span>
-                <span style={{ fontSize: '15px', fontWeight: 'bold' }}>{userPhone || 'ስልክ አልተመዘገበ'}</span>
+                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{userPhone || 'ስልክ አልተመዘገበ'}</span>
               </div>
-              <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid #10b981', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', fontWeight: 'bold' }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid #10b981', borderRadius: '20px', padding: '4px 12px', fontSize: '11px', fontWeight: 'bold', boxShadow: '0 0 12px rgba(16,185,129,0.25)' }}>
                 ✓ Verified
               </div>
             </div>
-            <div style={{ backgroundColor: '#181830', borderRadius: '10px', padding: '4px', display: 'flex', marginBottom: '16px', border: '1px solid #2a2a4a' }}>
-              <button onClick={() => setWalletTab('balance')} style={{ flex: 1, padding: '10px 0', borderRadius: '8px', border: 'none', backgroundColor: walletTab === 'balance' ? '#2a2a4a' : 'transparent', color: walletTab === 'balance' ? '#ffffff' : '#9ca3af', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}> Balance </button>
+            <div style={{ ...cardStyle, padding: '5px', display: 'flex', marginBottom: '16px' }}>
+              <button onClick={() => setWalletTab('balance')} style={{ flex: 1, padding: '11px 0', borderRadius: '10px', border: 'none', background: walletTab === 'balance' ? 'linear-gradient(120deg, #4338ca, #3730a3)' : 'transparent', color: walletTab === 'balance' ? '#ffffff' : '#8b8ba7', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', boxShadow: walletTab === 'balance' ? '0 2px 10px rgba(67,56,202,0.4)' : 'none' }}> Balance </button>
             </div>
             {walletTab === 'balance' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
-                    <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '4px' }}>Main Wallet</div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{mainWallet} ETB</div>
+                  <div style={{ ...cardStyle, padding: '16px', textAlign: 'center', border: '1px solid rgba(96,165,250,0.35)', boxShadow: '0 0 18px rgba(96,165,250,0.15), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+                    <div style={{ fontSize: '11px', color: '#93c5fd', marginBottom: '6px', letterSpacing: '0.5px', textTransform: 'uppercase', fontWeight: 'bold' }}>Main Wallet</div>
+                    <div style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff' }}>{mainWallet} <span style={{ fontSize: '12px', color: '#93c5fd' }}>ETB</span></div>
                   </div>
-                  <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
-                    <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '4px' }}>Play Wallet</div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#10b981' }}>{playWallet} ETB</div>
+                  <div style={{ ...cardStyle, padding: '16px', textAlign: 'center', border: '1px solid rgba(16,185,129,0.35)', boxShadow: '0 0 18px rgba(16,185,129,0.15), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+                    <div style={{ fontSize: '11px', color: '#6ee7b7', marginBottom: '6px', letterSpacing: '0.5px', textTransform: 'uppercase', fontWeight: 'bold' }}>Play Wallet</div>
+                    <div style={{ fontSize: '22px', fontWeight: '900', color: '#10b981' }}>{playWallet} <span style={{ fontSize: '12px' }}>ETB</span></div>
                   </div>
                 </div>
-                <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#f59e0b' }}>📥 Deposit (በቴሌብር ብር መሞላት)</h4>
-                  <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '10px', lineHeight: '1.4' }}>
+                <div style={{ ...cardStyle, padding: '18px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#fbbf24', letterSpacing: '0.3px' }}>📥 Deposit (በቴሌብር ብር መሞላት)</h4>
+                  <div style={{ fontSize: '12px', color: '#a5a5c5', marginBottom: '12px', lineHeight: '1.5' }}>
                     1. የሚለውን የብር መጠን ይላኩ ወይም ያስገቡ<br />
                     2. የቴሌብር SMS መልእክትዎን ሙሉ በሙሉ ኮፒ በማድረግ ከዚህ በታች ባለው ሳጥን ውስጥ እሰገብቱ<br />
                   </div>
-                  <label style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>የብር መጠን (ETB):</label>
-                  <input type="number" placeholder="ለአርአያ 100" value={depAmount} onChange={(e) => setDepAmount(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                  <label style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>የቴሌብር SMS መልእክት (Copy Paste):</label>
-                  <textarea rows="4" placeholder="ድረሶትን ሙሉ የቴሌብር SMS መልእክት እዚህ ጋር ድራፍ አ ዱ (Paste) ይድርጉ..." value={pastedSMS} onChange={(e) => setPastedSMS(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box', fontSize: '12px' }} />
-                  <button onClick={handleDeposit} disabled={isSubmittingDep} style={{ width: '100%', padding: '12px', backgroundColor: isSubmittingDep ? '#6b7280' : '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: isSubmittingDep ? 'not-allowed' : 'pointer' }}>
-                    {isSubmittingDep ? 'እየተላከ ነው...' : 'የተረጋገጠ ፎርም ልክ (Submit Deposit)'}
+                  <label style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', display: 'block', marginBottom: '6px', letterSpacing: '0.3px' }}>የብር መጠን (ETB):</label>
+                  <input type="number" placeholder="ለአርአያ 100" value={depAmount} onChange={(e) => setDepAmount(e.target.value)} style={{ width: '100%', padding: '11px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0a0a1a', color: '#fff', boxSizing: 'border-box', fontSize: '14px' }} />
+                  <label style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', display: 'block', marginBottom: '6px', letterSpacing: '0.3px' }}>የቴሌብር SMS መልእክት (Copy Paste):</label>
+                  <textarea rows="4" placeholder="ድረሶትን ሙሉ የቴሌብር SMS መልእክት እዚህ ጋር ድራፍ አ ዱ (Paste) ይድርጉ..." value={pastedSMS} onChange={(e) => setPastedSMS(e.target.value)} style={{ width: '100%', padding: '11px', marginBottom: '14px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0a0a1a', color: '#fff', boxSizing: 'border-box', fontSize: '12px' }} />
+                  <button onClick={handleDeposit} disabled={isSubmittingDep} style={{ width: '100%', padding: '13px', background: isSubmittingDep ? 'linear-gradient(120deg, #6b7280, #4b5563)' : 'linear-gradient(120deg, #22c55e, #16a34a)', color: '#fff', border: '1px solid #4ade80', borderRadius: '10px', fontWeight: '800', cursor: isSubmittingDep ? 'not-allowed' : 'pointer', fontSize: '14px', boxShadow: isSubmittingDep ? 'none' : '0 4px 16px rgba(34,197,94,0.35)', letterSpacing: '0.3px' }}>
+                    {isSubmittingDep ? 'እየተላከ ነው...' : '✓ Submit Deposit'}
                   </button>
                 </div>
-                <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '15px' }}>📤 Withdraw (ገንዘብ ማውጣት ፎርም)</h4>
-                  <input type="number" placeholder="መጠን (ETB)" value={withAmount} onChange={(e) => setWithAmount(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                  <button onClick={handleWithdraw} style={{ width: '100%', padding: '12px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    የወጣ ፎርም ልክ (Submit Withdraw)
+                <div style={{ ...cardStyle, padding: '18px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#fca5a5', letterSpacing: '0.3px' }}>📤 Withdraw (ገንዘብ ማውጣት)</h4>
+                  <input type="number" placeholder="መጠን (ETB)" value={withAmount} onChange={(e) => setWithAmount(e.target.value)} style={{ width: '100%', padding: '11px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0a0a1a', color: '#fff', boxSizing: 'border-box', fontSize: '14px' }} />
+                  <button onClick={handleWithdraw} style={{ width: '100%', padding: '13px', background: 'linear-gradient(120deg, #ef4444, #b91c1c)', color: '#fff', border: '1px solid #fca5a5', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '14px', boxShadow: '0 4px 16px rgba(239,68,68,0.35)', letterSpacing: '0.3px' }}>
+                    ✓ Submit Withdraw
                   </button>
                 </div>
               </div>
@@ -1472,73 +1677,101 @@ export default function App() {
         )}
 
         {currentTab === 'profile' && (
-          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10px', marginBottom: '20px' }}>
-              <div style={{ width: '75px', height: '75px', borderRadius: '50%', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 'bold', color: '#ffffff', marginBottom: '12px', overflow: 'hidden', border: '2px solid #60a5fa' }}>
+          <div className="fade-in-up" style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10px', marginBottom: '24px' }}>
+              <div style={{
+                width: '82px',
+                height: '82px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #6366f1, #3b82f6, #06b6d4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '30px',
+                fontWeight: '900',
+                color: '#ffffff',
+                marginBottom: '14px',
+                overflow: 'hidden',
+                border: '3px solid rgba(96,165,250,0.7)',
+                boxShadow: '0 0 24px rgba(99,102,241,0.55), inset 0 0 20px rgba(255,255,255,0.1)'
+              }}>
                 {userPhoto ? <img src={userPhoto} alt={userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : userInitial}
               </div>
-              <h2 style={{ fontSize: '22px', fontWeight: 'bold', margin: 0 }}>{userName}</h2>
-              {tgUser?.username && <span style={{ fontSize: '13px', color: '#9ca3af', marginTop: '4px' }}>@{tgUser.username}</span>}
+              <h2 style={{ fontSize: '22px', fontWeight: '900', margin: 0, letterSpacing: '-0.3px' }}>{userName}</h2>
+              {tgUser?.username && <span style={{ fontSize: '13px', color: '#8b8ba7', marginTop: '5px' }}>@{tgUser.username}</span>}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-              <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
-                <div style={{ color: '#60a5fa', fontSize: '13px', marginBottom: '8px' }}>💳 Main Wallet</div>
-                <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{mainWallet} ETB</div>
+              <div style={{ ...cardStyle, padding: '16px', textAlign: 'center', border: '1px solid rgba(96,165,250,0.3)' }}>
+                <div style={{ color: '#60a5fa', fontSize: '12px', marginBottom: '8px', letterSpacing: '0.3px' }}>💳 Main Wallet</div>
+                <div style={{ fontSize: '20px', fontWeight: '900' }}>{mainWallet} <span style={{ fontSize: '11px' }}>ETB</span></div>
               </div>
-              <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
-                <div style={{ color: '#34d399', fontSize: '13px', marginBottom: '8px' }}>💳 Play Wallet</div>
-                <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{playWallet} ETB</div>
+              <div style={{ ...cardStyle, padding: '16px', textAlign: 'center', border: '1px solid rgba(52,211,153,0.3)' }}>
+                <div style={{ color: '#34d399', fontSize: '12px', marginBottom: '8px', letterSpacing: '0.3px' }}>💳 Play Wallet</div>
+                <div style={{ fontSize: '20px', fontWeight: '900' }}>{playWallet} <span style={{ fontSize: '11px' }}>ETB</span></div>
               </div>
-              <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
-                <div style={{ color: '#c084fc', fontSize: '13px', marginBottom: '8px' }}>🏆 Games Won</div>
-                <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{gamesWon}</div>
+              <div style={{ ...cardStyle, padding: '16px', textAlign: 'center', border: '1px solid rgba(192,132,252,0.3)' }}>
+                <div style={{ color: '#c084fc', fontSize: '12px', marginBottom: '8px', letterSpacing: '0.3px' }}>🏆 Games Won</div>
+                <div style={{ fontSize: '20px', fontWeight: '900' }}>{gamesWon}</div>
               </div>
-              <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '14px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
-                <div style={{ color: '#f87171', fontSize: '13px', marginBottom: '8px' }}>👥 Total Invite</div>
-                <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{totalInvite}</div>
+              <div style={{ ...cardStyle, padding: '16px', textAlign: 'center', border: '1px solid rgba(248,113,113,0.3)' }}>
+                <div style={{ color: '#f87171', fontSize: '12px', marginBottom: '8px', letterSpacing: '0.3px' }}>👥 Total Invite</div>
+                <div style={{ fontSize: '20px', fontWeight: '900' }}>{totalInvite}</div>
               </div>
             </div>
-            <div style={{ backgroundColor: '#181830', borderRadius: '12px', padding: '16px', border: '1px solid #2a2a4a', textAlign: 'center' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginTop: 0, marginBottom: '8px', color: '#f59e0b' }}> 🎁 ጓደኞችን ይጋብዙ (Invite Friends) </h3>
-              <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px', lineHeight: '1.4' }}>
+            <div style={{ ...cardStyle, padding: '20px', textAlign: 'center', border: '1px solid rgba(245,158,11,0.35)', boxShadow: '0 0 20px rgba(245,158,11,0.12), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: '800', marginTop: 0, marginBottom: '10px', color: '#fbbf24', letterSpacing: '0.3px' }}> 🎁 ጓደኞችን ይጋብዙ </h3>
+              <p style={{ fontSize: '12px', color: '#a5a5c5', marginBottom: '14px', lineHeight: '1.5' }}>
                 የእርስዎን የመጋበዣ ሊንክ ለአርደኞችዎ በመላክ በእያንዳንዱ ግንኙነት ተጨማሪ ቦነስ ይደርስ!
               </p>
-              <button onClick={copyReferralLink} style={{ width: '100%', padding: '12px', backgroundColor: copiedLink ? '#10b981' : '#0284c7', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
-                {copiedLink ? '✓ የመጋበዣ ሊንክ ተቀድቷል (Copied)' : '🔗 የመጋበዣ ሊንክ ቅዳ (Copy Invite Link)'}
+              <button onClick={copyReferralLink} style={{
+                width: '100%',
+                padding: '13px',
+                background: copiedLink ? 'linear-gradient(120deg, #10b981, #059669)' : 'linear-gradient(120deg, #0ea5e9, #0369a1)',
+                color: '#ffffff',
+                border: '1px solid ' + (copiedLink ? '#6ee7b7' : '#38bdf8'),
+                borderRadius: '10px',
+                fontWeight: '800',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontSize: '14px',
+                boxShadow: copiedLink ? '0 4px 16px rgba(16,185,129,0.4)' : '0 4px 16px rgba(14,165,233,0.4)',
+                letterSpacing: '0.3px'
+              }}>
+                {copiedLink ? '✓ የመጋበዣ ሊንክ ተቀድቷል' : '🔗 Copy Invite Link'}
               </button>
             </div>
           </div>
         )}
 
         {isAdmin && currentTab === 'admin' && (
-          <div style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
+          <div className="fade-in-up" style={{ flex: 1, padding: '20px 16px', display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h1 style={{ fontSize: '18px', fontWeight: 'bold', color: '#f59e0b' }}>
-                ⚙️ Admin Panel (Super Admin)
+              <h1 style={{ fontSize: '18px', fontWeight: '900', color: '#fbbf24', letterSpacing: '0.3px' }}>
+                ⚙️ Admin Panel
               </h1>
-              <button onClick={fetchAdminData} style={{ backgroundColor: '#1e1b4b', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}>🔄 Refresh</button>
+              <button onClick={fetchAdminData} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>🔄 Refresh</button>
             </div>
             <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
-              <button onClick={() => setAdminTab('requests')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'requests' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>📁 Transactions</button>
+              <button onClick={() => setAdminTab('requests')} style={{ flex: 1, minWidth: '80px', padding: '9px 6px', borderRadius: '8px', border: '1px solid ' + (adminTab === 'requests' ? '#fbbf24' : '#2d2d58'), background: adminTab === 'requests' ? 'linear-gradient(120deg, #f59e0b, #d97706)' : 'linear-gradient(160deg, #1e1b4b, #12122a)', color: adminTab === 'requests' ? '#000' : '#fff', fontSize: '11px', fontWeight: '800', cursor: 'pointer', boxShadow: adminTab === 'requests' ? '0 4px 14px rgba(245,158,11,0.4)' : 'none' }}>📁 Txns</button>
               {isSuperAdmin && (
                 <>
-                  <button onClick={() => setAdminTab('reports')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'reports' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>📊 Dashboard</button>
-                  <button onClick={() => setAdminTab('users')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'users' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Users</button>
-                  <button onClick={() => setAdminTab('game_control')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'game_control' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Draw</button>
-                  <button onClick={() => setAdminTab('settings')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'settings' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Settings</button>
-                  <button onClick={() => setAdminTab('broadcast')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', backgroundColor: adminTab === 'broadcast' ? '#f59e0b' : '#1e1b4b', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>Broadcast</button>
+                  <button onClick={() => setAdminTab('reports')} style={{ flex: 1, minWidth: '80px', padding: '9px 6px', borderRadius: '8px', border: '1px solid ' + (adminTab === 'reports' ? '#fbbf24' : '#2d2d58'), background: adminTab === 'reports' ? 'linear-gradient(120deg, #f59e0b, #d97706)' : 'linear-gradient(160deg, #1e1b4b, #12122a)', color: adminTab === 'reports' ? '#000' : '#fff', fontSize: '11px', fontWeight: '800', cursor: 'pointer', boxShadow: adminTab === 'reports' ? '0 4px 14px rgba(245,158,11,0.4)' : 'none' }}>📊 Stats</button>
+                  <button onClick={() => setAdminTab('users')} style={{ flex: 1, minWidth: '80px', padding: '9px 6px', borderRadius: '8px', border: '1px solid ' + (adminTab === 'users' ? '#fbbf24' : '#2d2d58'), background: adminTab === 'users' ? 'linear-gradient(120deg, #f59e0b, #d97706)' : 'linear-gradient(160deg, #1e1b4b, #12122a)', color: adminTab === 'users' ? '#000' : '#fff', fontSize: '11px', fontWeight: '800', cursor: 'pointer', boxShadow: adminTab === 'users' ? '0 4px 14px rgba(245,158,11,0.4)' : 'none' }}>Users</button>
+                  <button onClick={() => setAdminTab('game_control')} style={{ flex: 1, minWidth: '80px', padding: '9px 6px', borderRadius: '8px', border: '1px solid ' + (adminTab === 'game_control' ? '#fbbf24' : '#2d2d58'), background: adminTab === 'game_control' ? 'linear-gradient(120deg, #f59e0b, #d97706)' : 'linear-gradient(160deg, #1e1b4b, #12122a)', color: adminTab === 'game_control' ? '#000' : '#fff', fontSize: '11px', fontWeight: '800', cursor: 'pointer', boxShadow: adminTab === 'game_control' ? '0 4px 14px rgba(245,158,11,0.4)' : 'none' }}>Draw</button>
+                  <button onClick={() => setAdminTab('settings')} style={{ flex: 1, minWidth: '80px', padding: '9px 6px', borderRadius: '8px', border: '1px solid ' + (adminTab === 'settings' ? '#fbbf24' : '#2d2d58'), background: adminTab === 'settings' ? 'linear-gradient(120deg, #f59e0b, #d97706)' : 'linear-gradient(160deg, #1e1b4b, #12122a)', color: adminTab === 'settings' ? '#000' : '#fff', fontSize: '11px', fontWeight: '800', cursor: 'pointer', boxShadow: adminTab === 'settings' ? '0 4px 14px rgba(245,158,11,0.4)' : 'none' }}>Config</button>
+                  <button onClick={() => setAdminTab('broadcast')} style={{ flex: 1, minWidth: '80px', padding: '9px 6px', borderRadius: '8px', border: '1px solid ' + (adminTab === 'broadcast' ? '#fbbf24' : '#2d2d58'), background: adminTab === 'broadcast' ? 'linear-gradient(120deg, #f59e0b, #d97706)' : 'linear-gradient(160deg, #1e1b4b, #12122a)', color: adminTab === 'broadcast' ? '#000' : '#fff', fontSize: '11px', fontWeight: '800', cursor: 'pointer', boxShadow: adminTab === 'broadcast' ? '0 4px 14px rgba(245,158,11,0.4)' : 'none' }}>📢</button>
                 </>
               )}
             </div>
             {adminTab === 'requests' && (
               <div>
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-                  <button onClick={() => setTxTypeView('deposit')} style={{ flex: 1, padding: '8px', fontSize: '11px', borderRadius: '6px', border: 'none', backgroundColor: txTypeView === 'deposit' ? '#0284c7' : '#1e1b4b', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}> 📥 የተካቱ ጥያቄዎች (Deposit) </button>
-                  <button onClick={() => setTxTypeView('withdrawal')} style={{ flex: 1, padding: '8px', fontSize: '11px', borderRadius: '6px', border: 'none', backgroundColor: txTypeView === 'withdrawal' ? '#0284c7' : '#1e1b4b', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}> 📤 የወጣ ጥያቄዎች (Withdrawal) </button>
+                  <button onClick={() => setTxTypeView('deposit')} style={{ flex: 1, padding: '9px', fontSize: '11px', borderRadius: '8px', border: '1px solid ' + (txTypeView === 'deposit' ? '#38bdf8' : '#2d2d58'), background: txTypeView === 'deposit' ? 'linear-gradient(120deg, #0ea5e9, #0369a1)' : 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#fff', fontWeight: '800', cursor: 'pointer', boxShadow: txTypeView === 'deposit' ? '0 4px 14px rgba(14,165,233,0.35)' : 'none' }}> 📥 Deposits </button>
+                  <button onClick={() => setTxTypeView('withdrawal')} style={{ flex: 1, padding: '9px', fontSize: '11px', borderRadius: '8px', border: '1px solid ' + (txTypeView === 'withdrawal' ? '#38bdf8' : '#2d2d58'), background: txTypeView === 'withdrawal' ? 'linear-gradient(120deg, #0ea5e9, #0369a1)' : 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#fff', fontWeight: '800', cursor: 'pointer', boxShadow: txTypeView === 'withdrawal' ? '0 4px 14px rgba(14,165,233,0.35)' : 'none' }}> 📤 Withdrawals </button>
                 </div>
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                   {['PENDING', 'APPROVED', 'REJECTED', 'ALL'].map(status => (
-                    <button key={status} onClick={() => setTxFilter(status)} style={{ flex: 1, padding: '6px', fontSize: '10px', borderRadius: '4px', border: '1px solid #334155', backgroundColor: txFilter === status ? '#f59e0b' : '#0f172a', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
+                    <button key={status} onClick={() => setTxFilter(status)} style={{ flex: 1, padding: '7px 4px', fontSize: '10px', borderRadius: '6px', border: '1px solid ' + (txFilter === status ? '#fbbf24' : '#2d2d58'), backgroundColor: txFilter === status ? 'rgba(245,158,11,0.15)' : 'transparent', color: txFilter === status ? '#fbbf24' : '#8b8ba7', fontWeight: '800', cursor: 'pointer' }}>
                       {status} ({activeTxList.filter(t => status === 'ALL' ? true : t.status === status).length})
                     </button>
                   ))}
@@ -1546,93 +1779,93 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {filteredTransactions.length > 0 ? (
                     filteredTransactions.map((tx) => (
-                      <div key={tx._id} style={{ backgroundColor: '#181830', border: '1px solid #2a2a4a', borderRadius: '10px', padding: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '12px', color: txTypeView === 'deposit' ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>
-                            {txTypeView === 'deposit' ? 'DEPOSIT REQUEST' : 'WITHDRAWAL REQUEST'}
+                      <div key={tx._id} style={{ ...cardStyle, borderRadius: '12px', padding: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '11px', color: txTypeView === 'deposit' ? '#22c55e' : '#ef4444', fontWeight: '800', letterSpacing: '0.5px' }}>
+                            {txTypeView === 'deposit' ? '▼ DEPOSIT' : '▲ WITHDRAWAL'}
                           </span>
-                          <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', backgroundColor: tx.status === 'PENDING' ? '#eab308' : (tx.status === 'APPROVED' ? '#22c55e' : '#ef4444'), color: '#000', fontWeight: 'bold' }}>
+                          <span style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '12px', backgroundColor: tx.status === 'PENDING' ? '#eab308' : (tx.status === 'APPROVED' ? '#22c55e' : '#ef4444'), color: '#000', fontWeight: '800', letterSpacing: '0.5px' }}>
                             {tx.status}
                           </span>
                         </div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#facc15', marginBottom: '4px' }}>{tx.amount} ETB</div>
-                        <div style={{ fontSize: '11px', color: '#9ca3af' }}>👤 User: {tx.userName} (ID: {tx.userId})</div>
-                        {tx.phone && <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>📱 Phone: {tx.phone}</div>}
-                        {tx.transactionId && <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>🔑 Txn ID: {tx.transactionId}</div>}
-                        {tx.processedBy && <div style={{ fontSize: '10px', color: '#a7f3d0', marginTop: '2px' }}>👨‍💼 Processed By Admin: {tx.processedBy}</div>}
-                        <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>⏱️ Time: {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}</div>
+                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#facc15', marginBottom: '6px' }}>{tx.amount} ETB</div>
+                        <div style={{ fontSize: '11px', color: '#a5a5c5' }}>👤 {tx.userName} (ID: {tx.userId})</div>
+                        {tx.phone && <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '3px' }}>📱 {tx.phone}</div>}
+                        {tx.transactionId && <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '3px' }}>🔑 {tx.transactionId}</div>}
+                        {tx.processedBy && <div style={{ fontSize: '10px', color: '#a7f3d0', marginTop: '3px' }}>👨‍💼 {tx.processedBy}</div>}
+                        <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px' }}>⏱️ {tx.createdAt ? new Date(tx.createdAt).toLocaleString() : 'N/A'}</div>
                         {tx.pastedText && (
-                          <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#0f172a', borderRadius: '6px', border: '1px solid #1e293b' }}>
-                            <div style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 'bold', marginBottom: '2px' }}>📄 Pasted Telebirr SMS:</div>
-                            <div style={{ fontSize: '11px', color: '#fff', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>{tx.pastedText}</div>
+                          <div style={{ marginTop: '10px', padding: '10px', background: '#0a0a1a', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                            <div style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 'bold', marginBottom: '4px', letterSpacing: '0.3px' }}>📄 PASTED SMS</div>
+                            <div style={{ fontSize: '11px', color: '#fff', wordBreak: 'break-all', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{tx.pastedText}</div>
                           </div>
                         )}
                         {tx.status === 'PENDING' && (
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                            <button onClick={() => handleProcessTx(tx._id, 'APPROVED', txTypeView)} style={{ flex: 1, padding: '8px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}> ✅ Approve </button>
-                            <button onClick={() => handleProcessTx(tx._id, 'REJECTED', txTypeView)} style={{ flex: 1, padding: '8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}> ❌ Reject </button>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                            <button onClick={() => handleProcessTx(tx._id, 'APPROVED', txTypeView)} style={{ flex: 1, padding: '9px', background: 'linear-gradient(120deg, #22c55e, #16a34a)', color: '#fff', border: '1px solid #4ade80', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', fontSize: '12px', boxShadow: '0 3px 12px rgba(34,197,94,0.35)' }}> ✓ Approve </button>
+                            <button onClick={() => handleProcessTx(tx._id, 'REJECTED', txTypeView)} style={{ flex: 1, padding: '9px', background: 'linear-gradient(120deg, #ef4444, #b91c1c)', color: '#fff', border: '1px solid #fca5a5', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', fontSize: '12px', boxShadow: '0 3px 12px rgba(239,68,68,0.35)' }}> ✕ Reject </button>
                           </div>
                         )}
                       </div>
                     ))
                   ) : (
-                    <div style={{ textAlign: 'center', color: '#9ca3af', padding: '20px' }}>ማንም እጅግ አልተመዘገበ</div>
+                    <div style={{ textAlign: 'center', color: '#8b8ba7', padding: '30px', fontSize: '13px' }}>ምንም አልተመዘገበ</div>
                   )}
                 </div>
               </div>
             )}
             {isSuperAdmin && adminTab === 'reports' && financialStats && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h3 style={{ fontSize: '15px', color: '#f59e0b', margin: '0 0 4px 0' }}>📊 Financial Dashboard</h3>
+              <div className="fade-in-up" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <h3 style={{ fontSize: '14px', color: '#fbbf24', margin: '0 0 4px 0', letterSpacing: '0.3px' }}>📊 Financial Dashboard</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div style={{ backgroundColor: '#181830', padding: '14px', borderRadius: '10px', border: '1px solid #22c55e', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>አጠቃላይ ገቢ (Approved Deposit)</div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#22c55e', marginTop: '4px' }}>{financialStats.totalDeposit} ETB</div>
+                  <div style={{ ...cardStyle, padding: '16px', border: '1px solid rgba(34,197,94,0.4)', textAlign: 'center', boxShadow: '0 0 18px rgba(34,197,94,0.15)' }}>
+                    <div style={{ fontSize: '11px', color: '#8b8ba7', letterSpacing: '0.5px' }}>ገቢ (Deposit)</div>
+                    <div style={{ fontSize: '20px', fontWeight: '900', color: '#22c55e', marginTop: '6px', textShadow: '0 0 10px rgba(34,197,94,0.4)' }}>{financialStats.totalDeposit} <span style={{ fontSize: '11px' }}>ETB</span></div>
                   </div>
-                  <div style={{ backgroundColor: '#181830', padding: '14px', borderRadius: '10px', border: '1px solid #ef4444', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>አጠቃላይ ወጪ (Approved Withdrawal)</div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#ef4444', marginTop: '4px' }}>{financialStats.totalWithdrawal} ETB</div>
+                  <div style={{ ...cardStyle, padding: '16px', border: '1px solid rgba(239,68,68,0.4)', textAlign: 'center', boxShadow: '0 0 18px rgba(239,68,68,0.15)' }}>
+                    <div style={{ fontSize: '11px', color: '#8b8ba7', letterSpacing: '0.5px' }}>ወጪ (Withdrawal)</div>
+                    <div style={{ fontSize: '20px', fontWeight: '900', color: '#ef4444', marginTop: '6px', textShadow: '0 0 10px rgba(239,68,68,0.4)' }}>{financialStats.totalWithdrawal} <span style={{ fontSize: '11px' }}>ETB</span></div>
                   </div>
                 </div>
-                <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '10px', border: '1px solid #facc15', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>የቤት የተቆረጠ ትር (House Net Commission)</div>
-                  <div style={{ fontSize: '26px', fontWeight: 'bold', color: '#facc15', marginTop: '4px' }}>{financialStats.houseProfit} ETB</div>
+                <div style={{ ...cardStyle, padding: '20px', border: '1px solid rgba(250,204,21,0.5)', textAlign: 'center', boxShadow: '0 0 22px rgba(250,204,21,0.2)' }}>
+                  <div style={{ fontSize: '12px', color: '#8b8ba7', letterSpacing: '0.5px', textTransform: 'uppercase' }}>House Net Commission</div>
+                  <div style={{ fontSize: '30px', fontWeight: '900', color: '#facc15', marginTop: '8px', textShadow: '0 0 16px rgba(250,204,21,0.6)' }}>{financialStats.houseProfit} <span style={{ fontSize: '14px' }}>ETB</span></div>
                 </div>
               </div>
             )}
             {isSuperAdmin && adminTab === 'users' && (
               <>
-                <input type="text" placeholder="በተጠቃሚ ID ወይም ስልክ ፈልግ..." value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '16px', boxSizing: 'border-box' }} />
+                <input type="text" placeholder="🔍 በተጠቃሚ ID ወይም ስልክ ፈልግ..." value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#0a0a1a', color: '#fff', marginBottom: '16px', boxSizing: 'border-box', fontSize: '13px' }} />
                 {editingUser && (
-                  <div style={{ backgroundColor: '#1b1b38', border: '1px solid #f59e0b', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-                    <h3 style={{ fontSize: '14px', color: '#f59e0b', margin: '0 0 10px 0' }}>የተጠቃሚ ሒሳብ ማስተካከያ: {editingUser.userId}</h3>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                  <div className="float-in" style={{ background: 'linear-gradient(160deg, #1b1b38, #12122a)', border: '1px solid #fbbf24', borderRadius: '14px', padding: '18px', marginBottom: '16px', boxShadow: '0 0 22px rgba(251,191,36,0.2)' }}>
+                    <h3 style={{ fontSize: '13px', color: '#fbbf24', margin: '0 0 12px 0', letterSpacing: '0.3px' }}>✏️ የተጠቃሚ ሒሳብ: {editingUser.userId}</h3>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                       <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: '10px', color: '#9ca3af' }}>Main Wallet:</label>
-                        <input type="number" value={editMain} onChange={(e) => setEditMain(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #312e81', backgroundColor: '#0d0d1a', color: '#fff' }} />
+                        <label style={{ fontSize: '10px', color: '#8b8ba7', letterSpacing: '0.3px' }}>Main Wallet:</label>
+                        <input type="number" value={editMain} onChange={(e) => setEditMain(e.target.value)} style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #312e81', backgroundColor: '#05050f', color: '#fff', marginTop: '4px' }} />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: '10px', color: '#9ca3af' }}>Play Wallet:</label>
-                        <input type="number" value={editPlay} onChange={(e) => setEditPlay(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #312e81', backgroundColor: '#0d0d1a', color: '#fff' }} />
+                        <label style={{ fontSize: '10px', color: '#8b8ba7', letterSpacing: '0.3px' }}>Play Wallet:</label>
+                        <input type="number" value={editPlay} onChange={(e) => setEditPlay(e.target.value)} style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #312e81', backgroundColor: '#05050f', color: '#fff', marginTop: '4px' }} />
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={handleUpdateUserBalance} style={{ flex: 1, padding: '8px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>💾 አዲስ</button>
-                      <button onClick={() => setEditingUser(null)} style={{ flex: 1, padding: '8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px' }}>ሰርዝ</button>
+                      <button onClick={handleUpdateUserBalance} style={{ flex: 1, padding: '10px', background: 'linear-gradient(120deg, #22c55e, #16a34a)', color: '#fff', border: '1px solid #4ade80', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', fontSize: '12px' }}>💾 Save</button>
+                      <button onClick={() => setEditingUser(null)} style={{ flex: 1, padding: '10px', background: 'linear-gradient(120deg, #ef4444, #b91c1c)', color: '#fff', border: '1px solid #fca5a5', borderRadius: '8px', fontWeight: '800', cursor: 'pointer', fontSize: '12px' }}>✕ Cancel</button>
                     </div>
                   </div>
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {filteredAdminUsers.map((u) => (
-                    <div key={u.userId} style={{ backgroundColor: '#181830', border: '1px solid #2a2a4a', borderRadius: '10px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={u.userId} style={{ ...cardStyle, borderRadius: '12px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#38bdf8' }}>{u.firstName || 'ተጠቃሚ'} (ID: {u.userId})</div>
-                        <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>📱 {u.phone || 'ስልክ የለው'}</div>
-                        <div style={{ fontSize: '11px', color: '#22c55e', marginTop: '2px' }}>Main: {u.mainWallet} ETB | Play: {u.playWallet} ETB</div>
+                        <div style={{ fontSize: '13px', fontWeight: '800', color: '#38bdf8' }}>{u.firstName || 'ተጠቃሚ'} <span style={{ color: '#8b8ba7', fontSize: '11px' }}>(ID: {u.userId})</span></div>
+                        <div style={{ fontSize: '11px', color: '#8b8ba7', marginTop: '3px' }}>📱 {u.phone || 'ስልክ የለው'}</div>
+                        <div style={{ fontSize: '11px', color: '#22c55e', marginTop: '3px' }}>💳 {u.mainWallet} | 🎮 {u.playWallet} ETB</div>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <button onClick={() => { setEditingUser(u); setEditMain(u.mainWallet); setEditPlay(u.playWallet); }} style={{ backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}> ማስተካከል </button>
-                        <button onClick={() => handleToggleBan(u.userId, u.isBanned)} style={{ backgroundColor: u.isBanned ? '#10b981' : '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}> {u.isBanned ? 'Unban' : 'Ban'} </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <button onClick={() => { setEditingUser(u); setEditMain(u.mainWallet); setEditPlay(u.playWallet); }} style={{ background: 'linear-gradient(120deg, #0ea5e9, #0369a1)', color: '#fff', border: '1px solid #38bdf8', borderRadius: '7px', padding: '7px 12px', fontSize: '11px', cursor: 'pointer', fontWeight: '800' }}> ✏️ Edit </button>
+                        <button onClick={() => handleToggleBan(u.userId, u.isBanned)} style={{ background: u.isBanned ? 'linear-gradient(120deg, #10b981, #059669)' : 'linear-gradient(120deg, #ef4444, #b91c1c)', color: '#fff', border: '1px solid ' + (u.isBanned ? '#6ee7b7' : '#fca5a5'), borderRadius: '7px', padding: '7px 12px', fontSize: '11px', cursor: 'pointer', fontWeight: '800' }}> {u.isBanned ? '✓ Unban' : '✕ Ban'} </button>
                       </div>
                     </div>
                   ))}
@@ -1640,55 +1873,67 @@ export default function App() {
               </>
             )}
             {isSuperAdmin && adminTab === 'game_control' && (
-              <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
-                <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>🎯 የቁጥር ማውጫ መቆጣጠሪያ (Draw Control)</h3>
-                <input type="number" placeholder="የማሸነፊያ ቁጥር አስገባ (1-1000)" value={manualNumberInput} onChange={(e) => setManualNumberInput(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '12px', boxSizing: 'border-box' }} />
-                <button onClick={handleSetManualWinner} style={{ width: '100%', padding: '10px', backgroundColor: '#f59e0b', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>መደብ አስቀምጥ</button>
+              <div style={{ ...cardStyle, padding: '20px', border: '1px solid rgba(245,158,11,0.35)' }}>
+                <h3 style={{ fontSize: '15px', color: '#fbbf24', marginTop: 0, letterSpacing: '0.3px' }}>🎯 የቁጥር ማውጫ መቆጣጠሪያ</h3>
+                <input type="number" placeholder="የማሸነፊያ ቁጥር አስገባ (1-1000)" value={manualNumberInput} onChange={(e) => setManualNumberInput(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#0a0a1a', color: '#fff', marginBottom: '12px', boxSizing: 'border-box', fontSize: '13px' }} />
+                <button onClick={handleSetManualWinner} style={{ width: '100%', padding: '12px', background: 'linear-gradient(120deg, #f59e0b, #d97706)', color: '#000', border: '1px solid #fbbf24', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '13px', boxShadow: '0 4px 16px rgba(245,158,11,0.35)' }}>✓ መደብ አስቀምጥ</button>
               </div>
             )}
             {isSuperAdmin && adminTab === 'settings' && (
-              <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
-                <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>⚙️ የሲስተም ማስተካከያዎች</h3>
-                <div style={{ marginBottom: '10px' }}>
-                  <label style={{ fontSize: '11px', color: '#9ca3af' }}>የቲኬት ዋጋ (Ticket Price):</label>
-                  <input type="number" value={sysSettings.ticketPrice} onChange={(e) => setSysSettings({...sysSettings, ticketPrice: Number(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginTop: '4px' }} />
-                </div>
+              <div style={{ ...cardStyle, padding: '20px', border: '1px solid rgba(245,158,11,0.35)' }}>
+                <h3 style={{ fontSize: '15px', color: '#fbbf24', marginTop: 0, letterSpacing: '0.3px' }}>⚙️ የሲስተም ማስተካከያዎች</h3>
                 <div style={{ marginBottom: '12px' }}>
-                  <label style={{ fontSize: '11px', color: '#9ca3af' }}>የአሸናፊው ድርሻ በመቶኛ (Winner %):</label>
-                  <input type="number" value={sysSettings.winnerPercentage} onChange={(e) => setSysSettings({...sysSettings, winnerPercentage: Number(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginTop: '4px' }} />
+                  <label style={{ fontSize: '11px', color: '#8b8ba7', letterSpacing: '0.3px' }}>የቲኬት ዋጋ (Ticket Price):</label>
+                  <input type="number" value={sysSettings.ticketPrice} onChange={(e) => setSysSettings({...sysSettings, ticketPrice: Number(e.target.value)})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0a0a1a', color: '#fff', marginTop: '6px', fontSize: '13px' }} />
                 </div>
-                <button onClick={() => handleUpdateSettings()} style={{ width: '100%', padding: '10px', backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>ቅንብሮችን አዘምን</button>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '11px', color: '#8b8ba7', letterSpacing: '0.3px' }}>የአሸናፊው ድርሻ በመቶኛ (Winner %):</label>
+                  <input type="number" value={sysSettings.winnerPercentage} onChange={(e) => setSysSettings({...sysSettings, winnerPercentage: Number(e.target.value)})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0a0a1a', color: '#fff', marginTop: '6px', fontSize: '13px' }} />
+                </div>
+                <button onClick={() => handleUpdateSettings()} style={{ width: '100%', padding: '12px', background: 'linear-gradient(120deg, #22c55e, #16a34a)', color: '#fff', border: '1px solid #4ade80', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '13px', boxShadow: '0 4px 16px rgba(34,197,94,0.35)' }}>💾 ቅንብሮችን አዘምን</button>
               </div>
             )}
             {isSuperAdmin && adminTab === 'broadcast' && (
-              <div style={{ backgroundColor: '#181830', padding: '16px', borderRadius: '12px', border: '1px solid #2a2a4a' }}>
-                <h3 style={{ fontSize: '15px', color: '#f59e0b', marginTop: 0 }}>📢 ለሁሉም ተጠቃሚዎች መልእክት መላክ</h3>
-                <textarea rows="4" placeholder="መልእክትዎን እዚህ ይጻፉ..." value={broadcastText} onChange={(e) => setBroadcastText(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#fff', marginBottom: '12px', boxSizing: 'border-box' }} />
-                <button onClick={handleSendBroadcast} style={{ width: '100%', padding: '10px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>መልእክት አስተላልፍ</button>
+              <div style={{ ...cardStyle, padding: '20px', border: '1px solid rgba(14,165,233,0.35)' }}>
+                <h3 style={{ fontSize: '15px', color: '#38bdf8', marginTop: 0, letterSpacing: '0.3px' }}>📢 ለሁሉም ተጠቃሚዎች መልእክት መላክ</h3>
+                <textarea rows="4" placeholder="መልእክትዎን እዚህ ይጻፉ..." value={broadcastText} onChange={(e) => setBroadcastText(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#0a0a1a', color: '#fff', marginBottom: '12px', boxSizing: 'border-box', fontSize: '13px' }} />
+                <button onClick={handleSendBroadcast} style={{ width: '100%', padding: '12px', background: 'linear-gradient(120deg, #0ea5e9, #0369a1)', color: '#fff', border: '1px solid #38bdf8', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '13px', boxShadow: '0 4px 16px rgba(14,165,233,0.35)' }}>📤 መልእክት አስተላልፍ</button>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* FOOTER NAVIGATION - shown on the Home screen, hidden on the game board screens */}
+      {/* FOOTER NAVIGATION */}
       {!(currentTab === 'game' && currentScreen !== 'home') && (
-        <div style={{ width: '100%', height: '60px', backgroundColor: '#0a0a16', borderTop: '1px solid #1e1b4b', display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexShrink: 0 }}>
-          <button onClick={() => { setCurrentTab('game'); setCurrentScreen('home'); }} style={{ background: 'none', border: 'none', color: currentTab === 'game' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-            <span style={{ fontSize: '18px' }}>🎮</span> Game
+        <div style={{
+          width: '100%',
+          height: '64px',
+          background: 'linear-gradient(180deg, rgba(10,10,22,0.95), rgba(5,5,15,1))',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          borderTop: '1px solid #1e1b4b',
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          flexShrink: 0,
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.5)'
+        }}>
+          <button onClick={() => { setCurrentTab('game'); setCurrentScreen('home'); }} style={navBtnStyle(currentTab === 'game')}>
+            <span style={{ fontSize: '20px' }}>🎮</span> Game
           </button>
-          <button onClick={() => setCurrentTab('history')} style={{ background: 'none', border: 'none', color: currentTab === 'history' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-            <span style={{ fontSize: '18px' }}>📜</span> History
+          <button onClick={() => setCurrentTab('history')} style={navBtnStyle(currentTab === 'history')}>
+            <span style={{ fontSize: '20px' }}>📜</span> History
           </button>
-          <button onClick={() => setCurrentTab('wallet')} style={{ background: 'none', border: 'none', color: currentTab === 'wallet' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-            <span style={{ fontSize: '18px' }}>💳</span> Wallet
+          <button onClick={() => setCurrentTab('wallet')} style={navBtnStyle(currentTab === 'wallet')}>
+            <span style={{ fontSize: '20px' }}>💳</span> Wallet
           </button>
-          <button onClick={() => setCurrentTab('profile')} style={{ background: 'none', border: 'none', color: currentTab === 'profile' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-            <span style={{ fontSize: '18px' }}>👤</span> Profile
+          <button onClick={() => setCurrentTab('profile')} style={navBtnStyle(currentTab === 'profile')}>
+            <span style={{ fontSize: '20px' }}>👤</span> Profile
           </button>
           {isAdmin && (
-            <button onClick={() => setCurrentTab('admin')} style={{ background: 'none', border: 'none', color: currentTab === 'admin' ? '#f59e0b' : '#f59e0b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-              <span style={{ fontSize: '18px' }}>⚙️</span> Admin
+            <button onClick={() => setCurrentTab('admin')} style={navBtnStyle(currentTab === 'admin')}>
+              <span style={{ fontSize: '20px' }}>⚙️</span> Admin
             </button>
           )}
         </div>
