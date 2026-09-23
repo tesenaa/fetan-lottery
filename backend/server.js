@@ -291,7 +291,7 @@ if (process.env.NODE_ENV === 'production' && RENDER_URL && bot) {
   // token changes but setWebhook is never called again, this server keeps replying
   // with the NEW token to chats that only ever talked to the OLD bot/token — which
   // Telegram rejects with "400: Bad Request: chat not found".
-  bot.api.setWebhook(`${RENDER_URL}/webhook`)
+  bot.api.setWebhook(`${RENDER_URL}/webhook`, { drop_pending_updates: true })
     .then(() => console.log(`✅ Webhook registered: ${RENDER_URL}/webhook`))
     .catch((err) => console.error('❌ setWebhook failed:', err));
 }
@@ -466,7 +466,7 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
     });
     if (isPhoneProvided && bot) {
       try {
-        await bot.api.sendMessage(uid, `🎉 *እንኳን ደህና መጡ!*\n\nስልክ ቁጥርዎን በመመዝገብ *20 ETB* በ Play Walletዎ ላይ ተሰጥوታል!`, { parse_mode: 'Markdown' });
+        await bot.api.sendMessage(uid, `🎉 *እንኳን ደህና መጡ!*\n\nስልክ ቁጥርዎን በመመዝገብ *10 ETB* በ Play Walletዎ ላይ ተሰጥوታል!`, { parse_mode: 'Markdown' });
       } catch (err) {}
     }
   } else if (phone && !dbUser.phoneBonusReceived) {
@@ -476,7 +476,7 @@ async function getOrInitUser(userId, firstName = '', username = '', phone = '') 
     await dbUser.save();
     if (bot) {
       try {
-        await bot.api.sendMessage(uid, `🎉 *እንኳን ደህና መጡ!*\n\nስልክ ቁጥርዎን በመመዝገብ *20 ETB* በ Play Walletዎ ላይ ተሰጥوታል!`, { parse_mode: 'Markdown' });
+        await bot.api.sendMessage(uid, `🎉 *እንኳን ደህና መጡ!*\n\nስልክ ቁጥርዎን በመመዝገብ *10 ETB* በ Play Walletዎ ላይ ተሰጥوታል!`, { parse_mode: 'Markdown' });
       } catch (err) {}
     }
   } else if (phone && !dbUser.phone) {
