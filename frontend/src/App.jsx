@@ -1137,7 +1137,6 @@ export default function App() {
                 }}>
                   Welcome to <span style={{ background: 'linear-gradient(120deg, #fbbf24, #f59e0b, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Fetan Lottery</span>
                 </h1>
-                <div style={{ fontSize: '12px', color: '#8b8ba7', marginBottom: '22px', letterSpacing: '1.5px', textTransform: 'uppercase' }}>✦ የዕድል ጨዋታ ✦</div>
 
                 {isBanned && (
                   <div className="float-in" style={{
@@ -1306,7 +1305,6 @@ export default function App() {
               <div className="fade-in-up" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'linear-gradient(180deg, #0e0e22, #0a0a16)', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%', boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
                   <button onClick={() => setCurrentScreen('home')} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>← Back</button>
-                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#22c55e', letterSpacing: '1px' }}>🎯 10 ETB BOARD</div>
                   <button onClick={() => fetchUserData()} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#22c55e', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>🔄</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', padding: '8px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
@@ -1397,7 +1395,7 @@ export default function App() {
               <div className="fade-in-up" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'linear-gradient(180deg, #0e0e22, #0a0a16)', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%', boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
                   <button onClick={() => setCurrentScreen('home')} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>← Back</button>
-                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#38bdf8', letterSpacing: '1px' }}>🎯 20 ETB BOARD</div>
+                
                   <button onClick={() => fetchUserData()} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#22c55e', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>🔄</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', padding: '8px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
@@ -1488,7 +1486,7 @@ export default function App() {
               <div className="fade-in-up" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'linear-gradient(180deg, #0e0e22, #0a0a16)', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%', boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
                   <button onClick={() => setCurrentScreen('home')} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>← Back</button>
-                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#a78bfa', letterSpacing: '1px' }}>🎯 50 ETB BOARD</div>
+                  
                   <button onClick={() => fetchUserData()} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#22c55e', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>🔄</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', padding: '8px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
@@ -1541,7 +1539,7 @@ export default function App() {
               <div className="fade-in-up" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'linear-gradient(180deg, #0e0e22, #0a0a16)', borderBottom: '1px solid #1e1b4b', flexShrink: 0, width: '100%', boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
                   <button onClick={() => setCurrentScreen('home')} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#38bdf8', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>← Back</button>
-                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#facc15', letterSpacing: '1px' }}>🎯 100 ETB BOARD</div>
+                  
                   <button onClick={() => fetchUserData()} style={{ background: 'linear-gradient(160deg, #1e1b4b, #12122a)', color: '#22c55e', border: '1px solid #312e81', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>🔄</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px', padding: '8px 8px 4px 8px', flexShrink: 0, width: '100%' }}>
