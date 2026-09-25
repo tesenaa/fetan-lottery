@@ -14,6 +14,10 @@ import { telebirrRoutes } from './telebirr/routes.js';
 const WEB_APP_URL = process.env.WEB_APP_URL || "https://fetan-lottery.vercel.app";
 const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_ID || process.env.ADMIN_ID || "494653076";
 const ADMIN_GROUP_ID = process.env.ADMIN_GROUP_ID || "-1003928734889";
+// Public players/announcements group for winner posts. Set WINNER_GROUP_ID in
+// .env to a different group than the private admin group if you want winners
+// announced somewhere the players can actually see them.
+const WINNER_GROUP_ID = process.env.WINNER_GROUP_ID || ADMIN_GROUP_ID;
 
 const app = express();
 app.use(cors());
@@ -145,24 +149,22 @@ function generateGameId(stake) {
   return `FL-${stake}-${randomNum}`;
 }
 
-// Ethiopian evening 12:00 = 18:00 EAT (UTC+3). Play 50 at 18:00, Play 100 at 18:05 Saturday.
+// Ethiopian evening 12:00 = 18:00 EAT (UTC+3). Play 50 draws every day at 18:00, Play 100 draws every day at 18:05.
 const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
-const WEEKLY_DRAW_HOUR_EAT = 18;
-const WEEKLY_DRAW_WINDOW_MS = 60 * 1000;
+const DAILY_DRAW_HOUR_EAT = 18;
+const DAILY_DRAW_WINDOW_MS = 60 * 1000;
 
-function getWeeklyTargetUtc(eatHour, eatMinute, fromMs = Date.now()) {
+function getDailyTargetUtc(eatHour, eatMinute, fromMs = Date.now()) {
   const eatDate = new Date(fromMs + EAT_OFFSET_MS);
   const y = eatDate.getUTCFullYear();
   const mo = eatDate.getUTCMonth();
   const dayDate = eatDate.getUTCDate();
-  const dow = eatDate.getUTCDay();
-  const addDays = (6 - dow + 7) % 7;
-  const thisWeekEatUtcFields = Date.UTC(y, mo, dayDate + addDays, eatHour, eatMinute, 0, 0);
-  return thisWeekEatUtcFields - EAT_OFFSET_MS;
+  const todayEatUtcFields = Date.UTC(y, mo, dayDate, eatHour, eatMinute, 0, 0);
+  return todayEatUtcFields - EAT_OFFSET_MS;
 }
 
-function getWeeklyDrawKey(stake, eatHour, eatMinute, fromMs = Date.now()) {
-  const targetUtc = getWeeklyTargetUtc(eatHour, eatMinute, fromMs);
+function getDailyDrawKey(stake, eatHour, eatMinute, fromMs = Date.now()) {
+  const targetUtc = getDailyTargetUtc(eatHour, eatMinute, fromMs);
   const eat = new Date(targetUtc + EAT_OFFSET_MS);
   const y = eat.getUTCFullYear();
   const m = String(eat.getUTCMonth() + 1).padStart(2, '0');
@@ -170,17 +172,17 @@ function getWeeklyDrawKey(stake, eatHour, eatMinute, fromMs = Date.now()) {
   return `${y}-${m}-${d}-${stake}`;
 }
 
-function getSecondsUntilWeeklyDraw(eatHour, eatMinute, lastDrawKey, stake) {
+function getSecondsUntilDailyDraw(eatHour, eatMinute, lastDrawKey, stake) {
   const now = Date.now();
-  let targetUtc = getWeeklyTargetUtc(eatHour, eatMinute, now);
-  const weekKey = getWeeklyDrawKey(stake, eatHour, eatMinute, now);
-  if (now >= targetUtc + WEEKLY_DRAW_WINDOW_MS || lastDrawKey === weekKey) {
-    targetUtc += 7 * 24 * 60 * 60 * 1000;
+  let targetUtc = getDailyTargetUtc(eatHour, eatMinute, now);
+  const dayKey = getDailyDrawKey(stake, eatHour, eatMinute, now);
+  if (now >= targetUtc + DAILY_DRAW_WINDOW_MS || lastDrawKey === dayKey) {
+    targetUtc += 24 * 60 * 60 * 1000;
   }
   return Math.max(0, Math.floor((targetUtc - now) / 1000));
 }
 
-function getWeeklyDrawMinute(stake) {
+function getDailyDrawMinute(stake) {
   return stake === 50 ? 0 : 5;
 }
 
@@ -188,8 +190,8 @@ function getWeeklyDrawMinute(stake) {
 const gameStates = {
   10: { currentGameId: generateGameId(10), selectedNumbers: [], timeLeft: 50, gamePhase: 'selecting', winningNumber: '?', boardUpdateTimeout: null, processing: false, lastDrawKey: null },
   20: { currentGameId: generateGameId(20), selectedNumbers: [], timeLeft: 50, gamePhase: 'selecting', winningNumber: '?', boardUpdateTimeout: null, processing: false, lastDrawKey: null },
-  50: { currentGameId: generateGameId(50), selectedNumbers: [], timeLeft: 0, gamePhase: 'selecting', winningNumber: '?', boardUpdateTimeout: null, isWeekly: true, processing: false, lastDrawKey: null },
-  100: { currentGameId: generateGameId(100), selectedNumbers: [], timeLeft: 0, gamePhase: 'selecting', winningNumber: '?', boardUpdateTimeout: null, isWeekly: true, processing: false, lastDrawKey: null }
+  50: { currentGameId: generateGameId(50), selectedNumbers: [], timeLeft: 0, gamePhase: 'selecting', winningNumber: '?', boardUpdateTimeout: null, isDaily: true, processing: false, lastDrawKey: null },
+  100: { currentGameId: generateGameId(100), selectedNumbers: [], timeLeft: 0, gamePhase: 'selecting', winningNumber: '?', boardUpdateTimeout: null, isDaily: true, processing: false, lastDrawKey: null }
 };
 
 async function persistLiveGame(stake) {
@@ -224,7 +226,7 @@ async function hydrateLiveGames() {
       if (doc.lastDrawKey) state.lastDrawKey = doc.lastDrawKey;
       state.gamePhase = 'selecting';
       state.winningNumber = '?';
-      if (!state.isWeekly) state.timeLeft = 50;
+      if (!state.isDaily) state.timeLeft = 50;
     });
     console.log('✅ Live game states restored from MongoDB');
   } catch (err) {
@@ -352,7 +354,7 @@ function snapshotStake(stake) {
     timeLeft: state.timeLeft,
     gamePhase: state.gamePhase,
     winningNumber: state.winningNumber,
-    isWeekly: !!state.isWeekly
+    isDaily: !!state.isDaily
   };
 }
 
@@ -419,16 +421,18 @@ async function runDraw(stake) {
     winnerUserId: winnerUser ? winnerUser.userId : null
   });
 
-  const resetDelay = state.isWeekly ? 15000 : 10000;
+  await announceWinnerToGroup(stake, winNum, winnerUser, stats, state.currentGameId);
+
+  const resetDelay = state.isDaily ? 15000 : 10000;
   setTimeout(async () => {
     state.selectedNumbers = [];
     state.gamePhase = 'selecting';
     state.winningNumber = '?';
     state.currentGameId = nextGameId;
     state.processing = false;
-    if (state.isWeekly) {
-      const minute = getWeeklyDrawMinute(stake);
-      state.timeLeft = getSecondsUntilWeeklyDraw(WEEKLY_DRAW_HOUR_EAT, minute, state.lastDrawKey, stake);
+    if (state.isDaily) {
+      const minute = getDailyDrawMinute(stake);
+      state.timeLeft = getSecondsUntilDailyDraw(DAILY_DRAW_HOUR_EAT, minute, state.lastDrawKey, stake);
     } else {
       state.timeLeft = 50;
     }
@@ -438,10 +442,39 @@ async function runDraw(stake) {
       timeLeft: state.timeLeft,
       gamePhase: 'selecting',
       gameId: state.currentGameId,
-      isWeekly: !!state.isWeekly
+      isDaily: !!state.isDaily
     });
     await persistLiveGame(stake);
   }, resetDelay);
+}
+
+// Posts the result of every draw (all stakes) to the public Telegram group so
+// players can see who won without opening the app. Configure WINNER_GROUP_ID
+// in your .env; it falls back to ADMIN_GROUP_ID if not set. Never throws -
+// a Telegram/network hiccup here must not break the game loop.
+async function announceWinnerToGroup(stake, winNum, winnerUser, stats, gameId) {
+  if (!bot || !WINNER_GROUP_ID) return;
+  try {
+    let msgText;
+    if (winnerUser) {
+      const displayName = winnerUser.userName ? `@${winnerUser.userName}` : winnerUser.userId;
+      msgText =
+        `🎉 *${stake} ETB ጨዋታ ውጤት!*\n\n` +
+        `🎲 አሸናፊ ቁጥር: *#${winNum}*\n` +
+        `👤 አሸናፊ: ${displayName}\n` +
+        `💰 የድረሽ ብር: *${stats.derash} ETB*\n` +
+        `🎮 Game ID: \`${gameId}\`\n` +
+        `👥 ተጫዋቾች: ${stats.totalPlayers}`;
+    } else {
+      msgText =
+        `🎲 *${stake} ETB ጨዋታ ውጤት!*\n\n` +
+        `ቁጥር *#${winNum}* ማንም አልመረጠውም — ዛሬ አሸናፊ የለም።\n` +
+        `🎮 Game ID: \`${gameId}\``;
+    }
+    await bot.api.sendMessage(WINNER_GROUP_ID, msgText, { parse_mode: 'Markdown' });
+  } catch (err) {
+    console.error('Winner group announcement error:', err.message);
+  }
 }
 
 async function getOrInitUser(userId, firstName = '', username = '', phone = '') {
@@ -1063,32 +1096,32 @@ setInterval(() => {
   https.get(backendPingUrl, (res) => {}).on('error', (err) => {});
 }, 10 * 60 * 1000);
 
-function refreshWeeklyCountdowns() {
+function refreshDailyCountdowns() {
   [50, 100].forEach((stake) => {
     const state = gameStates[stake];
     if (!state || state.gamePhase !== 'selecting') return;
-    const minute = getWeeklyDrawMinute(stake);
-    state.timeLeft = getSecondsUntilWeeklyDraw(WEEKLY_DRAW_HOUR_EAT, minute, state.lastDrawKey, stake);
+    const minute = getDailyDrawMinute(stake);
+    state.timeLeft = getSecondsUntilDailyDraw(DAILY_DRAW_HOUR_EAT, minute, state.lastDrawKey, stake);
   });
 }
 
-refreshWeeklyCountdowns();
+refreshDailyCountdowns();
 
 // Independent loops: Play 10 and Play 20 each have their own 50s timer.
-// Play 50 draws Saturday 18:00 EAT (ቅዳሜ ማታ 12:00). Play 100 draws Saturday 18:05 EAT.
+// Play 50 draws every day at 18:00 EAT (በየቀኑ ማታ 12:00). Play 100 draws every day at 18:05 EAT.
 [10, 20, 50, 100].forEach((stake) => {
   setInterval(async () => {
     const state = gameStates[stake];
     if (!state || state.processing) return;
 
-    if (state.isWeekly) {
+    if (state.isDaily) {
       if (state.gamePhase !== 'selecting') return;
-      const minute = getWeeklyDrawMinute(stake);
-      const weekKey = getWeeklyDrawKey(stake, WEEKLY_DRAW_HOUR_EAT, minute);
+      const minute = getDailyDrawMinute(stake);
+      const dayKey = getDailyDrawKey(stake, DAILY_DRAW_HOUR_EAT, minute);
       const now = Date.now();
-      const targetUtc = getWeeklyTargetUtc(WEEKLY_DRAW_HOUR_EAT, minute, now);
-      const inDrawWindow = now >= targetUtc && now < targetUtc + WEEKLY_DRAW_WINDOW_MS && state.lastDrawKey !== weekKey;
-      state.timeLeft = getSecondsUntilWeeklyDraw(WEEKLY_DRAW_HOUR_EAT, minute, state.lastDrawKey, stake);
+      const targetUtc = getDailyTargetUtc(DAILY_DRAW_HOUR_EAT, minute, now);
+      const inDrawWindow = now >= targetUtc && now < targetUtc + DAILY_DRAW_WINDOW_MS && state.lastDrawKey !== dayKey;
+      state.timeLeft = getSecondsUntilDailyDraw(DAILY_DRAW_HOUR_EAT, minute, state.lastDrawKey, stake);
 
       io.emit('timer_tick', {
         stake: Number(stake),
@@ -1096,11 +1129,11 @@ refreshWeeklyCountdowns();
         timeLeft: state.timeLeft,
         gamePhase: state.gamePhase,
         gameId: state.currentGameId,
-        isWeekly: true
+        isDaily: true
       });
 
       if (inDrawWindow) {
-        state.lastDrawKey = weekKey;
+        state.lastDrawKey = dayKey;
         await persistLiveGame(stake);
         await runDraw(stake);
       }
@@ -1133,7 +1166,7 @@ io.on('connection', async (socket) => {
   const activeCount = new Set(activeUsersMap.values()).size;
   const registeredCount = registeredUsersSet.size;
 
-  refreshWeeklyCountdowns();
+  refreshDailyCountdowns();
   const stats10 = await getGameStats(10);
   const stats20 = await getGameStats(20);
   const stats50 = await getGameStats(50);

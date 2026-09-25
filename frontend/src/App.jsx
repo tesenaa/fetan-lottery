@@ -1231,7 +1231,7 @@ export default function App() {
                     textAlign: 'center',
                     letterSpacing: '1.2px',
                     textTransform: 'uppercase'
-                  }}>🏆 Weekly Game 🏆</div>
+                  }}>🏆 Daily Game 🏆</div>
 
                   <button onClick={() => setCurrentScreen('board50')} style={{
                     width: '100%',
@@ -1250,7 +1250,7 @@ export default function App() {
                     ► Play 50 ETB
                   </button>
                   <div style={{ textAlign: 'center', fontSize: '11px', color: '#facc15', marginTop: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>
-                    📅 weekly (ቅዳሜ ማታ 12:00)
+                    📅 daily (በየቀኑ ማታ 12:00)
                   </div>
 
                   <button onClick={() => setCurrentScreen('board100')} style={{
@@ -1271,7 +1271,7 @@ export default function App() {
                     ► Play 100 ETB
                   </button>
                   <div style={{ textAlign: 'center', fontSize: '11px', color: '#facc15', marginTop: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>
-                    📅 weekly (ቅዳሜ ማታ 12:05)
+                    📅 daily (በየቀኑ ማታ 12:05)
                   </div>
                 </div>
 
@@ -1498,7 +1498,7 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
                     <div style={{ background: 'linear-gradient(90deg, #8b5cf6, #6d28d9)', padding: '8px', borderRadius: '10px', textAlign: 'center', fontSize: '11px', fontWeight: '800', flexShrink: 0, boxShadow: '0 2px 10px rgba(139,92,246,0.4), inset 0 1px 0 rgba(255,255,255,0.1)', letterSpacing: '0.5px' }}>
-                      📅 Weekly: ቅዳሜ ማታ 12:00
+                      📅 Daily: በየቀኑ ማታ 12:00
                     </div>
                     <NumberGrid
                       numbers={visibleNumbers}
@@ -1551,7 +1551,7 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flex: 1, padding: '4px 8px 8px 8px', overflow: 'hidden', width: '100%' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
                     <div style={{ background: 'linear-gradient(90deg, #facc15, #ca8a04)', color: '#1a1400', padding: '8px', borderRadius: '10px', textAlign: 'center', fontSize: '11px', fontWeight: '800', flexShrink: 0, boxShadow: '0 2px 10px rgba(250,204,21,0.4), inset 0 1px 0 rgba(255,255,255,0.25)', letterSpacing: '0.5px' }}>
-                      📅 Weekly: ቅዳሜ ማታ 12:05
+                      📅 Daily: በየቀኑ ማታ 12:05
                     </div>
                     <NumberGrid
                       numbers={visibleNumbers}
