@@ -62,11 +62,11 @@ const depositSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
   userName: { type: String, default: '' },
   amount: { type: Number, required: true },
-  pastedText: { type: String, default: '' }, // only used by the manual SMS-paste flow
+  pastedText: { type: String, default: '' },
   transactionId: { type: String, default: null, index: true },
   status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED', 'FAILED'], default: 'PENDING' },
   method: { type: String, enum: ['MANUAL_SMS', 'TELEBIRR_AUTO'], default: 'MANUAL_SMS' },
-  prepayId: { type: String, default: null }, // Telebirr order id, for the auto flow
+  prepayId: { type: String, default: null },
   processedBy: { type: String, default: null },
   telegramMessageId: { type: Number, default: null },
   createdAt: { type: Date, default: Date.now, expires: 7776000 }
@@ -287,19 +287,11 @@ const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
 if (process.env.NODE_ENV === 'production' && RENDER_URL && bot) {
   app.use('/webhook', webhookCallback(bot, 'express'));
 
-  // Re-register the webhook with Telegram every time the server boots.
-  // This matters whenever TELEGRAM_BOT_TOKEN is rotated/changed: Telegram routes
-  // updates based on whichever webhook URL was last registered for a token. If the
-  // token changes but setWebhook is never called again, this server keeps replying
-  // with the NEW token to chats that only ever talked to the OLD bot/token — which
-  // Telegram rejects with "400: Bad Request: chat not found".
   bot.api.setWebhook(`${RENDER_URL}/webhook`, { drop_pending_updates: true })
     .then(() => console.log(`✅ Webhook registered: ${RENDER_URL}/webhook`))
     .catch((err) => console.error('❌ setWebhook failed:', err));
 }
 
-// Safety net: never let a single failed Telegram API call (e.g. a blocked/invalid
-// chat) crash and restart the whole server for every user. Log it and keep running.
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled promise rejection (ignored, server keeps running):', reason);
 });
@@ -448,30 +440,64 @@ async function runDraw(stake) {
   }, resetDelay);
 }
 
-// Posts the result of every draw (all stakes) to the public Telegram group so
-// players can see who won without opening the app. Configure WINNER_GROUP_ID
-// in your .env; it falls back to ADMIN_GROUP_ID if not set. Never throws -
-// a Telegram/network hiccup here must not break the game loop.
+// ============================================================================
+// ⭐ WINNER ANNOUNCEMENT TO GROUP — UPDATED
+// ----------------------------------------------------------------------------
+// ONLY 50 ETB and 100 ETB daily games are announced to the public group.
+// 10 ETB and 20 ETB (fast, every-50-seconds games) are NOT announced here —
+// they keep running exactly as before with no group messages at all.
+//
+// For 50/100 daily games the message includes the winner's Telegram name,
+// phone number and the exact prize amount, and opens with "እንኳን ደስ አለዎት!".
+//
+// Configure WINNER_GROUP_ID in your .env; it falls back to ADMIN_GROUP_ID.
+// Never throws — a Telegram/network hiccup here must not break the game loop.
+// ============================================================================
 async function announceWinnerToGroup(stake, winNum, winnerUser, stats, gameId) {
+  // ⭐ Skip announcement for 10 & 20 ETB games
+  if (stake !== 50 && stake !== 100) return;
+
   if (!bot || !WINNER_GROUP_ID) return;
+
   try {
-    let msgText;
     if (winnerUser) {
-      const displayName = winnerUser.userName ? `@${winnerUser.userName}` : winnerUser.userId;
-      msgText =
-        `🎉 *${stake} ETB ጨዋታ ውጤት!*\n\n` +
-        `🎲 አሸናፊ ቁጥር: *#${winNum}*\n` +
-        `👤 አሸናፊ: ${displayName}\n` +
-        `💰 የድረሽ ብር: *${stats.derash} ETB*\n` +
-        `🎮 Game ID: \`${gameId}\`\n` +
-        `👥 ተጫዋቾች: ${stats.totalPlayers}`;
+      // Fetch the full user document so we can include phone + username
+      const winnerDoc = await User.findOne({ userId: String(winnerUser.userId) });
+
+      // Prefer @username, fall back to first name, then generic userName
+      const displayName = winnerDoc?.username
+        ? `@${winnerDoc.username}`
+        : (winnerDoc?.firstName || winnerUser.userName || winnerUser.userId);
+
+      const phoneDisplay = winnerDoc?.phone ? winnerDoc.phone : 'አልተመዘገበም';
+
+      const msgText =
+        `🎉🎉 *እንኳን ደስ አለዎት!* 🎉🎉\n\n` +
+        `🏆 *${stake} ETB ዕለታዊ ጨዋታ አሸናፊ!*\n\n` +
+        `👤 *አሸናፊ:* ${displayName}\n` +
+        `📱 *ስልክ ቁጥር:* \`${phoneDisplay}\`\n` +
+        `🎲 *የወጣው ቁጥር:* *#${winNum}*\n` +
+        `💰 *ያሸነፈው ብር:* *${stats.derash} ETB*\n` +
+        `🎮 *Game ID:* \`${gameId}\`\n` +
+        `👥 *ተጫዋቾች:* ${stats.totalPlayers}\n\n` +
+        `🔗 ወደ ጨዋታው ይግቡ እና እድልዎን ይሞክሩ!`;
+
+      await bot.api.sendMessage(WINNER_GROUP_ID, msgText, {
+        parse_mode: 'Markdown',
+        disable_web_page_preview: true
+      });
     } else {
-      msgText =
-        `🎲 *${stake} ETB ጨዋታ ውጤት!*\n\n` +
+      // No winner picked the number — still announce for 50/100 so the group sees the result
+      const msgText =
+        `🎲 *${stake} ETB ዕለታዊ ጨዋታ ውጤት*\n\n` +
         `ቁጥር *#${winNum}* ማንም አልመረጠውም — ዛሬ አሸናፊ የለም።\n` +
-        `🎮 Game ID: \`${gameId}\``;
+        `🎮 *Game ID:* \`${gameId}\``;
+
+      await bot.api.sendMessage(WINNER_GROUP_ID, msgText, {
+        parse_mode: 'Markdown',
+        disable_web_page_preview: true
+      });
     }
-    await bot.api.sendMessage(WINNER_GROUP_ID, msgText, { parse_mode: 'Markdown' });
   } catch (err) {
     console.error('Winner group announcement error:', err.message);
   }
@@ -683,7 +709,7 @@ const handleDepositRequest = async (req, res) => {
     }
     const existingPending = await Deposit.findOne({ userId: uid, status: 'PENDING' });
     if (existingPending) {
-      return res.status(400).json({ success: false, message: "⚠️ አስቀድሞ የפתח የዲፖዚት ጥያቄ አለዎት።" });
+      return res.status(400).json({ success: false, message: "⚠️ አስቀድሞ የዲፖዚት ጥያቄ አለዎት።" });
     }
     const txnId = extractTransactionId(pastedText);
     if (!txnId) {
@@ -728,10 +754,6 @@ const handleDepositRequest = async (req, res) => {
 app.post('/api/deposit', handleDepositRequest);
 app.post('/api/deposit-request', handleDepositRequest);
 
-// --- Telebirr Fabric Gateway automated deposit + webhook routes ---
-// See ./telebirr/*.js. Kept as separate endpoints alongside the existing
-// manual SMS-paste flow above, so you can roll this out gradually and
-// keep the manual flow as a fallback while testing.
 app.use('/api/telebirr', telebirrRoutes({ Deposit, User, notifyUserBalanceUpdate }));
 
 app.get('/api/admin/settings', checkAdminAuth, async (req, res) => {
@@ -1108,7 +1130,7 @@ function refreshDailyCountdowns() {
 refreshDailyCountdowns();
 
 // Independent loops: Play 10 and Play 20 each have their own 50s timer.
-// Play 50 draws every day at 18:00 EAT (በየቀኑ ማታ 12:00). Play 100 draws every day at 18:05 EAT.
+// Play 50 draws every day at 18:00 EAT. Play 100 draws every day at 18:05 EAT.
 [10, 20, 50, 100].forEach((stake) => {
   setInterval(async () => {
     const state = gameStates[stake];
