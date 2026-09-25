@@ -9,6 +9,15 @@ function eventStake(data) {
   return [10, 20, 50, 100].includes(value) ? value : null;
 }
 
+// ⭐ HH:MM:SS format — ሰዓት:ደቂቃ:ሰከንድ (used for daily game banners)
+function formatHMS(totalSeconds) {
+  const seconds = Math.max(0, Number(totalSeconds) || 0);
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 function formatCountdown(totalSeconds) {
   const seconds = Math.max(0, Number(totalSeconds) || 0);
   const d = Math.floor(seconds / 86400);
@@ -54,55 +63,6 @@ const ConfettiBurst = ({ show }) => {
           }}
         />
       ))}
-    </div>
-  );
-};
-
-/* ═══════════════════════════════════════════════════════════════════
-   ✨ Circular Progress Ring Countdown
-   ═══════════════════════════════════════════════════════════════════ */
-const CountdownRing = ({ timeLeft, maxTime, size = 120, strokeWidth = 6, color = '#8b5cf6', label }) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const progress = Math.max(0, Math.min(1, timeLeft / maxTime));
-  const dashOffset = circumference * (1 - progress);
-  const isUrgent = timeLeft <= 10 && timeLeft > 0;
-
-  return (
-    <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', position: 'absolute', top: 0, left: 0 }}>
-        <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth} />
-        <circle
-          cx={size/2} cy={size/2} r={radius}
-          fill="none"
-          stroke={isUrgent ? '#ef4444' : color}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          strokeLinecap="round"
-          style={{
-            transition: 'stroke-dashoffset 0.5s ease, stroke 0.3s ease',
-            filter: `drop-shadow(0 0 8px ${isUrgent ? '#ef4444' : color})`,
-            animation: isUrgent ? 'pulseUrgent 1s ease-in-out infinite' : 'none'
-          }}
-        />
-      </svg>
-      <div style={{ textAlign: 'center', zIndex: 1 }}>
-        <div style={{
-          fontSize: size > 100 ? '22px' : '18px',
-          fontWeight: '900',
-          background: isUrgent
-            ? 'linear-gradient(120deg, #ef4444, #f59e0b)'
-            : `linear-gradient(120deg, #ffffff, ${color})`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          lineHeight: 1
-        }}>
-          {timeLeft}
-        </div>
-        <div style={{ fontSize: '9px', color: '#8b8ba7', marginTop: '2px', letterSpacing: '1px' }}>SEC</div>
-      </div>
     </div>
   );
 };
@@ -260,7 +220,6 @@ const WinningDisplay = ({ winningNumber, accentColor, size = 130 }) => {
 
   return (
     <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {/* Rotating rays behind */}
       <div style={{
         position: 'absolute',
         inset: -18,
@@ -271,7 +230,6 @@ const WinningDisplay = ({ winningNumber, accentColor, size = 130 }) => {
         filter: 'blur(6px)'
       }} />
 
-      {/* Outer glow */}
       <div style={{
         position: 'absolute',
         inset: 0,
@@ -280,7 +238,6 @@ const WinningDisplay = ({ winningNumber, accentColor, size = 130 }) => {
         transition: 'box-shadow 0.5s ease'
       }} />
 
-      {/* Main circle */}
       <div style={{
         width: '100%', height: '100%', borderRadius: '50%',
         background: 'radial-gradient(circle at 30% 25%, #1e1e44, #0a0a1a 70%)',
@@ -289,7 +246,6 @@ const WinningDisplay = ({ winningNumber, accentColor, size = 130 }) => {
         position: 'relative', overflow: 'hidden',
         transition: 'border 0.4s ease'
       }}>
-        {/* Shimmer effect */}
         {hasWinner && (
           <div style={{
             position: 'absolute', inset: 0,
@@ -381,6 +337,22 @@ const WinnerInfo = ({ info }) => {
     </div>
   );
 };
+
+/* ═══════════════════════════════════════════════════════════════════
+   ✨ Winner Info Top Label (moved before renderBoard to avoid hoisting issue)
+   ═══════════════════════════════════════════════════════════════════ */
+const WinnerInfoTop = ({ label, accent }) => (
+  <div style={{
+    fontSize: '11px',
+    fontWeight: '900',
+    marginBottom: '12px',
+    background: `linear-gradient(120deg, #ffffff, ${accent})`,
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    letterSpacing: '0.8px'
+  }}>{label}</div>
+);
 
 export default function App() {
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
@@ -1346,7 +1318,6 @@ export default function App() {
     }[stake];
 
     const stakeLabelColor = stake === 10 ? '#22c55e' : stake === 20 ? '#38bdf8' : stake === 50 ? '#a78bfa' : '#facc15';
-    const boardBg = stake === 10 ? 'rgba(34,197,94,0.12)' : stake === 20 ? 'rgba(56,189,248,0.12)' : stake === 50 ? 'rgba(167,139,250,0.12)' : 'rgba(250,204,21,0.12)';
 
     return (
       <div className="fade-in-up" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
@@ -1426,24 +1397,25 @@ export default function App() {
                   : (!isDaily && cfg.time <= 10) || (isDaily && cfg.time <= 60 && cfg.time > 0)
                     ? cfg.urgentColor
                     : cfg.bannerColor,
-              padding: '10px 8px',
+              padding: isDaily ? '12px 8px' : '10px 8px',
               borderRadius: '12px',
               textAlign: 'center',
-              fontSize: '12px',
-              fontWeight: '800',
+              fontSize: isDaily ? '20px' : '12px',
+              fontWeight: '900',
               flexShrink: 0,
               boxShadow: `0 3px 14px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)`,
               animation: ((!isDaily && cfg.time <= 10) || (isDaily && cfg.time <= 60 && cfg.time > 0)) && cfg.phase === 'selecting' ? 'pulseUrgent 1s ease-in-out infinite' : 'none',
-              letterSpacing: '0.6px',
-              color: stake === 100 && cfg.phase === 'selecting' && cfg.time > 60 ? '#1a1400' : '#ffffff'
+              letterSpacing: isDaily ? '3px' : '0.6px',
+              color: stake === 100 && cfg.phase === 'selecting' && cfg.time > 60 ? '#1a1400' : '#ffffff',
+              fontVariantNumeric: 'tabular-nums'
             }}>
               {cfg.phase === 'spinning'
                 ? (cfg.allPickedCount > 0 ? '✦ ቁጥር እያሰበሰበ ነው...' : '⚠️ ማንም ቁጥር አልመረጠም!')
                 : isDaily && cfg.phase === 'result'
                   ? '🎉 ውጤት ወጥቷል!'
                   : isDaily
-                    ? `📅 ዕጣ በ ማታ ${stake === 50 ? '12:00' : '12:05'} ⏱ ${formatCountdown(cfg.time)}`
-                    : `⏱ የምረጣ ጊዜ ${cfg.time} S`}
+                    ? formatHMS(cfg.time)
+                    : ` ${cfg.time} S`}
             </div>
 
             <NumberGrid
@@ -1480,19 +1452,6 @@ export default function App() {
       </div>
     );
   };
-
-  const WinnerInfoTop = ({ label, accent }) => (
-    <div style={{
-      fontSize: '11px',
-      fontWeight: '900',
-      marginBottom: '12px',
-      background: `linear-gradient(120deg, #ffffff, ${accent})`,
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text',
-      letterSpacing: '0.8px'
-    }}>{label}</div>
-  );
 
   return (
     <div style={{
